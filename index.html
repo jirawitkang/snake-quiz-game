@@ -1,1 +1,217 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snake Quiz Multiplayer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background: #f5f5f5;
+    }
 
+    h1 {
+      text-align: center;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      flex: 1 1 260px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.4rem 0.6rem;
+      margin-bottom: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 0.5rem 0.8rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #1976d2;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: default;
+    }
+
+    .info {
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    #lobby, #gameArea {
+      margin-top: 1rem;
+      border-top: 1px solid #eee;
+      padding-top: 1rem;
+    }
+
+    #playerList {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    #playerList li {
+      margin-bottom: 0.2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      background: #eee;
+      margin-left: 0.25rem;
+    }
+
+    .badge.host {
+      background: #ff9800;
+      color: #fff;
+    }
+
+    /* Board */
+    #board {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr); /* 6x5 = 30 ช่อง */
+      gap: 4px;
+      margin-top: 1rem;
+    }
+
+    .cell {
+      position: relative;
+      border: 1px solid #ccc;
+      min-height: 50px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 2px 4px;
+      background: #fafafa;
+    }
+
+    .cell-index {
+      opacity: 0.6;
+    }
+
+    .token {
+      position: absolute;
+      bottom: 2px;
+      left: 2px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    #statusText {
+      margin-top: 0.5rem;
+      font-weight: 600;
+    }
+
+    #roomInfo {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    #diceResult {
+      font-size: 1rem;
+      margin-top: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Snake Quiz (Starter)</h1>
+
+    <div class="row">
+      <!-- Create Room -->
+      <div class="card">
+        <h2>สร้างห้อง (Host)</h2>
+        <label>ชื่อเล่นของคุณ</label>
+        <input id="hostNameInput" placeholder="เช่น ครูเอ, วิทย์ ฯลฯ" />
+        <button id="createRoomBtn">สร้างห้อง</button>
+        <p class="info">
+          เมื่อสร้างห้องแล้ว คุณจะได้ Room Code ให้แชร์ให้นักเรียนเอาไป Join
+        </p>
+      </div>
+
+      <!-- Join Room -->
+      <div class="card">
+        <h2>เข้าห้องที่มีอยู่</h2>
+        <label>Room Code</label>
+        <input id="roomCodeInput" placeholder="เช่น ABC123" />
+        <label>ชื่อเล่นของคุณ</label>
+        <input id="playerNameInput" placeholder="เช่น นร.01, นร.02 ฯลฯ" />
+        <button id="joinRoomBtn">Join ห้อง</button>
+      </div>
+    </div>
+
+    <!-- Lobby -->
+    <div id="lobby" style="display:none;">
+      <h2>Lobby</h2>
+      <div id="roomInfo"></div>
+      <p><strong>ผู้เล่นในห้อง:</strong></p>
+      <ul id="playerList"></ul>
+
+      <div id="hostControls" style="margin-top:0.5rem;">
+        <button id="startGameBtn">เริ่มเกม</button>
+      </div>
+    </div>
+
+    <!-- Game Area -->
+    <div id="gameArea" style="display:none;">
+      <h2>กระดานเกม</h2>
+      <div id="statusText"></div>
+      <div id="diceResult"></div>
+      <div id="board"></div>
+
+      <div id="gameControls" style="margin-top:0.5rem;">
+        <button id="nextRoundBtn">ทอยเต๋ารอบใหม่ (เฉพาะ Host)</button>
+      </div>
+
+      <p class="info">
+        * Starter นี้ยังไม่มีระบบ Quiz / Timer<br>
+        จะใช้แค่ทอยเต๋า + ขยับตำแหน่งบนกระดานให้เห็นภาพก่อน<br>
+        จุดที่ต้องเพิ่ม Quiz จะทำ TODO ไว้ใน main.js
+      </p>
+    </div>
+  </div>
+
+  <!-- main logic -->
+  <script type="module" src="main.js"></script>
+</body>
+</html>
