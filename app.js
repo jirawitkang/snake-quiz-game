@@ -53,7 +53,18 @@ const QUESTIONS = [
       D: "ภูเก็ต",
     },
     correctOption: "C",
-    timeLimit: 5,
+    timeLimit: 15,
+  },
+  {
+    text: "A, B, C, D, ...",
+    choices: {
+      A: "E",
+      B: "F",
+      C: "I",
+      D: "Z",
+    },
+    correctOption: "A",
+    timeLimit: 15,
   },
 ];
 
