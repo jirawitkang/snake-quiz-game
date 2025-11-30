@@ -211,7 +211,10 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
   const maxRounds = parseInt(maxRoundsInput.value, 10) || 10;
   const maxWinners = parseInt(maxWinnersInput.value, 10) || 5;
   const rewardCorrect = parseInt(rewardCorrectInput.value, 10) || 1;
-  const penaltyWrong = parseInt(penaltyWrongInput.value, 10) || 1;
+  let penaltyWrong = parseInt(penaltyWrongInput.value, 10);
+  if (Number.isNaN(penaltyWrong)) {
+    penaltyWrong = -1; // default ถ้าไม่ได้กรอก หรือกรอกมั่ว
+  }
 
   const roomCode = createRoomCode();
   const hostId = createId("host");
@@ -510,17 +513,11 @@ rollDiceBtn.addEventListener("click", async () => {
     return;
   }
 
-  const roll = Math.floor(Math.random() * 6) + 1;
-  let newPos = (me.position || 0) + roll;
-  if (newPos < 0) newPos = 0;
-  if (newPos > BOARD_SIZE) newPos = BOARD_SIZE;
+  // เก็บตำแหน่งปัจจุบันไว้ใช้ตอนคำนวณหลังทอย
+  const basePos = me.position || 0;
 
-  const updates = {};
-  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/lastRoll`] = roll;
-  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/position`] = newPos;
-  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/hasRolled`] = true;
-
-  await update(ref(db), updates);
+  // เริ่มแอนิเมชันทอยเต๋า + commit ผลลัพธ์
+  await animateDiceAndCommitRoll(basePos);
 });
 
 // ---------------- Host: Start Question (Countdown) ----------------
@@ -597,7 +594,7 @@ revealAnswerBtn.addEventListener("click", async () => {
     : 1;
   const penaltyWrong = Number.isFinite(gs.penaltyWrong)
     ? gs.penaltyWrong
-    : 1;
+    : -1; // default ถ้าไม่มีค่า
 
   const updates = {};
   for (const [pid, p] of Object.entries(players)) {
@@ -607,10 +604,12 @@ revealAnswerBtn.addEventListener("click", async () => {
     let correct = false;
 
     if (answered && ans === question.correctOption) {
+      // ตอบถูก → เดินหน้า rewardCorrect ช่อง (เช่น +1, +2)
       pos += rewardCorrect;
       correct = true;
     } else {
-      pos -= penaltyWrong;
+      // ตอบผิดหรือไม่ทัน → บวก penaltyWrong ซึ่งควรเป็นค่าลบ (เช่น -1, -2)
+      pos += penaltyWrong;
       correct = false;
     }
 
@@ -619,7 +618,6 @@ revealAnswerBtn.addEventListener("click", async () => {
 
     updates[`rooms/${currentRoomCode}/players/${pid}/position`] = pos;
     updates[`rooms/${currentRoomCode}/players/${pid}/lastAnswerCorrect`] = correct;
-    // answered / answer จะถูก reset ตอนเริ่มรอบใหม่ (startRound)
   }
 
   updates[`rooms/${currentRoomCode}/phase`] = "result";
@@ -740,6 +738,64 @@ function updateRoleControls(roomData, players) {
     startQuestionBtn.style.display = "none";
     revealAnswerBtn.style.display = "none";
   }
+}
+// ---------------- Animate Dice And Commit Roll ----------------
+async function animateDiceAndCommitRoll(basePosition) {
+  return new Promise((resolve) => {
+    // กัน user กดซ้ำระหว่างกำลังหมุนเต๋า
+    rollDiceBtn.disabled = true;
+
+    const totalDuration = 3000; // 3 วินาที
+    const start = Date.now();
+    let displayRoll = 1;
+
+    function step() {
+      const elapsed = Date.now() - start;
+      const remaining = totalDuration - elapsed;
+
+      if (remaining <= 0) {
+        const finalRoll = displayRoll; // ใช้ค่าสุดท้ายที่โชว์เป็นผลจริง
+        finalizeRoll(finalRoll, basePosition).then(resolve);
+        return;
+      }
+
+      // สุ่ม 1–6 สำหรับแสดงผล
+      displayRoll = Math.floor(Math.random() * 6) + 1;
+
+      if (currentRole === "player") {
+        // แสดงสถานะว่ากำลังหมุนเต๋า
+        playerStatusEl.textContent = `กำลังทอยลูกเต๋า... ได้ ${displayRoll}`;
+      }
+
+      // กำหนดความถี่การสุ่มให้ช้าลงเรื่อย ๆ
+      let delay;
+      if (elapsed < 1000) {
+        delay = 80;   // วินาทีแรก: เร็ว
+      } else if (elapsed < 2000) {
+        delay = 150;  // วินาทีที่สอง: เริ่มช้าลง
+      } else {
+        delay = 250;  // วินาทีสุดท้าย: ช้าลงอีกหน่อย
+      }
+
+      setTimeout(step, delay);
+    }
+
+    step();
+  });
+}
+
+async function finalizeRoll(roll, basePosition) {
+  let newPos = basePosition + roll;
+  if (newPos < 0) newPos = 0;
+  if (newPos > BOARD_SIZE) newPos = BOARD_SIZE;
+
+  const updates = {};
+  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/lastRoll`] = roll;
+  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/position`] = newPos;
+  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/hasRolled`] = true;
+
+  await update(ref(db), updates);
+  // ไม่ต้องเปิดปุ่มเอง เพราะ hasRolled = true แล้ว logic เดิมจะ disable ให้อัตโนมัติ
 }
 
 // ---------------- Question UI + Timer ----------------
