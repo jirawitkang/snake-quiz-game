@@ -173,7 +173,9 @@ createRoomBtn.addEventListener("click", async () => {
       questionCountdownSeconds: 3,
       answerStartAt: null,
       answerTimeSeconds: null,
+      answerDeadlineExpired: false,
     });
+
 
     console.log("Room created:", roomCode);
     enterLobbyView();
@@ -284,16 +286,18 @@ function subscribeRoom(roomCode) {
       roomInfoEl.textContent = `Room Code: ${roomCode} | Host: ${hostName}`;
     }
 
-    renderPlayerList(players);
+    renderPlayerList(roomData, players);
     updateGameView(roomData, players);
   });
 }
 
 // ---------------- Render Player List ----------------
-function renderPlayerList(playersObj) {
+function renderPlayerList(roomData, playersObj) {
   playerListEl.innerHTML = "";
 
   const entries = Object.entries(playersObj);
+  const phase = roomData.phase || "idle";
+  const deadlineExpired = roomData.answerDeadlineExpired === true;
 
   entries.sort((a, b) => {
     const aJoined = a[1].joinedAt || 0;
@@ -304,27 +308,54 @@ function renderPlayerList(playersObj) {
   for (const [pid, player] of entries) {
     const li = document.createElement("li");
 
-    // สถานะคำถาม
-    let statusText;
-    if (player.lastAnswerCorrect === true) {
-      statusText = "ตอบถูก";
-    } else if (player.lastAnswerCorrect === false) {
-      statusText = "ตอบผิด";
-    } else if (player.answered) {
-      // เลือกคำตอบแล้ว แต่ยังไม่เฉลย
-      statusText = "ตอบแล้ว (รอเฉลย)";
-    } else {
-      statusText = "ยังไม่ตอบ";
-    }
-
     // สัญลักษณ์ตอบล่าสุด
-    let answerSymbol = "";
+    let answerSymbol = "-";
     if (player.lastAnswerCorrect === true) {
       answerSymbol = "✅";
     } else if (player.lastAnswerCorrect === false) {
       answerSymbol = "❌";
+    }
+
+    // สถานะผู้เล่นตาม phase
+    let statusText = "";
+
+    if (phase === "rolling") {
+      if (!player.hasRolled) {
+        statusText = "ยังไม่ทอยลูกเต๋า";
+      } else {
+        statusText = `ทอยแล้ว (ได้ ${player.lastRoll ?? "-"} แต้ม)`;
+      }
+    } else if (phase === "questionCountdown") {
+      statusText = "รอคำถามรอบนี้";
+    } else if (phase === "answering") {
+      if (deadlineExpired) {
+        if (player.answered) {
+          statusText = "ตอบแล้ว (รอเฉลย)";
+        } else {
+          statusText = "ตอบไม่ทัน";
+        }
+      } else {
+        if (player.answered) {
+          statusText = "ตอบแล้ว (รอเฉลย)";
+        } else {
+          statusText = "กำลังหาคำตอบ / ยังไม่ตอบ";
+        }
+      }
+    } else if (phase === "result") {
+      if (player.lastAnswerCorrect === true) {
+        statusText = "ตอบถูก (+1 ช่อง)";
+      } else if (player.lastAnswerCorrect === false) {
+        if (player.answered) {
+          statusText = "ตอบผิด (-1 ช่อง)";
+        } else {
+          statusText = "ตอบไม่ทัน (-1 ช่อง)";
+        }
+      } else {
+        statusText = "รอรอบถัดไป";
+      }
     } else {
-      answerSymbol = "-";
+      // idle หรืออื่น ๆ
+      statusText = "รอเริ่มรอบใหม่";
     }
 
     li.innerHTML = `
@@ -333,7 +364,7 @@ function renderPlayerList(playersObj) {
         ช่องปัจจุบัน: <strong>${player.position ?? 0}</strong> |
         ทอยล่าสุด: <strong>${player.lastRoll ?? "-"}</strong> |
         ตอบล่าสุด: <strong>${answerSymbol}</strong> |
-        สถานะคำถาม: <strong>${statusText}</strong>
+        สถานะผู้เล่น: <strong>${statusText}</strong>
       </span>
     `;
 
@@ -367,6 +398,8 @@ startRoundBtn.addEventListener("click", async () => {
   updates[`rooms/${currentRoomCode}/questionCountdownStartAt`] = null;
   updates[`rooms/${currentRoomCode}/answerStartAt`] = null;
   updates[`rooms/${currentRoomCode}/answerTimeSeconds`] = null;
+  updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
+
 
   for (const pid of Object.keys(players)) {
     updates[`rooms/${currentRoomCode}/players/${pid}/lastRoll`] = null;
@@ -458,6 +491,7 @@ startQuestionBtn.addEventListener("click", async () => {
   updates[`rooms/${currentRoomCode}/questionCountdownSeconds`] = 3;
   updates[`rooms/${currentRoomCode}/answerStartAt`] = null;
   updates[`rooms/${currentRoomCode}/answerTimeSeconds`] = question.timeLimit;
+  updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
 
   clearTimer();
   await update(ref(db), updates);
@@ -640,7 +674,15 @@ function updateQuestionUI(roomData, players) {
 
     const me = players[currentPlayerId] || {};
     const selectedOption = me.answer || null;
-    renderChoicesForPhase(question, selectedOption, question.correctOption, false);
+    const deadlineExpired = roomData.answerDeadlineExpired === true;
+
+    renderChoicesForPhase(
+      question,
+      selectedOption,
+      question.correctOption,
+      false,
+      deadlineExpired
+    );
     ensureTimer(roomData, "answering");
   } else if (phase === "result" && round > 0 && question) {
     questionAreaEl.style.display = "block";
@@ -656,7 +698,7 @@ function updateQuestionUI(roomData, players) {
     // ในโหมด result:
     // - ปุ่มที่ถูกต้อง = เขียว
     // - ถ้าผู้เล่นตอบผิด → ปุ่มที่เขาเลือก = แดง
-    renderChoicesForPhase(question, selectedOption, question.correctOption, true);
+    renderChoicesForPhase(question, selectedOption, question.correctOption, true, false);
     clearTimer();
   } else {
     questionAreaEl.style.display = "none";
@@ -665,7 +707,13 @@ function updateQuestionUI(roomData, players) {
   }
 }
 
-function renderChoicesForPhase(question, selectedOption, correctOption, showResultOnly) {
+function renderChoicesForPhase(
+  question,
+  selectedOption,
+  correctOption,
+  showResultOnly,
+  disableAnswerButtons = false
+) {
   choicesContainerEl.innerHTML = "";
 
   if (!question) return;
@@ -679,10 +727,8 @@ function renderChoicesForPhase(question, selectedOption, correctOption, showResu
     if (showResultOnly) {
       // โหมดเฉลยผล
       if (key === correctOption) {
-        // คำตอบที่ถูก → เขียว
         btn.classList.add("correct");
       }
-      // ถ้าผู้เล่นคนนี้ตอบผิด → ไฮไลต์ตัวที่เขาเลือกเป็นแดง
       if (
         selectedOption &&
         selectedOption === key &&
@@ -691,12 +737,12 @@ function renderChoicesForPhase(question, selectedOption, correctOption, showResu
         btn.classList.add("wrong");
       }
     } else {
-      // โหมดตอบคำถาม (answering)
+      // โหมด answering
       if (selectedOption && key === selectedOption) {
         btn.classList.add("selected");
       }
 
-      if (currentRole === "player") {
+      if (currentRole === "player" && !disableAnswerButtons) {
         btn.addEventListener("click", () => {
           submitAnswer(key);
         });
@@ -748,18 +794,33 @@ function ensureTimer(roomData, targetPhase) {
     const start = roomData.answerStartAt || Date.now();
     const duration = roomData.answerTimeSeconds || 20;
 
-    timerInterval = setInterval(() => {
+    timerInterval = setInterval(async () => {
       const now = Date.now();
       let remaining = Math.ceil((start + duration * 1000 - now) / 1000);
       if (remaining < 0) remaining = 0;
       countdownDisplayEl.textContent = `เหลือเวลา ${remaining} วินาที`;
 
       if (remaining <= 0) {
-        // หมดเวลาแล้วให้หยุด timer แต่ยังไม่เฉลยอัตโนมัติ
         clearTimer();
+
+        // ให้ Host เซ็ต answerDeadlineExpired = true
+        if (
+          currentRole === "host" &&
+          currentRoomCode &&
+          roomData.answerDeadlineExpired !== true
+        ) {
+          try {
+            await update(ref(db), {
+              [`rooms/${currentRoomCode}/answerDeadlineExpired`]: true,
+            });
+          } catch (e) {
+            console.error("Error setting answerDeadlineExpired:", e);
+          }
+        }
       }
     }, 250);
   }
+
 }
 
 // Host: เปลี่ยนจาก questionCountdown → answering
@@ -777,6 +838,7 @@ async function moveToAnswering(oldRoomData) {
   const updates = {};
   updates[`rooms/${currentRoomCode}/phase`] = "answering";
   updates[`rooms/${currentRoomCode}/answerStartAt`] = now;
+  updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
   // answerTimeSeconds ใช้ค่าที่ตั้งไว้แล้ว
 
   await update(ref(db), updates);
@@ -831,6 +893,11 @@ async function submitAnswer(optionKey) {
 
   if (roomData.phase !== "answering") {
     alert("ตอนนี้ยังไม่ใช่ช่วงตอบคำถาม");
+    return;
+  }
+
+  if (roomData.answerDeadlineExpired === true) {
+    alert("หมดเวลาตอบคำถามแล้ว");
     return;
   }
 
