@@ -246,6 +246,52 @@
       background: #c62828;
       color: #fff;
     }
+
+        #playerList table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    #playerList th,
+    #playerList td {
+      border: 1px solid #ddd;
+      padding: 4px 6px;
+      text-align: center;
+    }
+
+    #playerList th {
+      background: #f0f0f0;
+      font-weight: 700;
+    }
+
+    #playerList td.name-col {
+      text-align: left;
+      font-weight: 600;
+    }
+
+    #endGameSummary table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    #endGameSummary th,
+    #endGameSummary td {
+      border: 1px solid #ddd;
+      padding: 4px 6px;
+      text-align: center;
+    }
+
+    #endGameSummary th {
+      background: #f0f0f0;
+      font-weight: 700;
+    }
+
+    #endGameSummary td.name-col {
+      text-align: left;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -348,6 +394,13 @@
         <div id="questionText"></div>
         <div id="choicesContainer"></div>
       </div>
+
+      <!-- สรุปผลหลังจบเกม -->
+      <div id="endGameArea" style="display:none; margin-top:1rem; border-top:1px solid #ddd; padding-top:0.75rem;">
+        <h3>สรุปผลเกม</h3>
+        <div id="endGameSummary"></div>
+      </div>
+
     </div>
   </div>
 
