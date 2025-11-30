@@ -13,17 +13,28 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// 1) ใส่ Firebase config ของคุณเองตรงนี้ (จาก Firebase Console)
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyCOT002ZBTw_roNiN_9npuGJZpuFg3TB5s",
+  authDomain: "snake-quiz-cdf1c.firebaseapp.com",
+  databaseURL: "https://snake-quiz-cdf1c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "snake-quiz-cdf1c",
+  storageBucket: "snake-quiz-cdf1c.firebasestorage.app",
+  messagingSenderId: "58607066678",
+  appId: "1:58607066678:web:cf6f8a783171e553d80297",
+  measurementId: "G-32FNRV7FH4"
 };
 
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 // 2) Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
