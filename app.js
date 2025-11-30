@@ -206,7 +206,7 @@ function renderPlayerList(playersObj) {
 
   const entries = Object.entries(playersObj);
 
-  // เรียงตามเวลา joinedAt
+  // เรียงตามเวลาที่เข้าห้อง
   entries.sort((a, b) => {
     const aJoined = a[1].joinedAt || 0;
     const bJoined = b[1].joinedAt || 0;
@@ -216,16 +216,26 @@ function renderPlayerList(playersObj) {
   for (const [pid, player] of entries) {
     const li = document.createElement("li");
 
-    const nameSpan = document.createElement("span");
-    nameSpan.classList.add("player-name");
-    nameSpan.textContent = player.name || pid;
+    li.innerHTML = `
+      <div>
+        <span class="player-name">${player.name}</span>
+        <div class="player-meta">
+          ช่องปัจจุบัน: <strong>${player.position}</strong> |
+          ทอยลูกเต๋าล่าสุด: <strong>${player.lastRoll ?? "-"}</strong> |
+          สถานะคำถาม: 
+            <strong>${
+              player.answered === false
+                ? "ยังไม่ตอบ"
+                : player.lastAnswerCorrect === true
+                ? "ตอบถูก"
+                : player.lastAnswerCorrect === false
+                ? "ตอบผิด"
+                : "ยังไม่ตอบ"
+            }</strong>
+        </div>
+      </div>
+    `;
 
-    const metaSpan = document.createElement("span");
-    metaSpan.classList.add("player-meta");
-    metaSpan.textContent = `เข้าร่วมแล้ว`;
-
-    li.appendChild(nameSpan);
-    li.appendChild(metaSpan);
     playerListEl.appendChild(li);
   }
 
