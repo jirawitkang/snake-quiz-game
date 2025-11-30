@@ -357,9 +357,25 @@ function subscribeRoom(roomCode) {
     const roomData = snapshot.val();
     const players = roomData.players || {};
     const hostName = roomData.hostName || "(ไม่ทราบชื่อ)";
+    const gs = roomData.gameSettings || {};
 
     if (currentRoomCode === roomCode) {
-      roomInfoEl.textContent = `Room Code: ${roomCode} | Host: ${hostName}`;
+      const questionSetId = gs.questionSetId || "general";
+      const maxRounds = gs.maxRounds ?? 10;
+      const maxWinners = gs.maxWinners ?? 5;
+      const rewardCorrect = Number.isFinite(gs.rewardCorrect) ? gs.rewardCorrect : 1;
+      const penaltyWrong = Number.isFinite(gs.penaltyWrong) ? gs.penaltyWrong : -1;
+
+      const rewardText = rewardCorrect >= 0 ? `+${rewardCorrect}` : `${rewardCorrect}`;
+      const penaltyText = penaltyWrong >= 0 ? `+${penaltyWrong}` : `${penaltyWrong}`;
+
+      roomInfoEl.textContent =
+        `Room Code: ${roomCode} | Host: ${hostName} ` +
+        `| ชุดคำถาม: ${questionSetId} ` +
+        `| รอบสูงสุด: ${maxRounds} ` +
+        `| ผู้เข้าเส้นชัย: ${maxWinners} คน ` +
+        `| ตอบถูก: ${rewardText} ช่อง ` +
+        `| ตอบผิด/ไม่ทัน: ${penaltyText} ช่อง`;
     }
 
     renderPlayerList(roomData, players);
@@ -845,13 +861,7 @@ function renderEndGameSummary(roomData, players) {
     };
   }
 
-  // map rank จาก winners
-  const rankMap = {};
-  winners.forEach((w) => {
-    rankMap[w.playerId] = w.rank;
-  });
-
-  // ไล่ตาม round_1, round_2, ... ตามลำดับ
+    // ไล่ตาม round_1, round_2, ... ตามลำดับ เพื่อดึง rolls + ผลถูก/ผิด
   const roundKeys = Object.keys(history)
     .filter((k) => k.startsWith("round_"))
     .sort((a, b) => {
@@ -901,19 +911,49 @@ function renderEndGameSummary(roomData, players) {
     }
   }
 
-  // ผูก rank
-  for (const pid of Object.keys(perPlayer)) {
-    perPlayer[pid].rank = rankMap[pid] || null;
-  }
-
-  const statsArray = Object.values(perPlayer).sort((a, b) => {
-    // เรียงตาม rank ก่อน ถ้าไม่มี rank ให้เรียงตามตำแหน่งถอยหลัง
-    if (a.rank && b.rank) return a.rank - b.rank;
-    if (a.rank && !b.rank) return -1;
-    if (!a.rank && b.rank) return 1;
-    // ไม่มี rank ทั้งคู่ → เรียงตาม finalPosition จากมากไปน้อย
-    return (b.finalPosition || 0) - (a.finalPosition || 0);
+  // คำนวณ % ถูก และเตรียมจัดอันดับ
+  const statsArray = Object.values(perPlayer).map((s) => {
+    const totalQ = s.correct + s.wrong + s.timeout;
+    const pct = totalQ > 0 ? (s.correct / totalQ) * 100 : 0;
+    return {
+      ...s,
+      pctCorrect: pct, // เก็บเป็นตัวเลข 0–100
+    };
   });
+
+  // เรียงลำดับ:
+  // 1) ตำแหน่งสุดท้ายมาก → อันดับดีกว่า
+  // 2) ถ้าตำแหน่งเท่ากัน → % ถูกมาก → อันดับดีกว่า
+  // 3) ถ้ายังเท่ากัน → เรียงตามชื่อบังคับให้มีลำดับคงที่ (แต่ rank จะเท่ากัน)
+  statsArray.sort((a, b) => {
+    if (b.finalPosition !== a.finalPosition) {
+      return b.finalPosition - a.finalPosition; // ตำแหน่งสูงกว่ามาก่อน
+    }
+    if (b.pctCorrect !== a.pctCorrect) {
+      return b.pctCorrect - a.pctCorrect; // % ถูกมากกว่ามาก่อน
+    }
+    return (a.name || "").localeCompare(b.name || "");
+  });
+
+  // ให้ rank แบบมี “อันดับร่วม” และ “ข้ามอันดับ” เช่น 1,1,3,...
+  let lastKey = null;
+  let lastRank = 0;
+  let index = 0;
+
+  for (const s of statsArray) {
+    index++;
+    const key = `${s.finalPosition}|${Math.round(s.pctCorrect)}`; // metric ใช้ตำแหน่ง + % ถูก (ปัดเลข whole number)
+
+    if (key === lastKey) {
+      // metric เท่ากัน → อันดับร่วมกัน
+      s.rank = lastRank;
+    } else {
+      // metric ใหม่ → อันดับ = index ปัจจุบัน
+      s.rank = index;
+      lastRank = s.rank;
+      lastKey = key;
+    }
+  }
 
   // ================= Host View =================
   if (currentRole === "host") {
@@ -962,9 +1002,11 @@ function renderEndGameSummary(roomData, players) {
     statsArray.forEach((s) => {
       const totalQ = s.correct + s.wrong + s.timeout;
       const totalWrongLike = s.wrong + s.timeout;
-      const pct = totalQ > 0 ? ((s.correct / totalQ) * 100).toFixed(0) : "-";
+      const pct =
+        totalQ > 0 ? Math.round(s.pctCorrect).toString() : "-";
       const rollsText = s.rolls.join("") || "-";
       const answersText = s.answerSymbols.join("") || "-";
+
 
       html += `
         <tr>
@@ -988,13 +1030,14 @@ function renderEndGameSummary(roomData, players) {
 
   // ================= Player View =================
   if (currentRole === "player") {
-    const meStat = perPlayer[currentPlayerId] || null;
+    let meStat = statsArray.find((s) => s.id === currentPlayerId) || null;
     let html = "<p><strong>เกมจบแล้ว</strong></p>";
 
     if (meStat) {
       const totalQ = meStat.correct + meStat.wrong + meStat.timeout;
       const totalWrongLike = meStat.wrong + meStat.timeout;
-      const pct = totalQ > 0 ? ((meStat.correct / totalQ) * 100).toFixed(0) : "-";
+      const pct =
+        totalQ > 0 ? Math.round(meStat.pctCorrect).toString() : "-";
 
       html += `<p>สรุปผลของคุณ: <strong>${meStat.name}</strong></p>`;
       html += `<ul>`;
