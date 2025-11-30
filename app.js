@@ -658,7 +658,6 @@ function updateQuestionUI(roomData, players) {
     // - ถ้าผู้เล่นตอบผิด → ปุ่มที่เขาเลือก = แดง
     renderChoicesForPhase(question, selectedOption, question.correctOption, true);
     clearTimer();
-  }
   } else {
     questionAreaEl.style.display = "none";
     countdownDisplayEl.textContent = "";
