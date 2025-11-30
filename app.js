@@ -42,7 +42,7 @@ const QUESTIONS = [
       D: "22",
     },
     correctOption: "B",
-    timeLimit: 20, // วินาที
+    timeLimit: 10, // วินาที
   },
   {
     text: "เมืองหลวงของประเทศไทยคือเมืองใด?",
@@ -53,7 +53,7 @@ const QUESTIONS = [
       D: "ภูเก็ต",
     },
     correctOption: "C",
-    timeLimit: 25,
+    timeLimit: 5,
   },
 ];
 
