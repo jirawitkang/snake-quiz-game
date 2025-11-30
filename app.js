@@ -636,7 +636,20 @@ startQuestionBtn.addEventListener("click", async () => {
 
 // ---------------- Host: Reveal Answer & Move Tokens ----------------
 revealAnswerBtn.addEventListener("click", async () => {
-    const players = roomData.players || {};
+  if (currentRole !== "host" || !currentRoomCode) return;
+
+  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+  const snap = await get(roomRef);
+  if (!snap.exists()) return;
+
+  const roomData = snap.val();
+
+  if (roomData.phase !== "answering") {
+    alert("ต้องอยู่ในช่วงตอบคำถาม ก่อนเฉลย");
+    return;
+  }
+
+  const players = roomData.players || {};
   const questionIndex = roomData.questionIndex ?? 0;
   const question = getQuestionFromRoom(roomData, questionIndex);
   if (!question) {
@@ -687,6 +700,7 @@ revealAnswerBtn.addEventListener("click", async () => {
     // อัปเดตตำแหน่ง / ค่าถูกผิด
     updates[`rooms/${currentRoomCode}/players/${pid}/position`] = pos;
     updates[`rooms/${currentRoomCode}/players/${pid}/lastAnswerCorrect`] = correct;
+    // answered / answer จะ reset ตอน startRound
 
     // เก็บ history ของรอบนี้
     const historyPath = `rooms/${currentRoomCode}/history/round_${currentRound}/answers/${pid}`;
