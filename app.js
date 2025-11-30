@@ -372,6 +372,10 @@ function renderPlayerList(roomData, playersObj) {
   const phase = roomData.phase || "idle";
   const deadlineExpired = roomData.answerDeadlineExpired === true;
 
+  const gs = roomData.gameSettings || {};
+  const rewardCorrect = Number.isFinite(gs.rewardCorrect) ? gs.rewardCorrect : 1;
+  const penaltyWrong = Number.isFinite(gs.penaltyWrong) ? gs.penaltyWrong : -1;
+
   entries.sort((a, b) => {
     const aJoined = a[1].joinedAt || 0;
     const bJoined = b[1].joinedAt || 0;
@@ -415,18 +419,24 @@ function renderPlayerList(roomData, playersObj) {
         }
       }
     } else if (phase === "result") {
-      if (player.lastAnswerCorrect === true) {
-        statusText = "ตอบถูก (+ เดินหน้า)";
-      } else if (player.lastAnswerCorrect === false) {
-        if (player.answered) {
-          statusText = "ตอบผิด (ถอยหลัง)";
-        } else {
-          statusText = "ตอบไม่ทัน (ถอยหลัง)";
-        }
+    // เตรียมข้อความแสดงจำนวนช่อง เช่น +1 / -1 / +2 / -2
+    const moveCorrectText =
+      rewardCorrect >= 0 ? `+${rewardCorrect}` : `${rewardCorrect}`;
+    const moveWrongText =
+      penaltyWrong >= 0 ? `+${penaltyWrong}` : `${penaltyWrong}`;
+
+    if (player.lastAnswerCorrect === true) {
+      statusText = `ตอบถูก (${moveCorrectText} ช่อง)`;
+    } else if (player.lastAnswerCorrect === false) {
+      if (player.answered) {
+        statusText = `ตอบผิด (${moveWrongText} ช่อง)`;
       } else {
-        statusText = "รอรอบถัดไป";
+        statusText = `ตอบไม่ทัน (${moveWrongText} ช่อง)`;
       }
     } else {
+    statusText = "รอรอบถัดไป";
+  }
+} else {
       // idle หรืออื่น ๆ
       statusText = "รอเริ่มรอบใหม่";
     }
@@ -594,30 +604,57 @@ revealAnswerBtn.addEventListener("click", async () => {
     : 1;
   const penaltyWrong = Number.isFinite(gs.penaltyWrong)
     ? gs.penaltyWrong
-    : -1; // default ถ้าไม่มีค่า
+    : -1;
+
+  const questionSetId = gs.questionSetId || "general";
+  const currentRound = roomData.currentRound || 0;
 
   const updates = {};
+  const now = Date.now();
+
   for (const [pid, p] of Object.entries(players)) {
-    let pos = p.position || 0;
+    const basePos = p.position || 0;
     const answered = !!p.answered;
     const ans = p.answer;
     let correct = false;
 
+    let configuredMove = penaltyWrong; // default = ผิด/ไม่ตอบ
     if (answered && ans === question.correctOption) {
-      // ตอบถูก → เดินหน้า rewardCorrect ช่อง (เช่น +1, +2)
-      pos += rewardCorrect;
+      configuredMove = rewardCorrect;
       correct = true;
     } else {
-      // ตอบผิดหรือไม่ทัน → บวก penaltyWrong ซึ่งควรเป็นค่าลบ (เช่น -1, -2)
-      pos += penaltyWrong;
+      configuredMove = penaltyWrong; // ผิด หรือไม่ตอบทัน
       correct = false;
     }
 
+    let pos = basePos + configuredMove;
     if (pos < 0) pos = 0;
     if (pos > BOARD_SIZE) pos = BOARD_SIZE;
 
+    const actualDelta = pos - basePos;
+
+    // อัปเดตตำแหน่ง / ค่าถูกผิด สำหรับเล่นเกม
     updates[`rooms/${currentRoomCode}/players/${pid}/position`] = pos;
     updates[`rooms/${currentRoomCode}/players/${pid}/lastAnswerCorrect`] = correct;
+    // answered / answer จะถูก reset ตอนเริ่มรอบใหม่ (startRound)
+
+    // เก็บประวัติคำตอบของผู้เล่นในรอบนี้
+    const historyPath = `rooms/${currentRoomCode}/history/round_${currentRound}/answers/${pid}`;
+    updates[historyPath] = {
+      playerId: pid,
+      playerName: p.name || "",
+      questionSetId,
+      questionIndex,
+      questionText: question.text,
+      selectedOption: ans ?? null,
+      correct,
+      answered,
+      basePosition: basePos,
+      finalPosition: pos,
+      configuredMove,   // ค่าที่ตั้ง (เช่น +1, -1)
+      actualDelta,      // ผลต่างจริง (เผื่อชนขอบกระดาน)
+      timestamp: now,
+    };
   }
 
   updates[`rooms/${currentRoomCode}/phase`] = "result";
