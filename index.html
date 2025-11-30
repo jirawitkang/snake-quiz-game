@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>Snake Quiz – Lobby & Board</title>
+  <title>Snake Quiz – Multiplayer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
@@ -61,6 +61,8 @@
       background: #1976d2;
       color: #fff;
       font-weight: 600;
+      margin-right: 0.3rem;
+      margin-top: 0.2rem;
     }
 
     button:disabled {
@@ -181,6 +183,53 @@
     #playerControls {
       margin-top: 0.5rem;
     }
+
+    /* Question area */
+    #questionArea {
+      margin-top: 1rem;
+      border-top: 1px dashed #ccc;
+      padding-top: 0.75rem;
+      display: none;
+    }
+
+    #countdownDisplay {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    #questionText {
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+
+    #choicesContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .choice-btn {
+      width: 100%;
+      text-align: left;
+      background: #eee;
+      color: #333;
+    }
+
+    .choice-btn.selected {
+      background: #1976d2;
+      color: #fff;
+    }
+
+    .choice-btn.correct {
+      background: #2e7d32;
+      color: #fff;
+    }
+
+    .choice-btn.wrong {
+      background: #c62828;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -195,7 +244,7 @@
         <input id="hostNameInput" placeholder="เช่น ครูเอ, Teacher A" />
         <button id="createRoomBtn">สร้างห้อง</button>
         <p class="info">
-          หลังจากสร้างห้องแล้ว จอของคุณจะทำหน้าที่เป็นจอสรุปสถานะของผู้เล่นทุกคน<br>
+          หลังจากสร้างห้องแล้ว จอของคุณจะทำหน้าที่เป็นจอสรุปสถานะของผู้เล่นทุกคนตลอดเกม<br>
           นักเรียนใช้ Room Code ที่ได้จากคุณเพื่อเข้ามา Join
         </p>
       </div>
@@ -223,17 +272,20 @@
       <ul id="playerList"></ul>
       <p class="info">* สถานะช่อง / แต้มทอย / การตอบคำถามจะถูกอัปเดตแบบ realtime</p>
 
-      <!-- Host only: ปุ่มเริ่มรอบใหม่ -->
+      <!-- Host only: ปุ่มควบคุมรอบ / คำถาม -->
       <div id="hostRoundControls">
         <button id="startRoundBtn">เริ่มรอบใหม่ (Host)</button>
+        <button id="startQuestionBtn">เริ่มคำถาม (Host)</button>
+        <button id="revealAnswerBtn">เฉลยคำถาม & ขยับตัว (Host)</button>
         <p class="info">
-          เมื่อกดเริ่มรอบใหม่ นักเรียนทุกคนจะสามารถทอยลูกเต๋าได้รอบละ 1 ครั้ง<br>
-          (Step ถัดไปจะเพิ่มช่วงคำถาม + ให้เดินหน้า/ถอยหลังตามผลตอบ)
+          1) กด "เริ่มรอบใหม่" → นักเรียนทอยลูกเต๋ารอบละ 1 ครั้ง<br>
+          2) เมื่อทุกคนทอยครบ กด "เริ่มคำถาม" → ขึ้นนับถอยหลัง 3,2,1 และเข้าสู่ช่วงตอบ<br>
+          3) เมื่อหมดเวลา หรือทุกคนตอบครบ กด "เฉลยคำถาม & ขยับตัว"
         </p>
       </div>
     </div>
 
-    <!-- Game Area: กระดาน + ปุ่ม Roll -->
+    <!-- Game Area: กระดาน + ปุ่ม Roll + คำถาม -->
     <div id="gameArea">
       <h2>กระดานเกม</h2>
       <div id="roundInfo"></div>
@@ -244,6 +296,12 @@
       <div id="playerControls">
         <button id="rollDiceBtn">ทอยลูกเต๋า (สำหรับผู้เล่น)</button>
         <div id="playerStatus"></div>
+      </div>
+
+      <div id="questionArea">
+        <div id="countdownDisplay"></div>
+        <div id="questionText"></div>
+        <div id="choicesContainer"></div>
       </div>
     </div>
   </div>
