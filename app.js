@@ -293,20 +293,35 @@ function renderPlayerList(playersObj) {
   for (const [pid, player] of entries) {
     const li = document.createElement("li");
 
-    const statusText =
-      player.answered === false
-        ? "ยังไม่ตอบ"
-        : player.lastAnswerCorrect === true
-        ? "ตอบถูก"
-        : player.lastAnswerCorrect === false
-        ? "ตอบผิด"
-        : "ยังไม่ตอบ";
+    // สถานะคำถาม
+    let statusText;
+    if (player.lastAnswerCorrect === true) {
+      statusText = "ตอบถูก";
+    } else if (player.lastAnswerCorrect === false) {
+      statusText = "ตอบผิด";
+    } else if (player.answered) {
+      // เลือกคำตอบแล้ว แต่ยังไม่เฉลย
+      statusText = "ตอบแล้ว (รอเฉลย)";
+    } else {
+      statusText = "ยังไม่ตอบ";
+    }
+
+    // สัญลักษณ์ตอบล่าสุด
+    let answerSymbol = "";
+    if (player.lastAnswerCorrect === true) {
+      answerSymbol = "✅";
+    } else if (player.lastAnswerCorrect === false) {
+      answerSymbol = "❌";
+    } else {
+      answerSymbol = "-";
+    }
 
     li.innerHTML = `
       <span class="player-name">${player.name || pid}</span>
       <span class="player-meta">
         ช่องปัจจุบัน: <strong>${player.position ?? 0}</strong> |
         ทอยล่าสุด: <strong>${player.lastRoll ?? "-"}</strong> |
+        ตอบล่าสุด: <strong>${answerSymbol}</strong> |
         สถานะคำถาม: <strong>${statusText}</strong>
       </span>
     `;
@@ -480,8 +495,9 @@ revealAnswerBtn.addEventListener("click", async () => {
 
     updates[`rooms/${currentRoomCode}/players/${pid}/position`] = pos;
     updates[`rooms/${currentRoomCode}/players/${pid}/lastAnswerCorrect`] = correct;
-    updates[`rooms/${currentRoomCode}/players/${pid}/answered`] = false;
-    updates[`rooms/${currentRoomCode}/players/${pid}/answer`] = null;
+    // ไม่ต้อง reset answered / answer ในขั้นเฉลย
+    // จะไป reset ตอนเริ่มรอบใหม่ใน startRound แทน
+
   }
 
   updates[`rooms/${currentRoomCode}/phase`] = "result";
@@ -619,9 +635,19 @@ function updateQuestionUI(roomData, players) {
     questionAreaEl.style.display = "block";
     questionTextEl.textContent = `เฉลยรอบที่ ${round}: ${question.text}`;
     countdownDisplayEl.textContent = "";
-    // แสดงเฉลยด้วยการไฮไลต์ choice ที่ถูก/ผิด (เฉพาะใน UI ไม่เก็บเพิ่ม)
-    renderChoicesForPhase(question, null, question.correctOption, true);
+
+    let selectedOption = null;
+    if (currentRole === "player") {
+      const me = players[currentPlayerId] || {};
+      selectedOption = me.answer || null;
+    }
+
+    // ในโหมด result:
+    // - ปุ่มที่ถูกต้อง = เขียว
+    // - ถ้าผู้เล่นตอบผิด → ปุ่มที่เขาเลือก = แดง
+    renderChoicesForPhase(question, selectedOption, question.correctOption, true);
     clearTimer();
+  }
   } else {
     questionAreaEl.style.display = "none";
     countdownDisplayEl.textContent = "";
@@ -641,12 +667,21 @@ function renderChoicesForPhase(question, selectedOption, correctOption, showResu
     btn.textContent = `${key}. ${text}`;
 
     if (showResultOnly) {
-      // ตอน phase result
+      // โหมดเฉลยผล
       if (key === correctOption) {
+        // คำตอบที่ถูก → เขียว
         btn.classList.add("correct");
       }
+      // ถ้าผู้เล่นคนนี้ตอบผิด → ไฮไลต์ตัวที่เขาเลือกเป็นแดง
+      if (
+        selectedOption &&
+        selectedOption === key &&
+        selectedOption !== correctOption
+      ) {
+        btn.classList.add("wrong");
+      }
     } else {
-      // ตอน answering
+      // โหมดตอบคำถาม (answering)
       if (selectedOption && key === selectedOption) {
         btn.classList.add("selected");
       }
