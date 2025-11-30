@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>Snake Quiz Lobby</title>
+  <title>Snake Quiz – Lobby & Board</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
@@ -77,7 +77,6 @@
       margin-top: 1rem;
       border-top: 1px solid #eee;
       padding-top: 1rem;
-      display: none;
     }
 
     #roomInfo {
@@ -102,22 +101,8 @@
       border-radius: 4px;
       background: #f7f7f7;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 0.1rem 0.4rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      background: #eee;
-      margin-left: 0.25rem;
-    }
-
-    .badge.host {
-      background: #ff9800;
-      color: #fff;
+      flex-direction: column;
+      gap: 0.1rem;
     }
 
     .player-name {
@@ -128,11 +113,79 @@
       font-size: 0.8rem;
       color: #555;
     }
+
+    #hostRoundControls {
+      margin-top: 0.75rem;
+      display: none;
+    }
+
+    /* Game Area / Board */
+    #gameArea {
+      margin-top: 1.5rem;
+      border-top: 1px solid #eee;
+      padding-top: 1rem;
+      display: none;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr); /* 6 คอลัมน์ = 30 ช่อง */
+      gap: 4px;
+      margin-top: 0.75rem;
+    }
+
+    .cell {
+      position: relative;
+      border: 1px solid #ccc;
+      min-height: 50px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 2px 4px;
+      background: #fafafa;
+    }
+
+    .cell-index {
+      opacity: 0.6;
+    }
+
+    .token {
+      position: absolute;
+      bottom: 2px;
+      left: 2px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    #roundInfo {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    #phaseInfo {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 0.5rem;
+    }
+
+    #playerStatus {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #333;
+    }
+
+    #playerControls {
+      margin-top: 0.5rem;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Snake Quiz – Lobby</h1>
+    <h1>Snake Quiz – Multiplayer</h1>
 
     <div class="row">
       <!-- Host: Create Room -->
@@ -142,7 +195,7 @@
         <input id="hostNameInput" placeholder="เช่น ครูเอ, Teacher A" />
         <button id="createRoomBtn">สร้างห้อง</button>
         <p class="info">
-          หลังจากสร้างห้องแล้ว จอของคุณจะเห็นรายชื่อผู้เล่นทั้งหมดแบบเรียลไทม์<br>
+          หลังจากสร้างห้องแล้ว จอของคุณจะทำหน้าที่เป็นจอสรุปสถานะของผู้เล่นทุกคน<br>
           นักเรียนใช้ Room Code ที่ได้จากคุณเพื่อเข้ามา Join
         </p>
       </div>
@@ -161,13 +214,37 @@
       </div>
     </div>
 
-    <!-- Lobby: แสดงรายชื่อผู้เล่นในห้อง -->
+    <!-- Lobby: รายชื่อผู้เล่น -->
     <div id="lobby">
       <div id="roomInfo"></div>
       <div id="roleInfo"></div>
+
       <p><strong>รายชื่อผู้เล่นในห้อง:</strong></p>
       <ul id="playerList"></ul>
-      <p class="info">* ข้อมูลจะแสดงแบบ realtime ขณะผู้เล่นเริ่มเล่นใน Step C และ Step D</p>
+      <p class="info">* สถานะช่อง / แต้มทอย / การตอบคำถามจะถูกอัปเดตแบบ realtime</p>
+
+      <!-- Host only: ปุ่มเริ่มรอบใหม่ -->
+      <div id="hostRoundControls">
+        <button id="startRoundBtn">เริ่มรอบใหม่ (Host)</button>
+        <p class="info">
+          เมื่อกดเริ่มรอบใหม่ นักเรียนทุกคนจะสามารถทอยลูกเต๋าได้รอบละ 1 ครั้ง<br>
+          (Step ถัดไปจะเพิ่มช่วงคำถาม + ให้เดินหน้า/ถอยหลังตามผลตอบ)
+        </p>
+      </div>
+    </div>
+
+    <!-- Game Area: กระดาน + ปุ่ม Roll -->
+    <div id="gameArea">
+      <h2>กระดานเกม</h2>
+      <div id="roundInfo"></div>
+      <div id="phaseInfo"></div>
+
+      <div id="board"></div>
+
+      <div id="playerControls">
+        <button id="rollDiceBtn">ทอยลูกเต๋า (สำหรับผู้เล่น)</button>
+        <div id="playerStatus"></div>
+      </div>
     </div>
   </div>
 
