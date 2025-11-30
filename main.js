@@ -8,38 +8,28 @@ import {
   set,
   get,
   update,
-  push,
   onValue,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// ---------------- Firebase Config ของคุณ ----------------
 const firebaseConfig = {
   apiKey: "AIzaSyCOT002ZBTw_roNiN_9npuGJZpuFg3TB5s",
   authDomain: "snake-quiz-cdf1c.firebaseapp.com",
-  databaseURL: "https://snake-quiz-cdf1c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  databaseURL:
+    "https://snake-quiz-cdf1c-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "snake-quiz-cdf1c",
   storageBucket: "snake-quiz-cdf1c.firebasestorage.app",
   messagingSenderId: "58607066678",
   appId: "1:58607066678:web:cf6f8a783171e553d80297",
-  measurementId: "G-32FNRV7FH4"
+  measurementId: "G-32FNRV7FH4",
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-// 2) Init Firebase
+// 1) Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 3) องค์ประกอบ DOM
+// 2) DOM elements
 const createRoomBtn = document.getElementById("createRoomBtn");
 const joinRoomBtn = document.getElementById("joinRoomBtn");
 const hostNameInput = document.getElementById("hostNameInput");
@@ -58,14 +48,13 @@ const diceResultEl = document.getElementById("diceResult");
 const nextRoundBtn = document.getElementById("nextRoundBtn");
 const boardEl = document.getElementById("board");
 
-// 4) State ฝั่ง client
+// 3) State
 let currentRoomCode = null;
 let currentPlayerId = null;
 let currentPlayerName = null;
 let isHost = false;
 
-const BOARD_SIZE = 30; // 30 ช่อง
-// สามารถปรับเป็นรูปแบบบันได/งูจริงจังทีหลังได้
+const BOARD_SIZE = 30;
 const SNAKES = {
   17: 7,
   24: 15,
@@ -75,18 +64,22 @@ const LADDERS = {
   5: 9,
 };
 
-// สุ่มสีตัวหมากแบบง่าย ๆ
 function randomColor() {
-  const colors = ["#e91e63", "#9c27b0", "#3f51b5", "#009688", "#ff9800", "#795548"];
+  const colors = [
+    "#e91e63",
+    "#9c27b0",
+    "#3f51b5",
+    "#009688",
+    "#ff9800",
+    "#795548",
+  ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-// สร้าง playerId แบบง่าย ๆ
 function createPlayerId() {
   return "p_" + Math.random().toString(36).substring(2, 10);
 }
 
-// สร้าง roomCode แบบ 6 ตัวอักษร
 function createRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -96,7 +89,7 @@ function createRoomCode() {
   return code;
 }
 
-// ---------------- Event Listener ปุ่มหน้าแรก ----------------
+// ------------ Create / Join Room ------------
 
 createRoomBtn.addEventListener("click", async () => {
   const name = hostNameInput.value.trim();
@@ -114,15 +107,15 @@ createRoomBtn.addEventListener("click", async () => {
   const roomRef = ref(db, `rooms/${roomCode}`);
   await set(roomRef, {
     createdAt: Date.now(),
-    status: "lobby", // lobby | playing | finished
+    status: "lobby",
     hostId: currentPlayerId,
     boardSize: BOARD_SIZE,
     snakes: SNAKES,
     ladders: LADDERS,
   });
 
-  const playersRef = ref(db, `rooms/${roomCode}/players/${currentPlayerId}`);
-  await set(playersRef, {
+  const playerRef = ref(db, `rooms/${roomCode}/players/${currentPlayerId}`);
+  await set(playerRef, {
     name: currentPlayerName,
     position: 0,
     color: randomColor(),
@@ -160,8 +153,8 @@ joinRoomBtn.addEventListener("click", async () => {
   currentPlayerId = createPlayerId();
   currentRoomCode = roomCode;
 
-  const playersRef = ref(db, `rooms/${roomCode}/players/${currentPlayerId}`);
-  await set(playersRef, {
+  const playerRef = ref(db, `rooms/${roomCode}/players/${currentPlayerId}`);
+  await set(playerRef, {
     name: currentPlayerName,
     position: 0,
     color: randomColor(),
@@ -172,38 +165,31 @@ joinRoomBtn.addEventListener("click", async () => {
   enterLobby();
 });
 
-// ---------------- ฟังก์ชัน UI: เข้า Lobby / เข้า Game ----------------
+// ------------ Lobby / Game UI ------------
 
 function enterLobby() {
   lobbyEl.style.display = "block";
   gameAreaEl.style.display = "none";
 
   roomInfoEl.textContent = `Room Code: ${currentRoomCode}`;
-
-  // Host เห็นปุ่ม Start / คนอื่นไม่เห็น
   hostControlsEl.style.display = isHost ? "block" : "none";
 
-  // subscribe ข้อมูลผู้เล่นและสถานะห้อง realtime
   subscribeRoom();
 }
 
 function enterGame() {
   lobbyEl.style.display = "none";
   gameAreaEl.style.display = "block";
-
   renderBoard();
-  subscribeRoom(); // เผื่อยังไม่ได้ subscribe หรือต้องการอัปเดตกระดานต่อ
+  subscribeRoom();
 }
-
-// ---------------- Subscribe ข้อมูลห้องแบบ realtime ----------------
 
 function subscribeRoom() {
   if (!currentRoomCode) return;
-
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
+
   onValue(roomRef, (snapshot) => {
     if (!snapshot.exists()) {
-      // ห้องโดนลบ
       alert("ห้องนี้ถูกลบแล้ว");
       location.reload();
       return;
@@ -213,28 +199,23 @@ function subscribeRoom() {
     const players = roomData.players || {};
     const status = roomData.status || "lobby";
 
-    // อัปเดต Lobby Player List
     updatePlayerList(players, roomData.hostId);
 
-    // ถ้า status = playing -> เข้า Game
     if (status === "playing") {
       gameAreaEl.style.display = "block";
       lobbyEl.style.display = "none";
     }
 
-    // อัปเดตสถานะเกม (ถ้าอยู่ในหน้าเกม)
     if (gameAreaEl.style.display === "block") {
       updateGameUI(roomData);
     }
   });
 }
 
-// ---------------- Render UI Lobby ----------------
-
 function updatePlayerList(playersObj, hostId) {
   playerListEl.innerHTML = "";
-
   const entries = Object.entries(playersObj);
+
   entries.sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0));
 
   for (const [pid, player] of entries) {
@@ -254,7 +235,7 @@ function updatePlayerList(playersObj, hostId) {
   }
 }
 
-// ---------------- Host: Start Game ----------------
+// ------------ Host: Start Game ------------
 
 startGameBtn.addEventListener("click", async () => {
   if (!isHost || !currentRoomCode) return;
@@ -263,15 +244,14 @@ startGameBtn.addEventListener("click", async () => {
   await update(roomRef, {
     status: "playing",
     turn: 0,
-    lastDice: null, // { round: n, dice: {...} }
+    lastDice: null,
   });
 
   enterGame();
 });
 
-// ---------------- Game Logic ----------------
+// ------------ Game Logic ------------
 
-// Render กระดานพื้นฐาน (แค่ช่อง 1..BOARD_SIZE)
 function renderBoard() {
   boardEl.innerHTML = "";
   for (let i = 1; i <= BOARD_SIZE; i++) {
@@ -287,13 +267,11 @@ function renderBoard() {
   }
 }
 
-// อัปเดต UI เมื่อมีข้อมูลห้องเปลี่ยน
 function updateGameUI(roomData) {
   const players = roomData.players || {};
   const turn = roomData.turn || 0;
   const lastDice = roomData.lastDice || null;
 
-  // แสดงสถานะ
   statusTextEl.textContent = `เทิร์นที่: ${turn}`;
   if (lastDice && lastDice.round === turn) {
     const diceInfo = Object.entries(lastDice.dice)
@@ -304,14 +282,12 @@ function updateGameUI(roomData) {
     diceResultEl.textContent = "";
   }
 
-  // ล้าง token เก่า
   const cells = boardEl.querySelectorAll(".cell");
   cells.forEach((cell) => {
     const tokens = cell.querySelectorAll(".token");
     tokens.forEach((t) => t.remove());
   });
 
-  // วาง token ของผู้เล่นแต่ละคน
   for (const [pid, player] of Object.entries(players)) {
     let pos = player.position || 0;
     if (pos < 1) pos = 1;
@@ -329,7 +305,6 @@ function updateGameUI(roomData) {
     cell.appendChild(token);
   }
 
-  // Host เท่านั้นที่เห็นปุ่ม Next Round
   nextRoundBtn.disabled = !isHost;
 }
 
@@ -344,7 +319,6 @@ nextRoundBtn.addEventListener("click", async () => {
   const players = roomData.players || {};
   const turn = (roomData.turn || 0) + 1;
 
-  // สุ่มลูกเต๋าให้ทุกคน
   const diceResults = {};
   const updatedPositions = {};
 
@@ -354,7 +328,6 @@ nextRoundBtn.addEventListener("click", async () => {
 
     let newPos = (player.position || 0) + roll;
 
-    // ตรวจงู/บันได
     if (LADDERS[newPos]) {
       newPos = LADDERS[newPos];
     } else if (SNAKES[newPos]) {
@@ -368,15 +341,6 @@ nextRoundBtn.addEventListener("click", async () => {
     updatedPositions[pid] = newPos;
   }
 
-  // TODO: จุดที่จะใส่ระบบ Quiz:
-  // 1) แทนที่จะขยับทันทีแบบนี้ ให้เปลี่ยนเป็น:
-  //    - สุ่มคำถามกลาง
-  //    - ให้ผู้เล่นตอบภายในเวลาที่กำหนด (เก็บคำตอบใน DB)
-  //    - ถ้าตอบถูก: newPos += 2, ผิด: newPos -= 1, ฯลฯ
-  //    - แล้วค่อย update position อีกที
-  // 2) สามารถสร้าง path /rooms/{roomCode}/questions เพื่อเก็บคำถามแต่ละรอบได้
-
-  // อัปเดตตำแหน่งใน players
   const updates = {};
   for (const [pid, newPos] of Object.entries(updatedPositions)) {
     updates[`rooms/${currentRoomCode}/players/${pid}/position`] = newPos;
@@ -387,7 +351,6 @@ nextRoundBtn.addEventListener("click", async () => {
     dice: diceResults,
   };
 
-  // ตรวจจบทันทีแบบง่าย ๆ: ถ้ามีคนถึงช่องสุดท้าย
   const winnerId = Object.entries(updatedPositions).find(
     ([_, pos]) => pos >= BOARD_SIZE
   )?.[0];
