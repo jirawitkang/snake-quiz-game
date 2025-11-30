@@ -1,5 +1,5 @@
 // app.js
-// Step D: Round + Board + Dice + Question (Countdown + MCQ + Score)
+// Step D + Game Settings: Round + Board + Dice + Question Sets + Reward/Penalty
 
 import { initializeApp as firebaseInitializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -24,53 +24,102 @@ const firebaseConfig = {
   measurementId: "G-32FNRV7FH4",
 };
 
-console.log("app.js loaded (Step D)");
+console.log("app.js loaded (Step D + settings)");
 const app = firebaseInitializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // ---------------- ค่าคงที่ของเกม ----------------
 const BOARD_SIZE = 30;
 
-// ตัวอย่างคลังคำถาม (แก้ไข / เพิ่มได้เอง)
-const QUESTIONS = [
-  {
-    text: "2 + 2 เท่ากับเท่าใด?",
-    choices: {
-      A: "3",
-      B: "4",
-      C: "5",
-      D: "22",
+// ชุดคำถามหลายเซ็ต (ตัวอย่าง) — แก้ให้เป็นชุดของคุณเองได้
+const QUESTION_SETS = {
+  general: [
+    {
+      text: "2 + 2 เท่ากับเท่าใด?",
+      choices: { A: "3", B: "4", C: "5", D: "22" },
+      correctOption: "B",
+      timeLimit: 20,
     },
-    correctOption: "B",
-    timeLimit: 10, // วินาที
-  },
-  {
-    text: "เมืองหลวงของประเทศไทยคือเมืองใด?",
-    choices: {
-      A: "เชียงใหม่",
-      B: "ขอนแก่น",
-      C: "กรุงเทพมหานคร",
-      D: "ภูเก็ต",
+    {
+      text: "เมืองหลวงของประเทศไทยคือเมืองใด?",
+      choices: {
+        A: "เชียงใหม่",
+        B: "ขอนแก่น",
+        C: "กรุงเทพมหานคร",
+        D: "ภูเก็ต",
+      },
+      correctOption: "C",
+      timeLimit: 25,
     },
-    correctOption: "C",
-    timeLimit: 15,
-  },
-  {
-    text: "A, B, C, D, ...",
-    choices: {
-      A: "E",
-      B: "F",
-      C: "I",
-      D: "Z",
+  ],
+  setA: [
+    {
+      text: "HTML ย่อมาจากข้อใด?",
+      choices: {
+        A: "HyperText Markup Language",
+        B: "HighText Machine Language",
+        C: "Hyperlinks and Text Markup Language",
+        D: "Home Tool Markup Language",
+      },
+      correctOption: "A",
+      timeLimit: 25,
     },
-    correctOption: "A",
-    timeLimit: 15,
-  },
-];
+    {
+      text: "HTTP status code 404 หมายถึง?",
+      choices: {
+        A: "OK",
+        B: "Not Found",
+        C: "Forbidden",
+        D: "Bad Request",
+      },
+      correctOption: "B",
+      timeLimit: 20,
+    },
+  ],
+  setB: [
+    {
+      text: "ข้อใดต่อไปนี้คือหน่วยของความถี่?",
+      choices: { A: "นิวตัน", B: "วัตต์", C: "เฮิรตซ์", D: "จูล" },
+      correctOption: "C",
+      timeLimit: 20,
+    },
+    {
+      text: "H2O คือสารใด?",
+      choices: { A: "คาร์บอนไดออกไซด์", B: "น้ำ", C: "ไฮโดรเจน", D: "ออกซิเจน" },
+      correctOption: "B",
+      timeLimit: 15,
+    },
+  ],
+};
+
+function getQuestionSetById(id) {
+  return QUESTION_SETS[id] || QUESTION_SETS["general"] || [];
+}
+
+function getQuestionSetLengthForRoom(roomData) {
+  const setId = roomData.gameSettings?.questionSetId || "general";
+  const set = getQuestionSetById(setId);
+  return set.length || 1;
+}
+
+function getQuestionFromRoom(roomData, index) {
+  const setId = roomData.gameSettings?.questionSetId || "general";
+  const set = getQuestionSetById(setId);
+  if (!set.length) return null;
+  const i = index % set.length;
+  return set[i];
+}
 
 // ---------------- DOM elements ----------------
 const createRoomBtn = document.getElementById("createRoomBtn");
 const hostNameInput = document.getElementById("hostNameInput");
+const hostGameOptionsEl = document.getElementById("hostGameOptions");
+const questionSetSelect = document.getElementById("questionSetSelect");
+const maxRoundsInput = document.getElementById("maxRoundsInput");
+const maxWinnersInput = document.getElementById("maxWinnersInput");
+const rewardCorrectInput = document.getElementById("rewardCorrectInput");
+const penaltyWrongInput = document.getElementById("penaltyWrongInput");
+const confirmCreateRoomBtn = document.getElementById("confirmCreateRoomBtn");
 
 const joinRoomBtn = document.getElementById("joinRoomBtn");
 const roomCodeInput = document.getElementById("roomCodeInput");
@@ -127,12 +176,6 @@ function randomColor() {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-function getQuestionByIndex(index) {
-  if (QUESTIONS.length === 0) return null;
-  const i = index % QUESTIONS.length;
-  return QUESTIONS[i];
-}
-
 function clearTimer() {
   if (timerInterval) {
     clearInterval(timerInterval);
@@ -142,13 +185,33 @@ function clearTimer() {
   timerRound = 0;
 }
 
-// ---------------- Host: Create Room ----------------
-createRoomBtn.addEventListener("click", async () => {
+// ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
+createRoomBtn.addEventListener("click", () => {
+  const hostName = hostNameInput.value.trim();
+  if (!hostName) {
+    alert("กรุณากรอกชื่อของ Host ก่อน");
+    return;
+  }
+
+  // ล็อคชื่อ + แสดง panel ตั้งค่าเกม
+  hostNameInput.disabled = true;
+  createRoomBtn.disabled = true;
+  hostGameOptionsEl.style.display = "block";
+});
+
+// ---------------- Host: Step 2 – ยืนยันสร้างห้อง ----------------
+confirmCreateRoomBtn.addEventListener("click", async () => {
   const hostName = hostNameInput.value.trim();
   if (!hostName) {
     alert("กรุณากรอกชื่อของ Host");
     return;
   }
+
+  const questionSetId = questionSetSelect.value || "general";
+  const maxRounds = parseInt(maxRoundsInput.value, 10) || 10;
+  const maxWinners = parseInt(maxWinnersInput.value, 10) || 5;
+  const rewardCorrect = parseInt(rewardCorrectInput.value, 10) || 1;
+  const penaltyWrong = parseInt(penaltyWrongInput.value, 10) || 1;
 
   const roomCode = createRoomCode();
   const hostId = createId("host");
@@ -174,10 +237,17 @@ createRoomBtn.addEventListener("click", async () => {
       answerStartAt: null,
       answerTimeSeconds: null,
       answerDeadlineExpired: false,
+      gameSettings: {
+        questionSetId,
+        maxRounds,
+        maxWinners,
+        rewardCorrect,  // เดินหน้าเมื่อตอบถูก
+        penaltyWrong,   // ถอยหลังเมื่อตอบผิด/ไม่ทัน (positive number)
+      },
     });
 
-
     console.log("Room created:", roomCode);
+    hostGameOptionsEl.style.display = "none";
     enterLobbyView();
     subscribeRoom(roomCode);
     alert(
@@ -260,7 +330,7 @@ function enterLobbyView() {
     hostRoundControlsEl.style.display = "block";
   } else if (currentRole === "player") {
     roleInfoEl.textContent =
-      "คุณเป็นผู้เล่น: รอครูเริ่มรอบใหม่ → ทอยลูกเต๋า → ตอบคำถาม";
+      "คุณเป็นผู้เล่น: รอครูเริ่มรอบใหม่ → ทอยลูกเต๋า → ตอบคำถามในแต่ละรอบ";
     hostRoundControlsEl.style.display = "none";
   } else {
     roleInfoEl.textContent = "";
@@ -291,7 +361,7 @@ function subscribeRoom(roomCode) {
   });
 }
 
-// ---------------- Render Player List ----------------
+// ---------------- Render Player List (สถานะผู้เล่น) ----------------
 function renderPlayerList(roomData, playersObj) {
   playerListEl.innerHTML = "";
 
@@ -343,12 +413,12 @@ function renderPlayerList(roomData, playersObj) {
       }
     } else if (phase === "result") {
       if (player.lastAnswerCorrect === true) {
-        statusText = "ตอบถูก (+1 ช่อง)";
+        statusText = "ตอบถูก (+ เดินหน้า)";
       } else if (player.lastAnswerCorrect === false) {
         if (player.answered) {
-          statusText = "ตอบผิด (-1 ช่อง)";
+          statusText = "ตอบผิด (ถอยหลัง)";
         } else {
-          statusText = "ตอบไม่ทัน (-1 ช่อง)";
+          statusText = "ตอบไม่ทัน (ถอยหลัง)";
         }
       } else {
         statusText = "รอรอบถัดไป";
@@ -390,16 +460,17 @@ startRoundBtn.addEventListener("click", async () => {
   const players = roomData.players || {};
   const currentRound = roomData.currentRound || 0;
 
+  const questionSetLen = getQuestionSetLengthForRoom(roomData);
+
   const updates = {};
   updates[`rooms/${currentRoomCode}/currentRound`] = currentRound + 1;
   updates[`rooms/${currentRoomCode}/phase`] = "rolling";
   updates[`rooms/${currentRoomCode}/questionIndex`] =
-    currentRound % (QUESTIONS.length || 1);
+    currentRound % (questionSetLen || 1);
   updates[`rooms/${currentRoomCode}/questionCountdownStartAt`] = null;
   updates[`rooms/${currentRoomCode}/answerStartAt`] = null;
   updates[`rooms/${currentRoomCode}/answerTimeSeconds`] = null;
   updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
-
 
   for (const pid of Object.keys(players)) {
     updates[`rooms/${currentRoomCode}/players/${pid}/lastRoll`] = null;
@@ -476,10 +547,11 @@ startQuestionBtn.addEventListener("click", async () => {
   }
 
   const questionIndex =
-    roomData.questionIndex ?? (roomData.currentRound - 1) % (QUESTIONS.length || 1);
-  const question = getQuestionByIndex(questionIndex);
+    roomData.questionIndex ??
+    ((roomData.currentRound - 1) % getQuestionSetLengthForRoom(roomData));
+  const question = getQuestionFromRoom(roomData, questionIndex);
   if (!question) {
-    alert("ยังไม่ได้ตั้งคำถามใน QUESTIONS");
+    alert("ยังไม่ได้ตั้งคำถามในชุดที่เลือก");
     return;
   }
 
@@ -513,11 +585,19 @@ revealAnswerBtn.addEventListener("click", async () => {
 
   const players = roomData.players || {};
   const questionIndex = roomData.questionIndex ?? 0;
-  const question = getQuestionByIndex(questionIndex);
+  const question = getQuestionFromRoom(roomData, questionIndex);
   if (!question) {
     alert("ไม่พบข้อมูลคำถาม");
     return;
   }
+
+  const gs = roomData.gameSettings || {};
+  const rewardCorrect = Number.isFinite(gs.rewardCorrect)
+    ? gs.rewardCorrect
+    : 1;
+  const penaltyWrong = Number.isFinite(gs.penaltyWrong)
+    ? gs.penaltyWrong
+    : 1;
 
   const updates = {};
   for (const [pid, p] of Object.entries(players)) {
@@ -527,11 +607,10 @@ revealAnswerBtn.addEventListener("click", async () => {
     let correct = false;
 
     if (answered && ans === question.correctOption) {
-      pos += 1;
+      pos += rewardCorrect;
       correct = true;
     } else {
-      // ผิด หรือไม่ตอบ = ถอยหลัง 1 ช่อง
-      pos -= 1;
+      pos -= penaltyWrong;
       correct = false;
     }
 
@@ -540,9 +619,7 @@ revealAnswerBtn.addEventListener("click", async () => {
 
     updates[`rooms/${currentRoomCode}/players/${pid}/position`] = pos;
     updates[`rooms/${currentRoomCode}/players/${pid}/lastAnswerCorrect`] = correct;
-    // ไม่ต้อง reset answered / answer ในขั้นเฉลย
-    // จะไป reset ตอนเริ่มรอบใหม่ใน startRound แทน
-
+    // answered / answer จะถูก reset ตอนเริ่มรอบใหม่ (startRound)
   }
 
   updates[`rooms/${currentRoomCode}/phase`] = "result";
@@ -596,6 +673,7 @@ function updateGameView(roomData, players) {
 function updateRoleControls(roomData, players) {
   const phase = roomData.phase || "idle";
   const round = roomData.currentRound || 0;
+  const deadlineExpired = roomData.answerDeadlineExpired === true;
 
   // ปุ่มของ Player
   if (currentRole === "player") {
@@ -615,7 +693,15 @@ function updateRoleControls(roomData, players) {
     } else if (phase === "rolling" && rolled) {
       playerStatusEl.textContent += " | คุณทอยในรอบนี้แล้ว รอผู้เล่นคนอื่น";
     } else if (phase === "answering") {
-      playerStatusEl.textContent += " | กำลังตอบคำถาม";
+      if (deadlineExpired) {
+        if (me.answered) {
+          playerStatusEl.textContent += " | ตอบแล้ว รอ Host เฉลย";
+        } else {
+          playerStatusEl.textContent += " | หมดเวลา ไม่สามารถตอบได้แล้ว";
+        }
+      } else {
+        playerStatusEl.textContent += " | กำลังตอบคำถาม";
+      }
     }
   } else if (currentRole === "host") {
     rollDiceBtn.style.display = "none";
@@ -632,15 +718,12 @@ function updateRoleControls(roomData, players) {
     const rolledCount = Object.values(players).filter((p) => p.hasRolled).length;
     const answeredCount = Object.values(players).filter((p) => p.answered).length;
 
-    // startRound: ใช้ได้เสมอ
     startRoundBtn.disabled = false;
 
-    // startQuestion: ต้องอยู่ใน phase rolling และทุกคนทอยครบ
     startQuestionBtn.style.display = "inline-block";
     startQuestionBtn.disabled =
       !(phase === "rolling" && totalPlayers > 0 && rolledCount === totalPlayers);
 
-    // revealAnswer: ใช้ได้เฉพาะตอน answering
     revealAnswerBtn.style.display = "inline-block";
     revealAnswerBtn.disabled = phase !== "answering";
 
@@ -648,6 +731,9 @@ function updateRoleControls(roomData, players) {
       phaseInfoEl.textContent += ` | ทอยแล้ว ${rolledCount}/${totalPlayers} คน`;
     } else if (phase === "answering") {
       phaseInfoEl.textContent += ` | ตอบแล้ว ${answeredCount}/${totalPlayers} คน`;
+      if (roomData.answerDeadlineExpired === true) {
+        phaseInfoEl.textContent += " | หมดเวลาแล้ว";
+      }
     }
   } else {
     startRoundBtn.disabled = true;
@@ -661,12 +747,13 @@ function updateQuestionUI(roomData, players) {
   const phase = roomData.phase || "idle";
   const round = roomData.currentRound || 0;
   const questionIndex = roomData.questionIndex;
-  const question = questionIndex != null ? getQuestionByIndex(questionIndex) : null;
+  const question =
+    questionIndex != null ? getQuestionFromRoom(roomData, questionIndex) : null;
 
   if (phase === "questionCountdown" && round > 0) {
     questionAreaEl.style.display = "block";
     questionTextEl.textContent = `เตรียมคำถามรอบที่ ${round} …`;
-    renderChoicesForPhase(null, null, null);
+    renderChoicesForPhase(null, null, null, false, true);
     ensureTimer(roomData, "questionCountdown");
   } else if (phase === "answering" && round > 0 && question) {
     questionAreaEl.style.display = "block";
@@ -695,10 +782,13 @@ function updateQuestionUI(roomData, players) {
       selectedOption = me.answer || null;
     }
 
-    // ในโหมด result:
-    // - ปุ่มที่ถูกต้อง = เขียว
-    // - ถ้าผู้เล่นตอบผิด → ปุ่มที่เขาเลือก = แดง
-    renderChoicesForPhase(question, selectedOption, question.correctOption, true, false);
+    renderChoicesForPhase(
+      question,
+      selectedOption,
+      question.correctOption,
+      true,
+      false
+    );
     clearTimer();
   } else {
     questionAreaEl.style.display = "none";
@@ -718,14 +808,13 @@ function renderChoicesForPhase(
 
   if (!question) return;
 
-  const entries = Object.entries(question.choices); // [ [A, "xxx"], [B,"yyy"] ... ]
+  const entries = Object.entries(question.choices);
   for (const [key, text] of entries) {
     const btn = document.createElement("button");
     btn.classList.add("choice-btn");
     btn.textContent = `${key}. ${text}`;
 
     if (showResultOnly) {
-      // โหมดเฉลยผล
       if (key === correctOption) {
         btn.classList.add("correct");
       }
@@ -737,7 +826,6 @@ function renderChoicesForPhase(
         btn.classList.add("wrong");
       }
     } else {
-      // โหมด answering
       if (selectedOption && key === selectedOption) {
         btn.classList.add("selected");
       }
@@ -765,7 +853,7 @@ function ensureTimer(roomData, targetPhase) {
   }
 
   if (timerPhase === phase && timerRound === round && timerInterval) {
-    return; // timer เดิมยังใช้งานได้ ไม่ต้องสร้างใหม่
+    return;
   }
 
   clearTimer();
@@ -776,7 +864,7 @@ function ensureTimer(roomData, targetPhase) {
     const start = roomData.questionCountdownStartAt || Date.now();
     const duration = roomData.questionCountdownSeconds || 3;
 
-    timerInterval = setInterval(() => {
+    timerInterval = setInterval(async () => {
       const now = Date.now();
       let remaining = Math.ceil((start + duration * 1000 - now) / 1000);
       if (remaining < 0) remaining = 0;
@@ -785,8 +873,7 @@ function ensureTimer(roomData, targetPhase) {
       if (remaining <= 0) {
         clearTimer();
         if (currentRole === "host" && currentRoomCode) {
-          // เปลี่ยน phase เป็น answering
-          moveToAnswering(roomData);
+          await moveToAnswering(roomData);
         }
       }
     }, 250);
@@ -803,7 +890,6 @@ function ensureTimer(roomData, targetPhase) {
       if (remaining <= 0) {
         clearTimer();
 
-        // ให้ Host เซ็ต answerDeadlineExpired = true
         if (
           currentRole === "host" &&
           currentRoomCode &&
@@ -820,7 +906,6 @@ function ensureTimer(roomData, targetPhase) {
       }
     }, 250);
   }
-
 }
 
 // Host: เปลี่ยนจาก questionCountdown → answering
@@ -839,7 +924,6 @@ async function moveToAnswering(oldRoomData) {
   updates[`rooms/${currentRoomCode}/phase`] = "answering";
   updates[`rooms/${currentRoomCode}/answerStartAt`] = now;
   updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
-  // answerTimeSeconds ใช้ค่าที่ตั้งไว้แล้ว
 
   await update(ref(db), updates);
 }
