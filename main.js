@@ -1,15 +1,11 @@
-// main.js
-// Starter logic สำหรับเกม snake-quiz แบบหลายผู้เล่นด้วย Firebase Realtime DB
+// main.js (minimal version)
+// ทดสอบสร้างห้อง + เขียนข้อมูลลง Firebase Realtime Database
 
 import { initializeApp as firebaseInitializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getDatabase,
   ref,
   set,
-  get,
-  update,
-  onValue,
-  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ---------------- Firebase Config ของคุณ ----------------
@@ -26,57 +22,19 @@ const firebaseConfig = {
 };
 
 // 1) Init Firebase
-console.log("main.js loaded"); // เช็คว่าไฟล์นี้รันจริง
+console.log("main.js loaded (minimal)");
 const app = firebaseInitializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // 2) DOM elements
 const createRoomBtn = document.getElementById("createRoomBtn");
-const joinRoomBtn = document.getElementById("joinRoomBtn");
 const hostNameInput = document.getElementById("hostNameInput");
-const roomCodeInput = document.getElementById("roomCodeInput");
-const playerNameInput = document.getElementById("playerNameInput");
 
-const lobbyEl = document.getElementById("lobby");
-const roomInfoEl = document.getElementById("roomInfo");
-const playerListEl = document.getElementById("playerList");
-const startGameBtn = document.getElementById("startGameBtn");
-const hostControlsEl = document.getElementById("hostControls");
+// เอาไว้ให้แน่ใจว่า element ถูกเจอจริง
+console.log("createRoomBtn =", createRoomBtn);
+console.log("hostNameInput =", hostNameInput);
 
-const gameAreaEl = document.getElementById("gameArea");
-const statusTextEl = document.getElementById("statusText");
-const diceResultEl = document.getElementById("diceResult");
-const nextRoundBtn = document.getElementById("nextRoundBtn");
-const boardEl = document.getElementById("board");
-
-// 3) State
-let currentRoomCode = null;
-let currentPlayerId = null;
-let currentPlayerName = null;
-let isHost = false;
-
-const BOARD_SIZE = 30;
-const SNAKES = {
-  17: 7,
-  24: 15,
-};
-const LADDERS = {
-  3: 11,
-  5: 9,
-};
-
-function randomColor() {
-  const colors = [
-    "#e91e63",
-    "#9c27b0",
-    "#3f51b5",
-    "#009688",
-    "#ff9800",
-    "#795548",
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
-}
-
+// 3) ฟังก์ชันสุ่ม roomCode และ playerId แบบง่าย ๆ
 function createPlayerId() {
   return "p_" + Math.random().toString(36).substring(2, 10);
 }
@@ -90,31 +48,42 @@ function createRoomCode() {
   return code;
 }
 
-// ------------ Create / Join Room ------------
-
+// 4) Event: กดปุ่ม "สร้างห้อง"
 createRoomBtn.addEventListener("click", async () => {
+  console.log("createRoomBtn clicked");
+
   const name = hostNameInput.value.trim();
   if (!name) {
     alert("กรุณากรอกชื่อเล่นของ Host");
     return;
   }
 
-  isHost = true;
-  currentPlayerName = name;
-  currentPlayerId = createPlayerId();
+  const playerId = createPlayerId();
   const roomCode = createRoomCode();
-  currentRoomCode = roomCode;
+
+  console.log("Creating room with code:", roomCode, "for host:", name);
 
   const roomRef = ref(db, `rooms/${roomCode}`);
-  await set(roomRef, {
-    createdAt: Date.now(),
-    status: "lobby",
-    hostId: currentPlayerId,
-    boardSize: BOARD_SIZE,
-    snakes: SNAKES,
-    ladders: LADDERS,
-  });
 
-  const playerRef = ref(db, `rooms/${roomCode}/players/${currentPlayerId}`);
-  await set(playerRef, {
-    name: current
+  try {
+    await set(roomRef, {
+      createdAt: Date.now(),
+      status: "lobby",
+      hostId: playerId,
+      players: {
+        [playerId]: {
+          name: name,
+          position: 0,
+        },
+      },
+    });
+
+    alert(`สร้างห้องสำเร็จ! Room Code: ${roomCode}`);
+    console.log("Room created successfully");
+  } catch (err) {
+    console.error("Error creating room:", err);
+    alert("มีปัญหาในการสร้างห้อง ดู error ใน Console");
+  }
+});
+
+// (ยังไม่ทำ join / board / อื่น ๆ ในเวอร์ชัน minimal นี้)
