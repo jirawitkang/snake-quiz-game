@@ -44,7 +44,7 @@
       font-weight: 600;
     }
 
-    input {
+    input, select {
       width: 100%;
       padding: 0.4rem 0.6rem;
       margin-bottom: 0.5rem;
@@ -100,7 +100,7 @@
     #playerList li {
       margin-bottom: 0.3rem;
       padding: 0.2rem 0.4rem;
-      border-radius: 4px;
+      border-radius: 8px;
       background: #f7f7f7;
       display: flex;
       flex-direction: column;
@@ -121,6 +121,22 @@
       display: none;
     }
 
+    /* Host game options */
+    #hostGameOptions {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      background: #f9fafb;
+      border: 1px dashed #bbb;
+      display: none;
+    }
+
+    #hostGameOptions h3 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
     /* Game Area / Board */
     #gameArea {
       margin-top: 1.5rem;
@@ -131,7 +147,7 @@
 
     #board {
       display: grid;
-      grid-template-columns: repeat(6, 1fr); /* 6 คอลัมน์ = 30 ช่อง */
+      grid-template-columns: repeat(6, 1fr);
       gap: 4px;
       margin-top: 0.75rem;
     }
@@ -242,10 +258,39 @@
         <h2>สร้างห้อง (สำหรับครู / Host)</h2>
         <label>ชื่อของคุณ (Host)</label>
         <input id="hostNameInput" placeholder="เช่น ครูเอ, Teacher A" />
-        <button id="createRoomBtn">สร้างห้อง</button>
+        <button id="createRoomBtn">ถัดไป: ตั้งค่าเกม</button>
+
+        <!-- ตัวเลือกเกมของ Host ก่อนสร้างห้องจริง -->
+        <div id="hostGameOptions">
+          <h3>ตั้งค่าเกมก่อนสร้างห้อง</h3>
+
+          <label>ชุดคำถามที่ใช้ในเกม</label>
+          <select id="questionSetSelect">
+            <option value="general">ชุดคำถามทั่วไป</option>
+            <option value="setA">ชุดคำถามตัวอย่าง A</option>
+            <option value="setB">ชุดคำถามตัวอย่าง B</option>
+          </select>
+
+          <label>จำนวนรอบสูงสุดของเกม</label>
+          <input id="maxRoundsInput" type="number" min="1" value="10" />
+
+          <label>จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อมีผู้เข้าเส้นชัยครบ)</label>
+          <input id="maxWinnersInput" type="number" min="1" value="5" />
+
+          <label>จำนวนช่องที่ได้เดินเพิ่มเมื่อตอบถูก</label>
+          <input id="rewardCorrectInput" type="number" value="1" />
+
+          <label>จำนวนช่องที่ต้องเดินถอยเมื่อตอบผิด / ตอบไม่ทัน</label>
+          <input id="penaltyWrongInput" type="number" value="1" />
+
+          <button id="confirmCreateRoomBtn">ยืนยันสร้างห้อง</button>
+          <p class="info">
+            เมื่อกด "ยืนยันสร้างห้อง" แล้ว จะสร้าง Room Code และสามารถให้ผู้เล่น Join ได้
+          </p>
+        </div>
+
         <p class="info">
-          หลังจากสร้างห้องแล้ว จอของคุณจะทำหน้าที่เป็นจอสรุปสถานะของผู้เล่นทุกคนตลอดเกม<br>
-          นักเรียนใช้ Room Code ที่ได้จากคุณเพื่อเข้ามา Join
+          ขั้นตอน: 1) กรอกชื่อ Host → 2) ตั้งค่าเกม → 3) ยืนยันสร้างห้อง แล้วแชร์ Room Code ให้นักเรียน
         </p>
       </div>
 
@@ -270,7 +315,7 @@
 
       <p><strong>รายชื่อผู้เล่นในห้อง:</strong></p>
       <ul id="playerList"></ul>
-      <p class="info">* สถานะช่อง / แต้มทอย / การตอบคำถามจะถูกอัปเดตแบบ realtime</p>
+      <p class="info">* สถานะผู้เล่น / ทอยล่าสุด / ตอบล่าสุด จะอัปเดตแบบ realtime</p>
 
       <!-- Host only: ปุ่มควบคุมรอบ / คำถาม -->
       <div id="hostRoundControls">
