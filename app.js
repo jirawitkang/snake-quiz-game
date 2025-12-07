@@ -1390,12 +1390,23 @@ function updateQuestionUI(roomData, players) {
   const question =
     questionIndex != null ? getQuestionFromRoom(roomData, questionIndex) : null;
 
-  if (phase === "questionCountdown" && round > 0) {
+  // ถ้ายังไม่เริ่มรอบ ก็ไม่ต้องแสดง UI
+  if (round === 0) {
+    questionAreaEl.style.display = "none";
+    countdownDisplayEl.textContent = "";
+    clearTimer();
+    return;
+  }
+
+  if (phase === "questionCountdown") {
+    // ---------------- ช่วงนับถอยหลัง 3,2,1 ก่อนโชว์คำถาม ----------------
     questionAreaEl.style.display = "block";
     questionTextEl.textContent = `เตรียมคำถามรอบที่ ${round} …`;
-    renderChoicesForPhase(null, null, null, false, true);
+    // ยังไม่ต้องแสดงตัวเลือก
+    choicesContainerEl.innerHTML = "";
     ensureTimer(roomData, "questionCountdown");
-  } else if (phase === "answering" && round > 0 && question) {
+  } else if (phase === "answering" && question) {
+    // ---------------- ช่วงให้ทุกคนตอบคำถาม ----------------
     questionAreaEl.style.display = "block";
     questionTextEl.textContent = question.text;
 
@@ -1412,7 +1423,8 @@ function updateQuestionUI(roomData, players) {
       disableButtons
     );
     ensureTimer(roomData, "answering");
-  } else if (phase === "result" && round > 0 && question) {
+  } else if (phase === "result" && question) {
+    // ---------------- ช่วงเฉลย + ไฮไลต์ถูก/ผิด ----------------
     questionAreaEl.style.display = "block";
     questionTextEl.textContent = `เฉลยรอบที่ ${round}: ${question.text}`;
     countdownDisplayEl.textContent = "";
@@ -1428,10 +1440,11 @@ function updateQuestionUI(roomData, players) {
       selectedOption,
       question.correctOption,
       true,
-      false
+      true  // result โชว์อย่างเดียว ไม่มีปุ่มให้กด
     );
     clearTimer();
   } else {
+    // phase อื่น ๆ: ซ่อน UI คำถาม
     questionAreaEl.style.display = "none";
     countdownDisplayEl.textContent = "";
     clearTimer();
@@ -1456,6 +1469,7 @@ function renderChoicesForPhase(
     btn.textContent = `${key}. ${text}`;
 
     if (showResultOnly) {
+      // โหมดเฉลย
       if (key === correctOption) {
         btn.classList.add("correct");
       }
@@ -1466,12 +1480,16 @@ function renderChoicesForPhase(
       ) {
         btn.classList.add("wrong");
       }
+      btn.disabled = true;
     } else {
+      // โหมด answering
       if (selectedOption && key === selectedOption) {
         btn.classList.add("selected");
       }
 
-      if (currentRole === "player" && !disableAnswerButtons) {
+      if (disableAnswerButtons) {
+        btn.disabled = true;
+      } else if (currentRole === "player") {
         btn.addEventListener("click", () => {
           submitAnswer(key);
         });
@@ -1480,6 +1498,95 @@ function renderChoicesForPhase(
 
     choicesContainerEl.appendChild(btn);
   }
+}
+
+// ---------------- Timer สำหรับ countdown / answering ----------------
+function ensureTimer(roomData, targetPhase) {
+  const phase = roomData.phase || "idle";
+  const round = roomData.currentRound || 0;
+
+  if (phase !== targetPhase || round === 0) {
+    clearTimer();
+    countdownDisplayEl.textContent = "";
+    return;
+  }
+
+  // ถ้า timer เดิมของ phase เดิม + round เดิมยังรันอยู่ก็ไม่ต้องสร้างใหม่
+  if (timerPhase === phase && timerRound === round && timerInterval) {
+    return;
+  }
+
+  clearTimer();
+  timerPhase = phase;
+  timerRound = round;
+
+  if (phase === "questionCountdown") {
+    const start = roomData.questionCountdownStartAt || Date.now();
+    const duration = roomData.questionCountdownSeconds || 3;
+
+    timerInterval = setInterval(async () => {
+      const now = Date.now();
+      let remaining = Math.ceil((start + duration * 1000 - now) / 1000);
+      if (remaining < 0) remaining = 0;
+      countdownDisplayEl.textContent = `เริ่มตอบใน ${remaining} วินาที`;
+
+      if (remaining <= 0) {
+        clearTimer();
+        if (currentRole === "host" && currentRoomCode) {
+          // ให้ Host เป็นคน trigger เปลี่ยน phase → answering
+          await moveToAnswering(roomData);
+        }
+      }
+    }, 250);
+  } else if (phase === "answering") {
+    const start = roomData.answerStartAt || Date.now();
+    const duration = roomData.answerTimeSeconds || 20;
+
+    timerInterval = setInterval(async () => {
+      const now = Date.now();
+      let remaining = Math.ceil((start + duration * 1000 - now) / 1000);
+      if (remaining < 0) remaining = 0;
+      countdownDisplayEl.textContent = `เหลือเวลา ${remaining} วินาที`;
+
+      if (remaining <= 0) {
+        clearTimer();
+
+        if (
+          currentRole === "host" &&
+          currentRoomCode &&
+          roomData.answerDeadlineExpired !== true
+        ) {
+          try {
+            await update(ref(db), {
+              [`rooms/${currentRoomCode}/answerDeadlineExpired`]: true,
+            });
+          } catch (e) {
+            console.error("Error setting answerDeadlineExpired:", e);
+          }
+        }
+      }
+    }, 250);
+  }
+}
+
+// Host: เปลี่ยนจาก questionCountdown → answering
+async function moveToAnswering(oldRoomData) {
+  if (currentRole !== "host" || !currentRoomCode) return;
+
+  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+  const snap = await get(roomRef);
+  if (!snap.exists()) return;
+
+  const roomData = snap.val();
+  if (roomData.phase !== "questionCountdown") return;
+
+  const now = Date.now();
+  const updates = {};
+  updates[`rooms/${currentRoomCode}/phase`] = "answering";
+  updates[`rooms/${currentRoomCode}/answerStartAt`] = now;
+  updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
+
+  await update(ref(db), updates);
 }
 
 // ---------------- Timer สำหรับ countdown / answering ----------------
