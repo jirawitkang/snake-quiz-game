@@ -38,7 +38,7 @@ const QUESTION_SETS = {
       text: "2 + 2 เท่ากับเท่าใด?",
       choices: { A: "3", B: "4", C: "5", D: "22" },
       correctOption: "B",
-      timeLimit: 20,
+      timeLimit: 10,
     },
     {
       text: "เมืองหลวงของประเทศไทยคือเมืองใด?",
@@ -49,7 +49,7 @@ const QUESTION_SETS = {
         D: "ภูเก็ต",
       },
       correctOption: "C",
-      timeLimit: 25,
+      timeLimit: 10,
     },
   ],
   setA: [
@@ -62,7 +62,7 @@ const QUESTION_SETS = {
         D: "Home Tool Markup Language",
       },
       correctOption: "A",
-      timeLimit: 25,
+      timeLimit: 10,
     },
     {
       text: "HTTP status code 404 หมายถึง?",
@@ -73,7 +73,7 @@ const QUESTION_SETS = {
         D: "Bad Request",
       },
       correctOption: "B",
-      timeLimit: 20,
+      timeLimit: 10,
     },
   ],
   setB: [
@@ -81,13 +81,13 @@ const QUESTION_SETS = {
       text: "ข้อใดต่อไปนี้คือหน่วยของความถี่?",
       choices: { A: "นิวตัน", B: "วัตต์", C: "เฮิรตซ์", D: "จูล" },
       correctOption: "C",
-      timeLimit: 20,
+      timeLimit: 10,
     },
     {
       text: "H2O คือสารใด?",
       choices: { A: "คาร์บอนไดออกไซด์", B: "น้ำ", C: "ไฮโดรเจน", D: "ออกซิเจน" },
       correctOption: "B",
-      timeLimit: 15,
+      timeLimit: 10,
     },
   ],
 };
