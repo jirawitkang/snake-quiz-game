@@ -1188,95 +1188,29 @@ function updateRoleControls(roomData, players) {
   const round = roomData.currentRound || 0;
   const deadlineExpired = roomData.answerDeadlineExpired === true;
 
-  // ปุ่มของ Player
+  // ---------- ส่วนของ Player ----------
   if (currentRole === "player") {
-    const me = players[currentPlayerId] || {};
-    const rolled = !!me.hasRolled;
-    const canRoll = phase === "rolling" && !rolled && !me.finished;
+    const me =
+      (players && currentPlayerId && players[currentPlayerId]) || {};
 
-    rollDiceBtn.style.display = me.finished ? "none" : "inline-block";
+    const finished = !!me.finished;
+    const rolled = !!me.hasRolled;
+    const canRoll = phase === "rolling" && !rolled && !finished;
+
+    // ปุ่มทอยลูกเต๋าของผู้เล่น
+    rollDiceBtn.style.display = "inline-block";
     rollDiceBtn.disabled = !canRoll;
 
-    playerStatusEl.textContent = `ตำแหน่งของคุณ: ${me.position ?? 0} | ทอยล่าสุด: ${
-      me.lastRoll ?? "-"
-    }`;
+    const posText =
+      me.position != null ? me.position : 0;
+    const lastRollText =
+      me.lastRoll != null ? me.lastRoll : "-";
 
-    if (phase === "idle" || round === 0) {
-       playerStatusEl.textContent += " | รอ Host เริ่มรอบใหม่";
-    } else if (phase === "rolling" && rolled) {
-      playerStatusEl.textContent += " | คุณทอยในรอบนี้แล้ว รอผู้เล่นคนอื่น";
-    } else if (phase === "answering") {
-      if (deadlineExpired) {
-        if (me.answered) {
-          playerStatusEl.textContent += " | ตอบแล้ว รอ Host เฉลย";
-        } else {
-          playerStatusEl.textContent += " | หมดเวลา ไม่สามารถตอบได้แล้ว";
-        }
-      } else {
-        playerStatusEl.textContent += " | กำลังตอบคำถาม";
-      }
-    } else if (phase === "ended") {
-      playerStatusEl.textContent += " | เกมจบแล้ว ดูสรุปผลด้านล่าง";
-      rollDiceBtn.style.display = "none";
-    }
+    playerStatusEl.textContent = `ตำแหน่งของคุณ: ${posText} | ทอยล่าสุด: ${lastRollText}`;
 
-  } else if (currentRole === "host") {
-    rollDiceBtn.style.display = "none";
-    playerStatusEl.textContent =
-      "คุณกำลังดูสถานะของนักเรียนทั้งหมด / ใช้ปุ่มด้านบนเพื่อควบคุมรอบและคำถาม";
-  } else {
-    rollDiceBtn.style.display = "none";
-    playerStatusEl.textContent = "";
-  }
-
-  // ปุ่มของ Host
-    if (currentRole === "host") {
-    const playerList = Object.values(players || {});
-    const activePlayers = playerList.filter((p) => !p.finished); // ยังไม่เข้าเส้นชัย
-    const totalActive = activePlayers.length;
-    const rolledActive = activePlayers.filter((p) => p.hasRolled).length;
-    const answeredActive = activePlayers.filter((p) => p.answered).length;
-
-    const phase = roomData.phase || "idle";
-
-  // ปุ่ม Host
-    startRoundBtn.disabled = phase === "ended";
-
-    startQuestionBtn.style.display = "inline-block";
-    startQuestionBtn.disabled = !(
-      phase === "rolling" &&
-      totalActive > 0 &&
-      rolledActive === totalActive
-    );
-
-    revealAnswerBtn.style.display = "inline-block";
-    revealAnswerBtn.disabled = phase !== "answering";
-
-    if (phase === "rolling") {
-      phaseInfoEl.textContent += ` | ทอยแล้ว ${rolledActive}/${totalActive} คน`;
-    } else if (phase === "answering") {
-      phaseInfoEl.textContent += ` | ตอบแล้ว ${answeredActive}/${totalActive} คน`;
-      if (roomData.answerDeadlineExpired === true) {
-        phaseInfoEl.textContent += " | หมดเวลาแล้ว";
-      }
-    } else if (phase === "ended") {
-      startRoundBtn.disabled = true;
-      startQuestionBtn.style.display = "none";
-      revealAnswerBtn.style.display = "none";
-      phaseInfoEl.textContent += " | เกมจบแล้ว";
-    }
-  } else {
-    startRoundBtn.disabled = true;
-    startQuestionBtn.style.display = "none";
-    revealAnswerBtn.style.display = "none";
-  }
-
-      playerStatusEl.textContent = `ตำแหน่งของคุณ: ${me.position ?? 0} | ทอยล่าสุด: ${
-      me.lastRoll ?? "-"
-    }`;
-
-    if (me.finished) {
-      playerStatusEl.textContent += " | คุณเข้าเส้นชัยแล้ว";
+    if (finished) {
+      playerStatusEl.textContent += " | คุณเข้าเส้นชัยแล้ว (ช่อง 30) รอดูเพื่อนเล่นต่อ";
+      rollDiceBtn.disabled = true;
     } else if (phase === "idle" || round === 0) {
       playerStatusEl.textContent += " | รอ Host เริ่มรอบใหม่";
     } else if (phase === "rolling" && rolled) {
@@ -1295,6 +1229,60 @@ function updateRoleControls(roomData, players) {
       playerStatusEl.textContent += " | เกมจบแล้ว ดูสรุปผลด้านล่าง";
       rollDiceBtn.style.display = "none";
     }
+  }
+  // ---------- ส่วนของ Host ----------
+  else if (currentRole === "host") {
+    rollDiceBtn.style.display = "none";
+    playerStatusEl.textContent =
+      "คุณกำลังดูสถานะของนักเรียนทั้งหมด / ใช้ปุ่มด้านบนเพื่อควบคุมรอบและคำถาม";
+  }
+  // ---------- คนที่ยังไม่เลือกบทบาท ----------
+  else {
+    rollDiceBtn.style.display = "none";
+    playerStatusEl.textContent = "";
+  }
+
+  // ---------- ปุ่มควบคุมฝั่ง Host ----------
+  if (currentRole === "host") {
+    const playerList = Object.values(players || {});
+    // activePlayers = ยังไม่เข้าเส้นชัย
+    const activePlayers = playerList.filter((p) => !p.finished);
+    const totalActive = activePlayers.length;
+    const rolledActive = activePlayers.filter((p) => p.hasRolled).length;
+    const answeredActive = activePlayers.filter((p) => p.answered).length;
+
+    // ปุ่ม Host
+    startRoundBtn.disabled = phase === "ended";
+
+    startQuestionBtn.style.display = "inline-block";
+    startQuestionBtn.disabled = !(
+      phase === "rolling" &&
+      totalActive > 0 &&
+      rolledActive === totalActive
+    );
+
+    revealAnswerBtn.style.display = "inline-block";
+    revealAnswerBtn.disabled = phase !== "answering";
+
+    if (phase === "rolling") {
+      phaseInfoEl.textContent += ` | ทอยแล้ว ${rolledActive}/${totalActive} คน`;
+    } else if (phase === "answering") {
+      phaseInfoEl.textContent += ` | ตอบแล้ว ${answeredActive}/${totalActive} คน`;
+      if (deadlineExpired) {
+        phaseInfoEl.textContent += " | หมดเวลาแล้ว";
+      }
+    } else if (phase === "ended") {
+      startRoundBtn.disabled = true;
+      startQuestionBtn.style.display = "none";
+      revealAnswerBtn.style.display = "none";
+      phaseInfoEl.textContent += " | เกมจบแล้ว";
+    }
+  } else {
+    // ถ้าไม่ใช่ Host ให้ปิดปุ่มควบคุมทั้งหมด
+    startRoundBtn.disabled = true;
+    startQuestionBtn.style.display = "none";
+    revealAnswerBtn.style.display = "none";
+  }
 }
 // ---------------- Animate Dice And Commit Roll ----------------
 async function animateDiceAndCommitRoll(basePosition, roomData) {
