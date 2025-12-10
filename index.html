@@ -404,12 +404,22 @@
       font-weight: 600;
     }
 
-    /* FORCE square card for play cells */
-    .cell-card.play-cell {
+    /* FORCE square card for play cells & label cells (ช่อง 1–30) */
+    .cell-card.play-cell,
+    .cell-card.label-cell {
       width: 56px !important;
       height: 56px !important;
       padding: 0 !important;
       line-height: 1 !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .start-cell,
+    .finish-cell {
+      min-width: 70px;
+      height: 56px;
     }
 
   </style>
