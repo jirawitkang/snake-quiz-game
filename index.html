@@ -149,91 +149,57 @@
       margin-top: 0.75rem;
     }
     
-    /* แถว label ด้านบน + แถวผู้เล่น ให้จัดแนวเดียวกัน */
+    /* ====== กระดานเกม: การ์ด / แถว / label ====== */
+
+    /* แถว label ด้านบน (Start, 1–30, Finish) และแถวผู้เล่น ให้สูงเท่ากัน */
     .board-label-row,
     .player-row {
       display: flex;
       align-items: center;
-      gap: 4px;          /* ลด gap ให้แถวไม่ห่างกันมาก */
-      margin-bottom: 2px;
+      gap: 8px;
+      margin-bottom: 4px;
     }
     
-    /* ช่องว่างด้านซ้ายของแถว label ให้กว้างเท่าชื่อผู้เล่น */
-    .board-label-spacer {
-      flex: 0 0 110px;
-      max-width: 110px;
-    }
-    
-    /* ชื่อผู้เล่น – ล็อคความกว้าง ไม่ให้ดันการ์ด */
-    .player-row-name {
-      flex: 0 0 110px;
-      max-width: 110px;
-      text-align: right;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #333;
-      padding-right: 4px;
-      box-sizing: border-box;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    
-    /* แถวการ์ดของแต่ละคน */
-    .board-track {
-      display: flex;
-      gap: 4px;           /* ลดช่องว่างระหว่างการ์ด */
-      align-items: center;
-      padding: 2px 0;
-      min-height: 32px;   /* พอให้หยดน้ำลอยได้ */
-      overflow-x: auto;
-    }
-    
-    /* ====== การ์ดบนกระดาน (Start / Finish / ช่อง 1–30) ====== */
-
-    /* การ์ดพื้นฐาน */
-    .cell-card {
-      position: relative;
-      background: #ffffff;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.18);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
-    }
-    
-    /* ช่องเล่น 1–30 (ทุกแถว) + แถว label ด้านบน → เป็นจตุรัส */
+    /* ช่องเล่น 1–30 ทุกแถว + การ์ดเลขด้านบน → สี่เหลี่ยมจตุรัสมนเล็กน้อย */
     .board-track .cell-card:not(.start-cell):not(.finish-cell),
-    .board-label-row .cell-card {
+    .board-label-row .cell-card:not(.start-cell):not(.finish-cell) {
       width: 16px !important;
       height: 16px !important;
       flex: 0 0 16px !important;
       padding: 0 !important;
       line-height: 1 !important;
       box-sizing: border-box;
-      border-radius: 4px !important; /* มนเล็กน้อย ไม่กลายเป็นวงกลม */
-    }
-    
-    /* Start / Finish: สูงเท่าช่อง 1–30 แต่เป็นสี่เหลี่ยมผืนผ้า */
-    .start-cell,
-    .finish-cell {
-      min-width: 56px;
-      height: 16px;
-      border-radius: 8px;
+      border-radius: 4px !important;
+      background: #ffffff;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.18);
       display: flex;
       align-items: center;
       justify-content: center;
     }
     
-    /* คืนเส้นขอบ Start (น้ำเงิน) / Finish (เขียว) */
-    .start-cell {
-      border-right: 3px solid #1976d2;
-    }
+    /* Start / Finish (ทั้งแถว label และแถวผู้เล่น) ให้หน้าเดียวกันเป๊ะ */
+    .start-cell,
     .finish-cell {
-      border-left: 3px solid #43a047;
+      min-width: 56px !important;
+      height: 16px !important;
+      border-radius: 10px !important;
+      background: #ffffff;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
     }
     
-    /* ฟอนต์ตัวเลข 1–30 และ Start / Finish ให้เล็กลง */
+    /* เส้นขอบ Start น้ำเงิน / Finish เขียว กลับมา */
+    .start-cell {
+      border-right: 3px solid #1976d2 !important;
+    }
+    .finish-cell {
+      border-left: 3px solid #43a047 !important;
+    }
+    
+    /* ฟอนต์ตัวเลข 1–30 และ Start/Finish ให้เล็กลง */
     .board-label-row .cell-label {
       font-size: 10px;
       color: #444;
@@ -244,13 +210,21 @@
       color: #333;
     }
     
-    /* ระยะห่างแต่ละแถวให้ชิดขึ้น */
-    .player-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
+    /* แถวผู้เล่นห่างกันไม่มาก จะได้เห็นหลายคนในจอเดียว */
+    .player-row-name {
+      flex: 0 0 120px;
+      max-width: 120px;
+      text-align: right;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #333;
+      padding-right: 4px;
+      box-sizing: border-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
+    
     .board-track {
       display: flex;
       gap: 4px;
@@ -286,26 +260,24 @@
     
     /* ====== หมากผู้เล่นเป็นหยดน้ำ – ให้ "ปลายแหลม" อยู่กลางการ์ด ====== */
     
+    /* ====== หมากผู้เล่นรูปหยดน้ำ ====== */
+
     .token {
       position: absolute;
       width: 22px;
       height: 22px;
-      background: #ffb300; /* สีจะถูก override ด้วยสีประจำผู้เล่นใน JS */
+      background: #ffb300; /* สีจริงจะถูก JS override ด้วยสีของผู้เล่น */
       border-radius: 50% 50% 50% 0;
       box-shadow: 0 3px 6px rgba(0,0,0,0.3);
       display: flex;
       align-items: center;
       justify-content: center;
     
-      /* ให้ "ปลายแหลม" อยู่กลางช่อง:
-         - ตั้ง origin ที่กึ่งกลางด้านล่าง
-         - เอา origin ไปไว้กลางการ์ดด้วย top/left 50%
-         - หมุนทีหลัง ปลายจะอยู่ที่เดิม = กลางการ์ดพอดี
-      */
+      /* วางให้หยดน้ำ "ลอยเหนือการ์ด" แล้วปลายห้อยลงมาจิ้มกลางการ์ด */
       left: 50%;
-      top: 50%;
-      transform-origin: 50% 100%; /* กึ่งกลางด้านล่างของหยดน้ำ */
-      transform: translateX(-50%) rotate(-45deg);
+      top: 0;
+      transform-origin: 50% 50%;
+      transform: translate(-50%, -60%) rotate(-45deg);
     }
     
     .token-inner {
