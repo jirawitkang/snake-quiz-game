@@ -189,7 +189,7 @@
       overflow-x: auto;
     }
     
-    /* ===== ปรับการ์ดบนกระดานให้จตุรัส + สีสถานะเดิน ===== */
+    /* ====== การ์ดบนกระดาน (Start / Finish / ช่อง 1–30) ====== */
 
     /* การ์ดพื้นฐาน */
     .cell-card {
@@ -202,39 +202,64 @@
       transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
     }
     
-    /* การ์ด 1–30 และทุกช่องเล่นของแต่ละแถว: บังคับเป็นสี่เหลี่ยมจตุรัส */
+    /* ช่องเล่น 1–30 (ทุกแถว) + แถว label ด้านบน → เป็นจตุรัส */
     .board-track .cell-card:not(.start-cell):not(.finish-cell),
     .board-label-row .cell-card {
       width: 16px !important;
       height: 16px !important;
-      flex: 0 0 16px !important;      /* กัน flex ยืด */
+      flex: 0 0 16px !important;
       padding: 0 !important;
       line-height: 1 !important;
       box-sizing: border-box;
-      border-radius: 4px !important;  /* มนเล็กน้อย ไม่กลายเป็นวงกลม */
+      border-radius: 4px !important; /* มนเล็กน้อย ไม่กลายเป็นวงกลม */
     }
     
-    /* Start / Finish ให้สูงเท่าการ์ด 1–30 แต่เป็นสี่เหลี่ยมผืนผ้า */
+    /* Start / Finish: สูงเท่าช่อง 1–30 แต่เป็นสี่เหลี่ยมผืนผ้า */
     .start-cell,
     .finish-cell {
       min-width: 56px;
-      height: 16px;                   /* สูงเท่าการ์ด 1–30 แล้ว */
+      height: 16px;
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     
-    /* ระยะห่างแต่ละแถวให้ชิดขึ้นหน่อย */
+    /* คืนเส้นขอบ Start (น้ำเงิน) / Finish (เขียว) */
+    .start-cell {
+      border-right: 3px solid #1976d2;
+    }
+    .finish-cell {
+      border-left: 3px solid #43a047;
+    }
+    
+    /* ฟอนต์ตัวเลข 1–30 และ Start / Finish ให้เล็กลง */
+    .board-label-row .cell-label {
+      font-size: 10px;
+      color: #444;
+    }
+    .start-cell .cell-label,
+    .finish-cell .cell-label {
+      font-size: 11px;
+      color: #333;
+    }
+    
+    /* ระยะห่างแต่ละแถวให้ชิดขึ้น */
     .player-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin-bottom: 4px;
     }
     .board-track {
+      display: flex;
       gap: 4px;
+      align-items: center;
       min-height: 28px;
     }
     
-    /* สีของการ์ดตามสถานะการเดิน (ต้องอยู่หลัง rule ด้านบน) */
+    /* ====== สีการ์ดตามสถานะ (ตอนนี้ฝั่ง JS ยังใช้จริงเฉพาะ cell-dice) ====== */
+    
     .cell-card.play-cell {
       background: #ffffff;
     }
@@ -244,37 +269,43 @@
       background: #64b5f6;
     }
     
-    /* ตอบถูก – เขียวสดแนวพาสเทล */
+    /* ตอบถูก – เขียว */
     .cell-card.play-cell.cell-correct {
       background: #66bb6a;
     }
     
-    /* ตอบผิด / ถอยหลัง – แดงพาสเทลเข้มขึ้น */
+    /* ตอบผิด/ถอยหลัง – แดง */
     .cell-card.play-cell.cell-wrong {
       background: #ef5350;
     }
     
-    /* รอบเก่าแล้ว – เทาพาสเทล */
+    /* รอบเก่าแล้ว – เทา */
     .cell-card.play-cell.cell-past {
       background: #9e9e9e;
     }
     
-    /* ===== หมากผู้เล่นเป็นหยดน้ำ – ปลายอยู่กลางการ์ด ===== */
+    /* ====== หมากผู้เล่นเป็นหยดน้ำ – ให้ "ปลายแหลม" อยู่กลางการ์ด ====== */
+    
     .token {
       position: absolute;
       width: 22px;
       height: 22px;
-      background: #ffb300;                 /* สีหมาก (จะถูก override เป็นสีประจำคนใน JS) */
+      background: #ffb300; /* สีจะถูก override ด้วยสีประจำผู้เล่นใน JS */
       border-radius: 50% 50% 50% 0;
       box-shadow: 0 3px 6px rgba(0,0,0,0.3);
       display: flex;
       align-items: center;
       justify-content: center;
     
-      /* ให้ปลายหยดน้ำอยู่เกือบกลางการ์ด */
+      /* ให้ "ปลายแหลม" อยู่กลางช่อง:
+         - ตั้ง origin ที่กึ่งกลางด้านล่าง
+         - เอา origin ไปไว้กลางการ์ดด้วย top/left 50%
+         - หมุนทีหลัง ปลายจะอยู่ที่เดิม = กลางการ์ดพอดี
+      */
       left: 50%;
       top: 50%;
-      transform: translate(-50%, -45%) rotate(-45deg);
+      transform-origin: 50% 100%; /* กึ่งกลางด้านล่างของหยดน้ำ */
+      transform: translateX(-50%) rotate(-45deg);
     }
     
     .token-inner {
@@ -288,7 +319,7 @@
       font-size: 9px;
       font-weight: 700;
       color: #333;
-      transform: rotate(45deg);
+      transform: rotate(45deg); /* ให้ตัวอักษรตรง */
     }
 
     #roundInfo {
