@@ -9,7 +9,7 @@
       font-family: sans-serif;
       margin: 0;
       padding: 1rem;
-      background: #f5f5f5;ck นี้ (แทนของเดิมที่เกี่ยวกับ 
+      background: #f5f5f5;
     }
 
     h1 {
@@ -137,7 +137,7 @@
       font-size: 1rem;
     }
 
-        /* Game Area / Board */
+    /* Game Area / Board */
     #gameArea {
       margin-top: 1.5rem;
       border-top: 1px solid #eee;
@@ -224,31 +224,33 @@
       border-left: 3px solid #43a047;
     }
 
+    /* สีการ์ดตามสถานะ (พาสเทลแต่เข้มขึ้น) */
     .cell-card.play-cell {
       background: #ffffff;
     }
 
     .cell-card.play-cell.cell-dice {
-      background: #90caf9;
+      background: #64b5f6;   /* น้ำเงินฟ้า */
     }
 
     .cell-card.play-cell.cell-correct {
-      background: #a5d6a7;
+      background: #81c784;   /* เขียว */
     }
 
     .cell-card.play-cell.cell-wrong {
-      background: #ef9a9a;
+      background: #e57373;   /* แดง */
     }
 
     .cell-card.play-cell.cell-past {
-      background: #bdbdbd;
+      background: #9e9e9e;   /* เทาเข้ม */
     }
 
     .cell-card:hover {
-      transform: translateY(-3px);
+      transform: translateY(-3px) rotateX(6deg);
       box-shadow: 0 8px 14px rgba(0,0,0,0.25);
     }
 
+    /* หมากแบบ pin Google Map */
     .token {
       position: absolute;
       bottom: -6px;
@@ -277,12 +279,6 @@
       color: #333;
       transform: rotate(45deg);
     }
-
-    .cell-card:hover {
-      transform: translateY(-3px) rotateX(6deg);
-      box-shadow: 0 8px 14px rgba(0,0,0,0.2);
-    }
-
 
     #roundInfo {
       font-weight: 600;
@@ -352,7 +348,7 @@
       color: #fff;
     }
 
-        #playerList table {
+    #playerList table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.85rem;
