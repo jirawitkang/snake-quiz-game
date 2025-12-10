@@ -144,30 +144,32 @@
       padding-top: 1rem;
       display: none;
     }
-
+    
     #board {
       margin-top: 0.75rem;
     }
-
-    .board-label-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-
+    
+    /* แถว label ด้านบน + แถวผู้เล่น ให้จัดแนวเดียวกัน */
+    .board-label-row,
     .player-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
+      gap: 4px;          /* ลด gap ให้แถวไม่ห่างกันมาก */
+      margin-bottom: 2px;
     }
-
+    
+    /* ช่องว่างด้านซ้ายของแถว label ให้กว้างเท่าชื่อผู้เล่น */
+    .board-label-spacer {
+      flex: 0 0 110px;
+      max-width: 110px;
+    }
+    
+    /* ชื่อผู้เล่น – ล็อคความกว้าง ไม่ให้ดันการ์ด */
     .player-row-name {
-      flex: 0 0 120px;
-      max-width: 120px;
+      flex: 0 0 110px;
+      max-width: 110px;
       text-align: right;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: #333;
       padding-right: 4px;
@@ -176,118 +178,110 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-
+    
+    /* แถวการ์ดของแต่ละคน */
     .board-track {
       display: flex;
-      gap: 8px;
-      align-items: flex-end;
-      padding: 4px 2px;
-      min-height: 72px;
+      gap: 4px;           /* ลดช่องว่างระหว่างการ์ด */
+      align-items: center;
+      padding: 2px 0;
+      min-height: 32px;   /* พอให้หยดน้ำลอยได้ */
       overflow-x: auto;
     }
-
-    /* ขนาดและหน้าตาการ์ดพื้นฐาน */
+    
+    /* การ์ดพื้นฐาน */
     .cell-card {
       position: relative;
       background: #ffffff;
       border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.18);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.16);
       display: flex;
       align-items: center;
       justify-content: center;
       transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
     }
     
-    /* การ์ดช่องเล่น 1–30 → ให้เป็นสี่เหลี่ยมจัตุรัส */
-    /* FORCE square card for play cells */
-    .cell-card.play-cell {
-      width: 56px !important;
-      height: 56px !important;
-      padding: 0 !important;
-      line-height: 1 !important;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    /* การ์ด 1–30: เป็นสี่เหลี่ยมจตุรัส 16x16 */
+    .board-track .cell-card:not(.start-cell):not(.finish-cell) {
+      width: 16px !important;
+      height: 16px !important;
+      flex: 0 0 16px !important;   /* กัน flex ยืด */
     }
     
-    /* การ์ด label แถวบนสุด (Start / 1–30 / Finish) */
-    .label-cell {
-      width: 56px;
-      height: 40px;
-    }
-    
-    .label-cell .cell-label {
-      font-size: 11px;
+    /* label ด้านบน (1–30) ใช้ style เดียวกัน */
+    .cell-card.label-cell .cell-label {
+      font-size: 10px;
       color: #555;
     }
     
-    /* Start / Finish card จริงของแต่ละแถวผู้เล่น (ไม่ต้องจัตุรัส) */
+    /* Start / Finish ให้เป็นแผ่นยาว */
     .start-cell,
     .finish-cell {
+      min-width: 56px;
+      height: 20px;
+      flex: 0 0 56px;
       background: #f4f4f4;
-      min-width: 70px;
-      height: 56px;   /* สูงเท่ากับ play-cell เพื่อให้แถวเรียงตรงกัน */
     }
     
-    /* เส้นแบ่ง start/finish */
     .start-cell {
-      border-right: 3px solid #1976d2;  /* น้ำเงิน */
+      border-right: 3px solid #1976d2;   /* น้ำเงิน */
     }
     
     .finish-cell {
-      border-left: 3px solid #43a047;   /* เขียว */
+      border-left: 3px solid #43a047;    /* เขียว */
     }
     
-    /* สีการ์ดตามสถานะ (พาสเทลแต่เข้มขึ้น) */
+    /* สีพื้นหลังตามเงื่อนไข */
+    .cell-card.play-cell {
+      background: #ffffff;
+    }
+    
     .cell-card.play-cell.cell-dice {
-      background: #64b5f6;   /* ฟ้าเข้มแนวพาสเทล */
+      background: #7fc4ff;    /* ฟ้าเข้มขึ้น แต่ยังออกโทนพาสเทล */
     }
     
     .cell-card.play-cell.cell-correct {
-      background: #81c784;   /* เขียวพาสเทลเข้ม */
+      background: #7fd58a;    /* เขียวเข้มขึ้น */
     }
     
     .cell-card.play-cell.cell-wrong {
-      background: #e57373;   /* แดงพาสเทลเข้ม */
+      background: #ff8b8b;    /* แดงพาสเทลเข้ม */
     }
     
     .cell-card.play-cell.cell-past {
-      background: #9e9e9e;   /* เทาเข้ม */
+      background: #b0b0b0;    /* เทาเข้ม */
     }
     
-    .cell-card:hover {
-      transform: translateY(-3px) rotateX(6deg);
-      box-shadow: 0 8px 14px rgba(0,0,0,0.25);
-    }
-
-    /* หมากแบบ pin Google Map */
+    /* หยดน้ำหมากผู้เล่น – ใช้แบบ pin google map และให้ปลายอยู่กลางการ์ด */
     .token {
       position: absolute;
-      top: 50%;
       left: 50%;
-      width: 28px;
-      height: 28px;
-      background: #1976d2;          /* สีหลักของหมาก (เดี๋ยว JS จะ override เป็นสีผู้เล่น) */
-      border-radius: 50% 50% 50% 0;  /* ทรงหยดน้ำ */
-      transform: translate(-50%, -60%) rotate(-45deg);
-      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+      top: 50%;
+      width: 22px;
+      height: 22px;
+      background: #1976d2;           /* จะถูก override ด้วยสีผู้เล่นจาก JS */
+      border-radius: 50% 50% 50% 0;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.35);
       display: flex;
       align-items: center;
       justify-content: center;
+      z-index: 2;
     }
     
     .token-inner {
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
       background: rgba(255,255,255,0.95);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       color: #333;
-      transform: rotate(45deg);  /* หมุนกลับให้ตัวหนังสือตรง */
+      transform: rotate(45deg);
     }
 
     #roundInfo {
@@ -402,26 +396,6 @@
     #endGameSummary td.name-col {
       text-align: left;
       font-weight: 600;
-    }
-    
-    /* การ์ด 1–30 และทุกช่องเล่น: บังคับให้เป็นสี่เหลี่ยมจตุรัส */
-    .board-track .cell-card:not(.start-cell):not(.finish-cell) {
-      width: 12px !important;
-      height: 12px !important;
-      flex: 0 0 12px !important;   /* กัน flex ยืดความกว้าง */
-      padding: 0 !important;
-      line-height: 1 !important;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-    
-    /* Start / Finish ให้เป็นสี่เหลี่ยมผืนผ้าเหมือนเดิม */
-    .start-cell,
-    .finish-cell {
-      min-width: 56px;
-      height: 12px;
     }
 
   </style>
