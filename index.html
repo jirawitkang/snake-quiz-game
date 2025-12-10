@@ -403,19 +403,21 @@
       text-align: left;
       font-weight: 600;
     }
-
-    /* FORCE square card for play cells & label cells (ช่อง 1–30) */
-    .cell-card.play-cell,
-    .cell-card.label-cell {
+    
+    /* การ์ด 1–30 และทุกช่องเล่น: บังคับให้เป็นสี่เหลี่ยมจตุรัส */
+    .board-track .cell-card:not(.start-cell):not(.finish-cell) {
       width: 56px !important;
       height: 56px !important;
+      flex: 0 0 56px !important;   /* กัน flex ยืดความกว้าง */
       padding: 0 !important;
       line-height: 1 !important;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-sizing: border-box;
     }
-
+    
+    /* Start / Finish ให้เป็นสี่เหลี่ยมผืนผ้าเหมือนเดิม */
     .start-cell,
     .finish-cell {
       min-width: 70px;
