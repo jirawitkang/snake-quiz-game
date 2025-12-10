@@ -1403,6 +1403,7 @@ async function finalizeRoll(roll, basePosition) {
   let currentRound = 0;
   let playerName = "";
 
+  // อ่านข้อมูลห้องก่อน
   try {
     const snap = await get(roomRef);
     if (snap.exists()) {
@@ -1424,7 +1425,7 @@ async function finalizeRoll(roll, basePosition) {
   updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/position`] = newPos;
   updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/hasRolled`] = true;
 
-  // ถ้าเดินด้วยลูกเต๋าแล้วถึง/เกิน 30 → เข้าเส้นชัยทันที
+  // ถ้าเดินด้วยลูกเต๋าแล้วถึง/เกิน 30 → mark finished ทันที
   if (newPos >= BOARD_SIZE) {
     updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/finished`] = true;
     updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/finishedRound`] =
@@ -1451,6 +1452,77 @@ async function finalizeRoll(roll, basePosition) {
     }
   } catch (e) {
     console.error("Error logging dice move history:", e);
+  }
+
+  // ---------- เช็กจบเกมกรณีเข้าเส้นชัยด้วยลูกเต๋า ----------
+  if (roomData) {
+    const gs = roomData.gameSettings || {};
+    const maxRounds = gs.maxRounds || 10;
+    const maxWinners = gs.maxWinners || 5;
+
+    const players = roomData.players || {};
+    const totalPlayers = Object.keys(players).length;
+
+    // clone player ปัจจุบันใน snapshot ให้มีตำแหน่งใหม่
+    const meSnapshot = players[currentPlayerId] || {};
+    const meAfter = {
+      ...meSnapshot,
+      position: newPos,
+      finished: newPos >= BOARD_SIZE ? true : !!meSnapshot.finished,
+      finishedRound:
+        newPos >= BOARD_SIZE ? currentRound : meSnapshot.finishedRound,
+      finishedBy: newPos >= BOARD_SIZE ? "dice" : meSnapshot.finishedBy,
+    };
+    players[currentPlayerId] = meAfter;
+
+    // winners ปัจจุบัน
+    let winners = roomData.winners || [];
+    const winnerIds = new Set(winners.map((w) => w.playerId));
+
+    // ถ้าเพิ่งเข้าเส้นชัยด้วยลูกเต๋า → ใส่ลง winners ด้วย
+    if (newPos >= BOARD_SIZE && !winnerIds.has(currentPlayerId)) {
+      winners.push({
+        playerId: currentPlayerId,
+        playerName: meAfter.name || currentPlayerId,
+        finishedRound: currentRound,
+        rank: winners.length + 1,
+      });
+      winnerIds.add(currentPlayerId);
+    }
+
+    // นับจำนวนคนที่ "จบแล้ว" (finished หรืออยู่ที่ช่อง 30 ขึ้นไป)
+    const finishedCount = Object.values(players).filter(
+      (p) => p.finished || (p.position || 1) >= BOARD_SIZE
+    ).length;
+    const targetWinners = Math.min(maxWinners, totalPlayers);
+
+    let gameEnded = false;
+    let endReason = null;
+
+    if (winners.length >= targetWinners || finishedCount === totalPlayers) {
+      // จบเพราะครบจำนวนผู้เข้าเส้นชัย หรือทุกคนเข้าเส้นชัยแล้ว
+      gameEnded = true;
+      endReason = "winners";
+    } else if (currentRound >= maxRounds) {
+      // สำรอง: เผื่อมาเรียกจากรอบสุดท้าย (จริง ๆ เคสนี้มักจะไปจบใน revealAnswer อยู่แล้ว)
+      gameEnded = true;
+      endReason = "rounds";
+    }
+
+    // อัปเดต winners กลับเข้า DB เสมอ (ไม่ว่าจะจบหรือยัง)
+    updates[`rooms/${currentRoomCode}/winners`] = winners;
+
+    if (gameEnded) {
+      updates[`rooms/${currentRoomCode}/phase`] = "ended";
+      updates[`rooms/${currentRoomCode}/status`] = "finished";
+      updates[`rooms/${currentRoomCode}/endInfo`] = {
+        endedAt: Date.now(),
+        endReason,
+        maxRounds,
+        maxWinners,
+        winnerCount: winners.length,
+      };
+    }
   }
 
   await update(ref(db), updates);
