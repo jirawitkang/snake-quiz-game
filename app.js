@@ -188,6 +188,23 @@ function clearTimer() {
   timerRound = 0;
 }
 
+// คืนลิสต์เลขช่องที่หมาก "เดินผ่าน" จาก from → to (รวมปลายทาง ไม่รวมจุดเริ่ม)
+// ใช้ได้ทั้งเดินหน้าและถอยหลัง
+function getPathCells(from, to) {
+  const cells = [];
+  if (from === to) return cells;
+  const step = from < to ? 1 : -1;
+  let pos = from + step;
+  while (true) {
+    if (pos >= 1 && pos <= BOARD_SIZE) {
+      cells.push(pos);
+    }
+    if (pos === to) break;
+    pos += step;
+  }
+  return cells;
+}
+
 // ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
 createRoomBtn.addEventListener("click", () => {
   const hostName = hostNameInput.value.trim();
@@ -887,7 +904,7 @@ function updateGameView(roomData, players) {
   }
   phaseInfoEl.textContent = `สถานะรอบ: ${phaseText}`;
 
-  renderBoard(players);
+  renderBoard(roomData, players);
   updateRoleControls(roomData, players);
   updateQuestionUI(roomData, players);
 
@@ -1353,42 +1370,40 @@ async function animateDiceAndCommitRoll(basePosition, roomData) {
   });
 }
 
-async function finalizeRoll(roll, basePosition, roomData) {
+async function finalizeRoll(roll, basePosition) {
   let newPos = basePosition + roll;
   if (newPos < 0) newPos = 0;
   if (newPos > BOARD_SIZE) newPos = BOARD_SIZE;
 
-  const currentRound = roomData?.currentRound || 0;
-  const players = roomData.players || {};
-
-  // เตรียม winners ปัจจุบัน (เผื่อจะต้องเพิ่มคนที่ทอยถึงเส้นชัย)
-  let winners = roomData.winners || [];
-  const winnerIds = new Set(winners.map((w) => w.playerId));
-
-  const playerPath = `rooms/${currentRoomCode}/players/${currentPlayerId}`;
   const updates = {};
+  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/lastRoll`] = roll;
+  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/position`] = newPos;
+  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/hasRolled`] = true;
 
-  updates[`${playerPath}/lastRoll`] = roll;
-  updates[`${playerPath}/position`] = newPos;
-  updates[`${playerPath}/hasRolled`] = true;
-
-  // ถ้าทอยแล้วถึง/เกินช่อง 30 → เข้าเส้นชัยทันที
-  if (newPos >= BOARD_SIZE) {
-    newPos = BOARD_SIZE;
-    updates[`${playerPath}/position`] = BOARD_SIZE;
-    updates[`${playerPath}/finished`] = true;
-    updates[`${playerPath}/finishedRound`] = currentRound;
-    updates[`${playerPath}/finishedBy`] = "dice";
-
-    if (!winnerIds.has(currentPlayerId)) {
-      winners.push({
-        playerId: currentPlayerId,
-        playerName: players[currentPlayerId]?.name || currentPlayerId,
-        finishedRound: currentRound,
-        rank: winners.length + 1,
-      });
+  // ดึง currentRound มาเก็บ history การเดินด้วยลูกเต๋า
+  try {
+    const roomRef = ref(db, `rooms/${currentRoomCode}`);
+    const snap = await get(roomRef);
+    if (snap.exists()) {
+      const roomData = snap.val();
+      const currentRound = roomData.currentRound || 0;
+      if (currentRound > 0) {
+        const dicePath = getPathCells(basePosition, newPos);
+        updates[
+          `rooms/${currentRoomCode}/history/round_${currentRound}/diceMoves/${currentPlayerId}`
+        ] = {
+          playerId: currentPlayerId,
+          playerName: roomData.players?.[currentPlayerId]?.name || "",
+          fromPosition: basePosition,
+          toPosition: newPos,
+          diceRoll: roll,
+          pathCells: dicePath,
+          timestamp: Date.now(),
+        };
+      }
     }
-    updates[`rooms/${currentRoomCode}/winners`] = winners;
+  } catch (e) {
+    console.error("Error logging dice move history:", e);
   }
 
   await update(ref(db), updates);
@@ -1601,41 +1616,165 @@ async function moveToAnswering(oldRoomData) {
   await update(ref(db), updates);
 }
 
-// ---------------- Board Rendering ----------------
-function renderBoard(players) {
+// ---------------- Board Rendering (แบบแถวเดียว Start → 1..30 → Finish) ----------------
+function renderBoard(roomData, players) {
+  const history = roomData.history || {};
+  const currentRound = roomData.currentRound || 0;
+
+  // สร้างกระดานครั้งแรก: Start | 1..30 | Finish
   if (!boardEl.dataset.initialized) {
     boardEl.innerHTML = "";
+
+    const track = document.createElement("div");
+    track.classList.add("board-track");
+
+    // ช่อง Start
+    const startCell = document.createElement("div");
+    startCell.classList.add("cell-card", "start-cell");
+    startCell.dataset.type = "start";
+    startCell.innerHTML = `<span class="cell-label">START</span>`;
+    track.appendChild(startCell);
+
+    // ช่อง 1..30
     for (let i = 1; i <= BOARD_SIZE; i++) {
       const cell = document.createElement("div");
-      cell.classList.add("cell");
-      const idxSpan = document.createElement("span");
-      idxSpan.classList.add("cell-index");
-      idxSpan.textContent = i;
-      cell.appendChild(idxSpan);
-      boardEl.appendChild(cell);
+      cell.classList.add("cell-card", "play-cell");
+      cell.dataset.type = "play";
+      cell.dataset.index = String(i);
+      cell.innerHTML = `<span class="cell-index">${i}</span>`;
+      track.appendChild(cell);
     }
+
+    // ช่อง Finish
+    const finishCell = document.createElement("div");
+    finishCell.classList.add("cell-card", "finish-cell");
+    finishCell.dataset.type = "finish";
+    finishCell.innerHTML = `<span class="cell-label">FINISH</span>`;
+    track.appendChild(finishCell);
+
+    boardEl.appendChild(track);
     boardEl.dataset.initialized = "1";
   }
 
-  const cells = boardEl.querySelectorAll(".cell");
-  cells.forEach((cell) => {
+  // เตรียมข้อมูลสีของแต่ละช่อง 1..30
+  // priority: current round (correct/ wrong/ dice) > past rounds (gray) > default (white)
+  const pastVisited = {};      // cellIndex: true  (รอบก่อนหน้า)
+  const currentCellState = {}; // cellIndex: "dice" | "correct" | "wrong"
+
+  const roundKeys = Object.keys(history)
+    .filter((k) => k.startsWith("round_"))
+    .sort((a, b) => {
+      const ra = parseInt(a.split("_")[1] || "0", 10);
+      const rb = parseInt(b.split("_")[1] || "0", 10);
+      return ra - rb;
+    });
+
+  for (const rk of roundKeys) {
+    const roundNo = parseInt(rk.split("_")[1] || "0", 10);
+    const roundData = history[rk] || {};
+
+    const diceMoves = roundData.diceMoves || {};
+    const answers = roundData.answers || {};
+
+    // --- เส้นทางจากการทอยลูกเต๋า ---
+    for (const [, rec] of Object.entries(diceMoves)) {
+      const path = rec.pathCells || getPathCells(rec.fromPosition || 0, rec.toPosition || 0);
+      for (const cell of path) {
+        if (roundNo < currentRound) {
+          pastVisited[cell] = true;
+        } else if (roundNo === currentRound) {
+          currentCellState[cell] = "dice";
+        }
+      }
+    }
+
+    // --- เส้นทางจากการตอบคำถาม (ถูก/ผิด) ---
+    for (const [, rec] of Object.entries(answers)) {
+      const basePos = rec.basePosition ?? 0;
+      const finalPos = rec.finalPosition ?? basePos;
+      const path = getPathCells(basePos, finalPos);
+      const correct = !!rec.correct;
+
+      for (const cell of path) {
+        if (roundNo < currentRound) {
+          pastVisited[cell] = true;
+        } else if (roundNo === currentRound) {
+          currentCellState[cell] = correct ? "correct" : "wrong";
+        }
+      }
+    }
+  }
+
+  // ล้าง token เดิมออก
+  const allCells = boardEl.querySelectorAll(".cell-card");
+  allCells.forEach((cell) => {
     const tokens = cell.querySelectorAll(".token");
     tokens.forEach((t) => t.remove());
   });
 
+  // เคลียร์ class สีของช่องเล่น
+  const playCells = boardEl.querySelectorAll(".cell-card.play-cell");
+  playCells.forEach((cell) => {
+    cell.classList.remove(
+      "cell-dice",
+      "cell-correct",
+      "cell-wrong",
+      "cell-past"
+    );
+  });
+
+  // ใส่สีให้ช่อง 1..30 ตามกติกา
+  playCells.forEach((cell) => {
+    const idx = parseInt(cell.dataset.index || "0", 10);
+    if (!idx) return;
+
+    if (currentCellState[idx] === "correct") {
+      cell.classList.add("cell-correct");
+    } else if (currentCellState[idx] === "wrong") {
+      cell.classList.add("cell-wrong");
+    } else if (currentCellState[idx] === "dice") {
+      cell.classList.add("cell-dice");
+    } else if (pastVisited[idx]) {
+      cell.classList.add("cell-past");
+    }
+    // ถ้าไม่เข้าเงื่อนไขใดเลย = ช่องว่างสีขาว
+  });
+
+  // วางตัวหมากของผู้เล่น (icon น่ารัก ๆ ลอยบนการ์ด)
+  const startCellEl = boardEl.querySelector(".cell-card.start-cell");
+  const finishCellEl = boardEl.querySelector(".cell-card.finish-cell");
+
   for (const [pid, p] of Object.entries(players)) {
     let pos = p.position || 0;
-    if (pos < 1) continue;
+    if (pos < 0) pos = 0;
     if (pos > BOARD_SIZE) pos = BOARD_SIZE;
 
-    const cell = cells[pos - 1];
-    if (!cell) continue;
+    let cellEl = null;
+    if (pos === 0) {
+      cellEl = startCellEl;
+    } else if (pos >= BOARD_SIZE) {
+      // ยังคงแสดงบนช่องที่ 30 (ไม่กระโดดไป finish box)
+      cellEl = boardEl.querySelector(
+        `.cell-card.play-cell[data-index="${BOARD_SIZE}"]`
+      );
+    } else {
+      cellEl = boardEl.querySelector(
+        `.cell-card.play-cell[data-index="${pos}"]`
+      );
+    }
+
+    if (!cellEl) continue;
 
     const token = document.createElement("div");
     token.classList.add("token");
-    token.textContent = p.name || pid;
     token.style.backgroundColor = p.color || "#1976d2";
-    cell.appendChild(token);
+
+    // ถ้าอยากให้เป็น icon ตัวอักษรตัวแรกของชื่อ
+    const displayName = p.name || pid;
+    const initial = displayName.trim().charAt(0).toUpperCase();
+    token.textContent = initial || "P";
+
+    cellEl.appendChild(token);
   }
 }
 
