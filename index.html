@@ -194,80 +194,60 @@
       position: relative;
       background: #ffffff;
       border-radius: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.16);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.18);
       display: flex;
       align-items: center;
       justify-content: center;
       transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
-      box-sizing: border-box;
     }
     
-    /* การ์ด 1–30: เป็นสี่เหลี่ยมจตุรัส 16x16 */
+    /* การ์ด 1–30 ทุกแถว: บังคับเป็น “สี่เหลี่ยมจตุรัสไม่กลม” */
     .board-track .cell-card:not(.start-cell):not(.finish-cell) {
       width: 16px !important;
       height: 16px !important;
-      flex: 0 0 16px !important;   /* กัน flex ยืด */
+      flex: 0 0 16px !important;      /* กัน flex ยืด */
+      padding: 0 !important;
+      line-height: 1 !important;
+      box-sizing: border-box;
+    
+      /* ตรงนี้สำคัญ – ลดมุมมน ไม่ให้กลายเป็นวงกลม */
+      border-radius: 4px !important;
     }
     
-    /* label ด้านบน (1–30) ใช้ style เดียวกัน */
-    .cell-card.label-cell .cell-label {
-      font-size: 10px;
-      color: #555;
-    }
-    
-    /* Start / Finish ให้เป็นแผ่นยาว */
+    /* Start / Finish ใช้ขนาดผืนผ้าตามต้องการ */
     .start-cell,
     .finish-cell {
       min-width: 56px;
-      height: 20px;
-      flex: 0 0 56px;
-      background: #f4f4f4;
+      height: 24px;              /* สูงกว่าการ์ดเล็กน้อยให้ดูเด่นได้ */
+      border-radius: 8px;
     }
     
-    .start-cell {
-      border-right: 3px solid #1976d2;   /* น้ำเงิน */
+    /* ลดช่องว่างระหว่างแต่ละแถวให้ชิดขึ้นหน่อย */
+    .player-row {
+      margin-bottom: 4px;
     }
     
-    .finish-cell {
-      border-left: 3px solid #43a047;    /* เขียว */
+    .board-track {
+      gap: 4px;
+      min-height: 28px;          /* ให้รองรับการ์ด 16px + หยดน้ำซ้อน */
     }
     
-    /* สีพื้นหลังตามเงื่อนไข */
-    .cell-card.play-cell {
-      background: #ffffff;
-    }
-    
-    .cell-card.play-cell.cell-dice {
-      background: #7fc4ff;    /* ฟ้าเข้มขึ้น แต่ยังออกโทนพาสเทล */
-    }
-    
-    .cell-card.play-cell.cell-correct {
-      background: #7fd58a;    /* เขียวเข้มขึ้น */
-    }
-    
-    .cell-card.play-cell.cell-wrong {
-      background: #ff8b8b;    /* แดงพาสเทลเข้ม */
-    }
-    
-    .cell-card.play-cell.cell-past {
-      background: #b0b0b0;    /* เทาเข้ม */
-    }
-    
-    /* หยดน้ำหมากผู้เล่น – ใช้แบบ pin google map และให้ปลายอยู่กลางการ์ด */
+    /* หยดน้ำ (หมากผู้เล่น) – ให้ปลายหยดอยู่กลางการ์ด */
     .token {
       position: absolute;
-      left: 50%;
-      top: 50%;
       width: 22px;
       height: 22px;
-      background: #1976d2;           /* จะถูก override ด้วยสีผู้เล่นจาก JS */
+      background: #1976d2;
       border-radius: 50% 50% 50% 0;
-      transform: translate(-50%, -50%) rotate(-45deg);
-      box-shadow: 0 3px 6px rgba(0,0,0,0.35);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 2;
+    
+      /* center ปลายหยดบนกลางการ์ด */
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -45%) rotate(-45deg);
     }
     
     .token-inner {
@@ -278,7 +258,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
       color: #333;
       transform: rotate(45deg);
