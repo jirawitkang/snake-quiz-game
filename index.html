@@ -189,11 +189,12 @@
       overflow-x: auto;
     }
     
+    /* ===== ปรับการ์ดบนกระดานให้จตุรัส + สีสถานะเดิน ===== */
+
     /* การ์ดพื้นฐาน */
     .cell-card {
       position: relative;
       background: #ffffff;
-      border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.18);
       display: flex;
       align-items: center;
@@ -201,50 +202,76 @@
       transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
     }
     
-    /* การ์ด 1–30 ทุกแถว: บังคับเป็น “สี่เหลี่ยมจตุรัสไม่กลม” */
-    .board-track .cell-card:not(.start-cell):not(.finish-cell) {
+    /* การ์ด 1–30 และทุกช่องเล่นของแต่ละแถว: บังคับเป็นสี่เหลี่ยมจตุรัส */
+    .board-track .cell-card:not(.start-cell):not(.finish-cell),
+    .board-label-row .cell-card {
       width: 16px !important;
       height: 16px !important;
       flex: 0 0 16px !important;      /* กัน flex ยืด */
       padding: 0 !important;
       line-height: 1 !important;
       box-sizing: border-box;
-    
-      /* ตรงนี้สำคัญ – ลดมุมมน ไม่ให้กลายเป็นวงกลม */
-      border-radius: 4px !important;
+      border-radius: 4px !important;  /* มนเล็กน้อย ไม่กลายเป็นวงกลม */
     }
     
-    /* Start / Finish ใช้ขนาดผืนผ้าตามต้องการ */
+    /* Start / Finish ให้สูงเท่าการ์ด 1–30 แต่เป็นสี่เหลี่ยมผืนผ้า */
     .start-cell,
     .finish-cell {
       min-width: 56px;
-      height: 24px;              /* สูงกว่าการ์ดเล็กน้อยให้ดูเด่นได้ */
+      height: 16px;                   /* สูงเท่าการ์ด 1–30 แล้ว */
       border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
-    /* ลดช่องว่างระหว่างแต่ละแถวให้ชิดขึ้นหน่อย */
+    /* ระยะห่างแต่ละแถวให้ชิดขึ้นหน่อย */
     .player-row {
       margin-bottom: 4px;
     }
-    
     .board-track {
       gap: 4px;
-      min-height: 28px;          /* ให้รองรับการ์ด 16px + หยดน้ำซ้อน */
+      min-height: 28px;
     }
     
-    /* หยดน้ำ (หมากผู้เล่น) – ให้ปลายหยดอยู่กลางการ์ด */
+    /* สีของการ์ดตามสถานะการเดิน (ต้องอยู่หลัง rule ด้านบน) */
+    .cell-card.play-cell {
+      background: #ffffff;
+    }
+    
+    /* เดินจากแต้มลูกเต๋า – ฟ้าเข้มแนวพาสเทล */
+    .cell-card.play-cell.cell-dice {
+      background: #64b5f6;
+    }
+    
+    /* ตอบถูก – เขียวสดแนวพาสเทล */
+    .cell-card.play-cell.cell-correct {
+      background: #66bb6a;
+    }
+    
+    /* ตอบผิด / ถอยหลัง – แดงพาสเทลเข้มขึ้น */
+    .cell-card.play-cell.cell-wrong {
+      background: #ef5350;
+    }
+    
+    /* รอบเก่าแล้ว – เทาพาสเทล */
+    .cell-card.play-cell.cell-past {
+      background: #9e9e9e;
+    }
+    
+    /* ===== หมากผู้เล่นเป็นหยดน้ำ – ปลายอยู่กลางการ์ด ===== */
     .token {
       position: absolute;
       width: 22px;
       height: 22px;
-      background: #1976d2;
+      background: #ffb300;                 /* สีหมาก (จะถูก override เป็นสีประจำคนใน JS) */
       border-radius: 50% 50% 50% 0;
       box-shadow: 0 3px 6px rgba(0,0,0,0.3);
       display: flex;
       align-items: center;
       justify-content: center;
     
-      /* center ปลายหยดบนกลางการ์ด */
+      /* ให้ปลายหยดน้ำอยู่เกือบกลางการ์ด */
       left: 50%;
       top: 50%;
       transform: translate(-50%, -45%) rotate(-45deg);
