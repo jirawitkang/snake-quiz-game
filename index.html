@@ -137,7 +137,7 @@
       font-size: 1rem;
     }
 
-    /* Game Area / Board */
+        /* Game Area / Board */
     #gameArea {
       margin-top: 1.5rem;
       border-top: 1px solid #eee;
@@ -145,38 +145,113 @@
       display: none;
     }
 
+    /* ตัว container หลักของกระดาน */
     #board {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 4px;
       margin-top: 0.75rem;
+      overflow-x: auto;
     }
 
-    .cell {
-      position: relative;
-      border: 1px solid #ccc;
-      min-height: 50px;
-      font-size: 0.75rem;
+    /* แถวกระดาน: Start | 1..30 | Finish */
+    .board-track {
       display: flex;
-      align-items: flex-start;
-      justify-content: flex-end;
-      padding: 2px 4px;
-      background: #fafafa;
+      gap: 8px;              /* ระยะห่างระหว่างการ์ด */
+      align-items: flex-end;
+      padding: 12px 2px;
+      min-height: 90px;
     }
 
-    .cell-index {
-      opacity: 0.6;
+    /* การ์ดแต่ละช่อง */
+    .cell-card {
+      position: relative;
+      width: 60px;
+      height: 60px;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: translateY(0) rotateX(8deg);
+      transform-origin: center bottom;
+      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
     }
 
+    .cell-card .cell-index {
+      position: absolute;
+      top: 4px;
+      left: 6px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .cell-card .cell-label {
+      font-weight: 700;
+      font-size: 12px;
+      color: #333;
+    }
+
+    /* Start / Finish */
+    .start-cell,
+    .finish-cell {
+      background: #f4f4f4;
+      min-width: 70px;
+    }
+
+    .start-cell {
+      border-right: 3px solid #4caf50;  /* เส้น Start */
+    }
+
+    .finish-cell {
+      border-left: 3px solid #f44336;   /* เส้น Finish */
+    }
+
+    /* สีของช่อง 1..30 ตามประเภทการเดิน */
+    .cell-card.play-cell {
+      background: #ffffff;
+    }
+
+    /* จากการทอยลูกเต๋า (เดินปกติรอบนี้) → ฟ้า */
+    .cell-card.play-cell.cell-dice {
+      background: #e3f2fd;
+    }
+
+    /* จากการตอบถูกรอบนี้ → เขียว */
+    .cell-card.play-cell.cell-correct {
+      background: #e8f5e9;
+    }
+
+    /* จากการตอบผิด/ไม่ทันรอบนี้ → แดง */
+    .cell-card.play-cell.cell-wrong {
+      background: #ffebee;
+    }
+
+    /* ช่องที่เคยเดินผ่านในรอบก่อน ๆ → เทา */
+    .cell-card.play-cell.cell-past {
+      background: #eeeeee;
+    }
+
+    /* ตัวหมากผู้เล่น: icon กลม ๆ ลอยอยู่บนการ์ด */
     .token {
       position: absolute;
-      bottom: 2px;
-      left: 2px;
-      padding: 2px 4px;
-      border-radius: 4px;
-      font-size: 0.7rem;
+      bottom: 4px;
+      right: 4px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #1976d2;
       color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
       white-space: nowrap;
+    }
+
+    .cell-card:hover {
+      transform: translateY(-3px) rotateX(6deg);
+      box-shadow: 0 8px 14px rgba(0,0,0,0.2);
     }
 
     #roundInfo {
