@@ -605,17 +605,21 @@ startRoundBtn.addEventListener("click", async () => {
   updates[`rooms/${currentRoomCode}/answerTimeSeconds`] = null;
   updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
 
-    for (const [pid, p] of Object.entries(players)) {
-    // ถ้าเข้าเส้นชัยแล้ว → ไม่ต้องทอยในรอบใหม่ แต่ให้ถือว่า "ทอยแล้ว" เสมอ
+  for (const [pid, p] of Object.entries(players)) {
+    const posNow = p.position || 0;
+
+    // เก็บตำแหน่ง ณ ตอนเริ่มรอบนี้ไว้ใช้ทำ "สีเทา" (1 → startOfRoundPos)
+    updates[`rooms/${currentRoomCode}/players/${pid}/startOfRoundPos`] = posNow;
+
     if (p.finished) {
+      // คนเข้าเส้นชัยแล้ว: ไม่ต้องทอย แต่ถือว่า hasRolled = true
       updates[`rooms/${currentRoomCode}/players/${pid}/hasRolled`] = true;
-      // lastRoll จะเก็บค่ารอบล่าสุดไว้เฉย ๆ (จะ reset ก็ได้ แต่ไม่จำเป็น)
     } else {
       updates[`rooms/${currentRoomCode}/players/${pid}/lastRoll`] = null;
       updates[`rooms/${currentRoomCode}/players/${pid}/hasRolled`] = false;
     }
 
-    // reset สถานะตอบคำถามทุกรอบ (ทั้งคนที่เข้าเส้นชัยแล้วและยังไม่เข้า)
+    // reset การตอบคำถาม
     updates[`rooms/${currentRoomCode}/players/${pid}/answered`] = false;
     updates[`rooms/${currentRoomCode}/players/${pid}/answer`] = null;
     updates[`rooms/${currentRoomCode}/players/${pid}/lastAnswerCorrect`] = null;
@@ -1624,18 +1628,30 @@ function renderBoard(roomData, players) {
 
   boardEl.innerHTML = "";
 
-  // ---------- แถวบนสุด: label Start, 1–30, Finish ----------
+  // ---------- แถวบนสุด: Label (เว้นช่องชื่อให้ตรงกับแถวผู้เล่น) ----------
   const labelRow = document.createElement("div");
   labelRow.className = "board-label-row";
 
+  // ช่องชื่อ (ว่าง) ให้กว้างเท่ากับ .player-row-name
+  const labelNameSpacer = document.createElement("div");
+  labelNameSpacer.className = "player-row-name";
+  labelNameSpacer.textContent = ""; // เว้นว่าง
+  labelRow.appendChild(labelNameSpacer);
+
+  // แทร็กหลัก
+  const labelTrack = document.createElement("div");
+  labelTrack.className = "board-track";
+
+  // Start
   const startLabelCell = document.createElement("div");
   startLabelCell.className = "cell-card start-cell";
   const startSpan = document.createElement("span");
   startSpan.className = "cell-label";
   startSpan.textContent = "Start";
   startLabelCell.appendChild(startSpan);
-  labelRow.appendChild(startLabelCell);
+  labelTrack.appendChild(startLabelCell);
 
+  // 1–30
   for (let i = 1; i <= BOARD_SIZE; i++) {
     const labelCell = document.createElement("div");
     labelCell.className = "cell-card play-cell";
@@ -1643,92 +1659,90 @@ function renderBoard(roomData, players) {
     span.className = "cell-label";
     span.textContent = i;
     labelCell.appendChild(span);
-    labelRow.appendChild(labelCell);
+    labelTrack.appendChild(labelCell);
   }
 
+  // Finish
   const finishLabelCell = document.createElement("div");
   finishLabelCell.className = "cell-card finish-cell";
   const finishSpan = document.createElement("span");
   finishSpan.className = "cell-label";
   finishSpan.textContent = "Finish";
   finishLabelCell.appendChild(finishSpan);
-  labelRow.appendChild(finishLabelCell);
+  labelTrack.appendChild(finishLabelCell);
 
+  labelRow.appendChild(labelTrack);
   boardEl.appendChild(labelRow);
 
-  // helper: สร้าง state สีของช่อง 1–30 สำหรับผู้เล่น 1 คน
+  // ---------- helper: สร้าง state สีของช่อง 1–30 สำหรับผู้เล่นหนึ่งคน ----------
   function buildCellStateForPlayer(pid, p) {
     const state = new Array(BOARD_SIZE + 1).fill("none"); // index 1..30
 
-    // 1) ทำสีเทาสำหรับ "รอบก่อนหน้า"
-    for (const [rk, roundData] of Object.entries(history)) {
-      const m = rk.match(/^round_(\d+)$/);
-      if (!m) continue;
-      const rNum = parseInt(m[1], 10);
-      if (rNum >= currentRound) continue; // เอาเฉพาะรอบที่จบไปแล้ว
-
-      const rec = (roundData.answers || {})[pid];
-      if (!rec) continue;
-
-      const base = rec.basePosition || 0;
-      const final = rec.finalPosition || base;
-      const start = Math.min(base, final) + 1;
-      const end = Math.max(base, final);
-
-      for (let pos = start; pos <= end; pos++) {
-        if (pos >= 1 && pos <= BOARD_SIZE) {
-          state[pos] = "past"; // cell-past → สีเทา
-        }
+    // ลำดับความสำคัญสี: เขียว > แดง > ฟ้า > เทา
+    const priority = {
+      none: 0,
+      past: 1,     // เทา
+      dice: 2,     // ฟ้า
+      wrong: 3,    // แดง
+      correct: 4,  // เขียว
+    };
+    const setState = (pos, value) => {
+      if (pos < 1 || pos > BOARD_SIZE) return;
+      if (priority[value] > priority[state[pos]]) {
+        state[pos] = value;
       }
+    };
+
+    const startOfRound = p.startOfRoundPos ?? 0;    // ตำแหน่ง ณ ตอนกด "เริ่มรอบใหม่"
+    const currentPos   = p.position || 0;
+
+    // 1) สีเทา: ช่องที่เคยเดินผ่านแล้ว (รอบเก่า) → ช่อง 1 ถึง startOfRoundPos
+    for (let pos = 1; pos <= Math.min(startOfRound, BOARD_SIZE); pos++) {
+      setState(pos, "past");
     }
 
-    // 2) รอบปัจจุบัน: สีฟ้าจากลูกเต๋า (phase rolling / countdown / answering)
-    if (
-      phase === "rolling" ||
-      phase === "questionCountdown" ||
-      phase === "answering"
-    ) {
-      if (p.hasRolled && p.lastRoll != null && !p.finished) {
-        const endPos = p.position || 0;
-        let startPos = endPos - p.lastRoll;
-        if (startPos < 0) startPos = 0;
-
-        for (let pos = startPos + 1; pos <= endPos; pos++) {
-          if (pos >= 1 && pos <= BOARD_SIZE) {
-            state[pos] = "dice"; // cell-dice → สีฟ้า
-          }
-        }
-      }
-    }
-
-    // 3) รอบปัจจุบัน: สีเขียว/แดงจากคำถาม (phase result / ended)
     const currKey = `round_${currentRound}`;
     const currRoundData = history[currKey] || {};
-    const recNow = (currRoundData.answers || {})[pid];
+    const recNow = (currRoundData.answers || {})[pid] || null;
 
-    if ((phase === "result" || phase === "ended") && recNow) {
-      const base = recNow.basePosition || 0;
-      const final = recNow.finalPosition || base;
-      const start = Math.min(base, final) + 1;
-      const end = Math.max(base, final);
-      const moveType = recNow.correct ? "correct" : "wrong";
-
-      for (let pos = start; pos <= end; pos++) {
-        if (pos >= 1 && pos <= BOARD_SIZE) {
-          state[pos] = moveType; // cell-correct หรือ cell-wrong
+    if (!recNow) {
+      // *** ยังไม่เฉลยคำถามรอบนี้ ***
+      // ถ้าได้ทอยแล้ว → ช่องที่เดินจาก startOfRound → currentPos เป็นสีฟ้า
+      if (p.hasRolled && p.lastRoll != null) {
+        const startPos = Math.min(startOfRound, currentPos);
+        const endPos = currentPos;
+        for (let pos = startPos + 1; pos <= endPos; pos++) {
+          setState(pos, "dice");
         }
+      }
+    } else {
+      // *** เฉลยคำถามแล้ว ***
+      const basePos  = recNow.basePosition ?? startOfRound;   // ตำแหน่งหลังทอยลูกเต๋า
+      const finalPos = recNow.finalPosition ?? currentPos;    // ตำแหน่งสุดท้าย
+
+      // 2) สีฟ้า: เส้นทางจาก startOfRound → basePos (ทอยลูกเต๋า)
+      for (let pos = startOfRound + 1; pos <= basePos; pos++) {
+        setState(pos, "dice");
+      }
+
+      // 3) สีเขียว/แดง: เส้นทางจาก basePos → finalPos (ตอบคำถาม)
+      const moveType = recNow.correct ? "correct" : "wrong";
+      const qStart = Math.min(basePos, finalPos);
+      const qEnd   = Math.max(basePos, finalPos);
+      for (let pos = qStart + 1; pos <= qEnd; pos++) {
+        setState(pos, moveType);
       }
     }
 
     return state;
   }
 
-  // ---------- สร้างแถวสำหรับผู้เล่นแต่ละคน ----------
+  // ---------- สร้างแถวผู้เล่น ----------
   Object.entries(players || {}).forEach(([pid, p]) => {
     const row = document.createElement("div");
     row.className = "player-row";
 
-    // ชื่อผู้เล่น (จำกัดความยาวด้วย CSS)
+    // ชื่อผู้เล่น (จำกัดความกว้างด้วย CSS)
     const nameDiv = document.createElement("div");
     nameDiv.className = "player-row-name";
     nameDiv.textContent = p.name || pid;
@@ -1737,37 +1751,37 @@ function renderBoard(roomData, players) {
     const track = document.createElement("div");
     track.className = "board-track";
 
-    // start cell
+    // Start (เว้นเปล่า แค่เป็น box)
     const startCell = document.createElement("div");
     startCell.className = "cell-card start-cell";
     track.appendChild(startCell);
 
-    // เตรียม state สีของช่อง
     const cellState = buildCellStateForPlayer(pid, p);
+    const playerPos = p.position || 0;
 
     // ช่อง 1–30
     for (let pos = 1; pos <= BOARD_SIZE; pos++) {
       const cell = document.createElement("div");
       cell.className = "cell-card play-cell";
 
-      // ใส่สีตาม state
+      // ใส่คลาสสีตาม state
       switch (cellState[pos]) {
+        case "past":
+          cell.classList.add("cell-past");
+          break;
         case "dice":
           cell.classList.add("cell-dice");
-          break;
-        case "correct":
-          cell.classList.add("cell-correct");
           break;
         case "wrong":
           cell.classList.add("cell-wrong");
           break;
-        case "past":
-          cell.classList.add("cell-past");
+        case "correct":
+          cell.classList.add("cell-correct");
           break;
       }
 
-      // ใส่หมาก (หยดน้ำ) ถ้าตำแหน่งตรงกัน
-      if ((p.position || 0) === pos) {
+      // วางหมาก (หยดน้ำ) ถ้าอยู่ตำแหน่งนี้
+      if (playerPos === pos) {
         const token = document.createElement("div");
         token.className = "token";
         token.style.backgroundColor = p.color || "#ffb300";
@@ -1783,7 +1797,7 @@ function renderBoard(roomData, players) {
       track.appendChild(cell);
     }
 
-    // finish cell
+    // Finish
     const finishCell = document.createElement("div");
     finishCell.className = "cell-card finish-cell";
     track.appendChild(finishCell);
