@@ -1625,7 +1625,6 @@ function renderBoard(roomData, players) {
   boardEl.innerHTML = "";
 
   // ---------- helper สำหรับเก็บสีช่องต่อผู้เล่น ----------
-  // state priority: past < dice < correct/wrong
   const STATE_NONE = 0;
   const STATE_PAST = 1;
   const STATE_DICE = 2;
@@ -1636,7 +1635,6 @@ function renderBoard(roomData, players) {
     if (pos < 0 || pos > BOARD_SIZE) return;
     const current = stateArr[pos] || STATE_NONE;
 
-    // ลำดับ priority: NONE < PAST < DICE < CORRECT/WRONG
     if (state === STATE_PAST) {
       if (current === STATE_NONE) stateArr[pos] = STATE_PAST;
     } else if (state === STATE_DICE) {
@@ -1644,12 +1642,10 @@ function renderBoard(roomData, players) {
         stateArr[pos] = STATE_DICE;
       }
     } else if (state === STATE_CORRECT || state === STATE_WRONG) {
-      // ถูก/ผิด สำคัญสุด
       stateArr[pos] = state;
     }
   }
 
-  // mark ช่องที่ "เดินผ่านและช่องที่หยุด" จาก from → to (รวมปลาย)
   function markRange(stateArr, fromPos, toPos, state) {
     if (fromPos == null || toPos == null) return;
 
@@ -1667,7 +1663,6 @@ function renderBoard(roomData, players) {
     }
   }
 
-  // round keys เรียงจากน้อยไปมาก
   const roundKeys = Object.keys(history)
     .filter((k) => k.startsWith("round_"))
     .sort((a, b) => {
@@ -1688,7 +1683,6 @@ function renderBoard(roomData, players) {
   const labelTrack = document.createElement("div");
   labelTrack.classList.add("board-track");
 
-  // การ์ด START label
   const startLabelCard = document.createElement("div");
   startLabelCard.classList.add("cell-card", "start-cell", "label-cell");
   const startLabelText = document.createElement("div");
@@ -1697,7 +1691,6 @@ function renderBoard(roomData, players) {
   startLabelCard.appendChild(startLabelText);
   labelTrack.appendChild(startLabelCard);
 
-  // การ์ดเลข 1..30 label
   for (let i = 1; i <= BOARD_SIZE; i++) {
     const cell = document.createElement("div");
     cell.classList.add("cell-card", "label-cell");
@@ -1708,7 +1701,6 @@ function renderBoard(roomData, players) {
     labelTrack.appendChild(cell);
   }
 
-  // การ์ด FINISH label
   const finishLabelCard = document.createElement("div");
   finishLabelCard.classList.add("cell-card", "finish-cell", "label-cell");
   const finishLabelText = document.createElement("div");
@@ -1720,15 +1712,12 @@ function renderBoard(roomData, players) {
   labelRow.appendChild(labelTrack);
   boardEl.appendChild(labelRow);
 
-  // ---------- สร้างแถวกระดาน 1 แถวต่อ 1 ผู้เล่น ----------
   const playerEntries = Object.entries(players || {});
 
   for (const [pid, p] of playerEntries) {
-    // stateArr[pos] = 0..4
     const stateArr = new Array(BOARD_SIZE + 1).fill(STATE_NONE);
 
-    // เดินผ่านทุกรอบ จาก history
-    let lastFinal = 0; // ตำแหน่งสุดท้ายของ player ก่อนเข้าสู่รอบใด ๆ
+    let lastFinal = 0;
 
     for (const rk of roundKeys) {
       const rNum = parseInt(rk.split("_")[1] || "0", 10);
@@ -1741,29 +1730,20 @@ function renderBoard(roomData, players) {
       const finalPosHist = typeof rec.finalPosition === "number" ? rec.finalPosition : basePosHist;
 
       if (rNum < currentRound) {
-        // รอบก่อนหน้า → ทั้งทางเดินลูกเต๋า + ทางเดินคำถาม เป็น "past" (เทา)
-        // เริ่มจากตำแหน่งก่อนรอบนี้ (lastFinal) → basePosHist (ทอยลูกเต๋า)
         markRange(stateArr, lastFinal, basePosHist, STATE_PAST);
-        // basePosHist → finalPosHist (เดินจากตอบคำถาม)
         markRange(stateArr, basePosHist, finalPosHist, STATE_PAST);
       } else if (rNum === currentRound) {
-        // รอบปัจจุบัน → สีขึ้นกับ phase
         if (phase === "result" || phase === "ended") {
-          // path จาก lastFinal → basePosHist = ทอยลูกเต๋า (ฟ้า)
           markRange(stateArr, lastFinal, basePosHist, STATE_DICE);
 
-          // path จาก basePosHist → finalPosHist = เดินจากคำถาม (เขียว/แดง)
           if (rec.correct === true) {
             markRange(stateArr, basePosHist, finalPosHist, STATE_CORRECT);
           } else {
             markRange(stateArr, basePosHist, finalPosHist, STATE_WRONG);
           }
         } else if (phase === "answering" || phase === "questionCountdown") {
-          // ยังไม่เฉลย → แสดงแค่ทางทอยลูกเต๋าเป็นฟ้า
-          // (ตำแหน่งปัจจุบันของ player จะอยู่ที่ basePosHist)
           markRange(stateArr, lastFinal, basePosHist, STATE_DICE);
         } else if (phase === "rolling") {
-          // ยังทอยอยู่ → ใช้ตำแหน่งจริงจาก players แทน
           const currentPos = p.position || 0;
           markRange(stateArr, lastFinal, currentPos, STATE_DICE);
         }
@@ -1772,24 +1752,21 @@ function renderBoard(roomData, players) {
       lastFinal = finalPosHist;
     }
 
-    // กรณียังไม่มี history สำหรับ currentRound เลย แต่มีการทอยลูกเต๋าในรอบนี้แล้ว
     if (
       currentRound > 0 &&
       (phase === "rolling" || phase === "answering" || phase === "questionCountdown") &&
       !roundKeys.some((rk) => parseInt(rk.split("_")[1] || "0", 10) === currentRound)
     ) {
-      // lastFinal ณ จุดนี้คือสุดรอบก่อนหน้าแล้ว
       const currentPos = p.position || 0;
       if (currentPos !== lastFinal) {
         markRange(stateArr, lastFinal, currentPos, STATE_DICE);
       }
     }
 
-    // ---------- สร้าง DOM สำหรับผู้เล่นคนนี้ ----------
     const row = document.createElement("div");
     row.classList.add("player-row");
 
-    const displayName = (p.name || pid).slice(0, 12); // จำกัดความยาวแสดงผล
+    const displayName = (p.name || pid).slice(0, 12);
     const nameCol = document.createElement("div");
     nameCol.classList.add("player-row-name");
     nameCol.textContent = displayName;
@@ -1798,12 +1775,10 @@ function renderBoard(roomData, players) {
     const track = document.createElement("div");
     track.classList.add("board-track");
 
-    // การ์ด START (ของผู้เล่น)
     const startCell = document.createElement("div");
     startCell.classList.add("cell-card", "start-cell", "play-cell");
     track.appendChild(startCell);
 
-    // การ์ด 1..30 ใช้ stateArr เพื่อลงสี
     const playCells = [];
     for (let i = 1; i <= BOARD_SIZE; i++) {
       const cell = document.createElement("div");
@@ -1824,12 +1799,10 @@ function renderBoard(roomData, players) {
       track.appendChild(cell);
     }
 
-    // การ์ด FINISH (ของผู้เล่น – ช่องเส้นชัย)
     const finishCell = document.createElement("div");
     finishCell.classList.add("cell-card", "finish-cell", "play-cell");
     track.appendChild(finishCell);
 
-    // วางหมากผู้เล่น (token) ลงบนการ์ดที่เหมาะสม
     const pos = p.position || 0;
     let tokenParent = startCell;
     if (pos > 0) {
