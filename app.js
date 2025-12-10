@@ -268,12 +268,16 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
 // ---------------- Player: Join Room ----------------
 joinRoomBtn.addEventListener("click", async () => {
   const roomCode = roomCodeInput.value.trim().toUpperCase();
-  const playerName = playerNameInput.value.trim();
+  const playerNameRaw = playerNameInput.value.trim();
 
-  if (!roomCode || !playerName) {
+  if (!roomCode || !playerNameRaw) {
     alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
     return;
   }
+
+  // ตัดช่องว่างหัวท้าย + normalize เป็นตัวพิมพ์เล็กไว้เช็คซ้ำ
+  const playerName = playerNameRaw;
+  const playerNameKey = playerNameRaw.toLowerCase();
 
   const roomRef = ref(db, `rooms/${roomCode}`);
   const snap = await get(roomRef);
@@ -289,6 +293,25 @@ joinRoomBtn.addEventListener("click", async () => {
     return;
   }
 
+  // ---------- เช็คชื่อซ้ำกับ Host ----------
+  const hostName = (roomData.hostName || "").trim();
+  const hostNameKey = hostName.toLowerCase();
+  if (hostNameKey && hostNameKey === playerNameKey) {
+    alert("ชื่อนี้ซ้ำกับชื่อ Host กรุณาใช้ชื่ออื่น");
+    return;
+  }
+
+  // ---------- เช็คชื่อซ้ำกับ Player คนอื่น ----------
+  const players = roomData.players || {};
+  for (const [, p] of Object.entries(players)) {
+    const existingName = (p.name || "").trim();
+    if (existingName.toLowerCase() === playerNameKey) {
+      alert("มีผู้เล่นใช้ชื่อนี้ในห้องแล้ว กรุณาใช้ชื่ออื่น");
+      return;
+    }
+  }
+
+  // ---------- ผ่านแล้วค่อยสร้างผู้เล่น ----------
   const playerId = createId("p");
 
   currentRoomCode = roomCode;
@@ -299,7 +322,7 @@ joinRoomBtn.addEventListener("click", async () => {
 
   try {
     await set(playerRef, {
-      name: playerName,
+      name: playerName,          // เก็บชื่อจริง (มีพิมพ์เล็ก/ใหญ่ตามที่พิมพ์)
       color: randomColor(),
       position: 0,
       lastRoll: null,
@@ -308,6 +331,7 @@ joinRoomBtn.addEventListener("click", async () => {
       answer: null,
       lastAnswerCorrect: null,
       joinedAt: Date.now(),
+      finished: false,
     });
 
     console.log("Joined room:", roomCode, "as", playerName);
