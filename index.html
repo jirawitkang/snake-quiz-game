@@ -137,7 +137,7 @@
       font-size: 1rem;
     }
 
-    /* Game Area / Board */
+        /* Game Area / Board */
     #gameArea {
       margin-top: 1.5rem;
       border-top: 1px solid #eee;
@@ -149,7 +149,6 @@
       margin-top: 0.75rem;
     }
 
-    /* แถว label ด้านบน: START | 1..30 | FINISH */
     .board-label-row {
       display: flex;
       align-items: center;
@@ -157,7 +156,6 @@
       margin-bottom: 6px;
     }
 
-    /* 1 แถวต่อ 1 ผู้เล่น */
     .player-row {
       display: flex;
       align-items: center;
@@ -166,7 +164,7 @@
     }
 
     .player-row-name {
-      flex: 0 0 120px;         /* ความกว้าง fix */
+      flex: 0 0 120px;
       max-width: 120px;
       text-align: right;
       font-size: 0.85rem;
@@ -176,10 +174,9 @@
       box-sizing: border-box;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;     /* ชื่อยาวจะถูกตัด ไม่ดันแถวให้เบี้ยว */
+      white-space: nowrap;
     }
 
-    /* track การ์ดกลาง: start | 1..30 | finish */
     .board-track {
       display: flex;
       gap: 8px;
@@ -189,11 +186,10 @@
       overflow-x: auto;
     }
 
-    /* การ์ดแต่ละช่อง (สี่เหลี่ยมจัตุรัส + 3D จากเงา) */
     .cell-card {
       position: relative;
       width: 64px;
-      height: 64px;                    /* ทำให้เป็นจัตุรัสจริง ๆ */
+      height: 64px;
       background: #ffffff;
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.18);
@@ -209,13 +205,11 @@
       color: #333;
     }
 
-    /* ช่อง label แถวบนสุดเท่านั้น */
     .label-cell .cell-label {
       font-size: 11px;
       color: #555;
     }
 
-    /* Start / Finish การ์ด */
     .start-cell,
     .finish-cell {
       background: #f4f4f4;
@@ -223,38 +217,31 @@
     }
 
     .start-cell {
-      border-right: 3px solid #1976d2;   /* เปลี่ยนเป็นเส้นสีน้ำเงิน */
+      border-right: 3px solid #1976d2;
     }
 
     .finish-cell {
-      border-left: 3px solid #43a047;    /* เปลี่ยนเป็นเส้นสีเขียว */
+      border-left: 3px solid #43a047;
     }
 
-    /* ช่อง 1..30 สำหรับการเดิน (ของผู้เล่นแต่ละคน) */
     .cell-card.play-cell {
       background: #ffffff;
     }
 
-    /* สีพาสเทลที่เข้มและสดขึ้น */
-
-    /* เดินจากการทอยลูกเต๋าในรอบนี้ → ฟ้า */
     .cell-card.play-cell.cell-dice {
-      background: #90caf9;   /* ฟ้า pastel เข้มขึ้น */
+      background: #90caf9;
     }
 
-    /* เดินจากตอบถูกในรอบนี้ → เขียว */
     .cell-card.play-cell.cell-correct {
-      background: #a5d6a7;   /* เขียว pastel เข้มขึ้น */
+      background: #a5d6a7;
     }
 
-    /* เดินจากตอบผิด / ไม่ทันในรอบนี้ → แดง */
     .cell-card.play-cell.cell-wrong {
-      background: #ef9a9a;   /* แดง pastel เข้มขึ้น */
+      background: #ef9a9a;
     }
 
-    /* ช่องที่เดินผ่านในรอบก่อน ๆ → เทา */
     .cell-card.play-cell.cell-past {
-      background: #bdbdbd;   /* เทาเข้มขึ้น */
+      background: #bdbdbd;
     }
 
     .cell-card:hover {
@@ -262,15 +249,14 @@
       box-shadow: 0 8px 14px rgba(0,0,0,0.25);
     }
 
-    /* หมากผู้เล่น: icon แนว Google Map pin */
     .token {
       position: absolute;
-      bottom: -6px;                  /* ให้ปลาย pin ลงมานิดนึง */
+      bottom: -6px;
       right: 8px;
       width: 26px;
       height: 26px;
-      background: #1976d2;           /* จะถูก override ด้วย p.color ใน JS */
-      border-radius: 50% 50% 50% 0;  /* รูปหยดน้ำ */
+      background: #1976d2;
+      border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg);
       box-shadow: 0 3px 6px rgba(0,0,0,0.3);
       display: flex;
@@ -289,7 +275,7 @@
       font-size: 11px;
       font-weight: 700;
       color: #333;
-      transform: rotate(45deg);      /* หมุนกลับให้ตัวอักษรตรง */
+      transform: rotate(45deg);
     }
 
     .cell-card:hover {
