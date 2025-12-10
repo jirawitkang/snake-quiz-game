@@ -199,9 +199,15 @@
     }
     
     /* การ์ดช่องเล่น 1–30 → ให้เป็นสี่เหลี่ยมจัตุรัส */
+    /* FORCE square card for play cells */
     .cell-card.play-cell {
-      width: 56px;   /* ปรับให้เท่ากับ height */
-      height: 56px;  /* ตอนนี้เลยเป็นจัตุรัสจริง ๆ */
+      width: 56px !important;
+      height: 56px !important;
+      padding: 0 !important;
+      line-height: 1 !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     /* การ์ด label แถวบนสุด (Start / 1–30 / Finish) */
@@ -397,6 +403,15 @@
       text-align: left;
       font-weight: 600;
     }
+
+    /* FORCE square card for play cells */
+    .cell-card.play-cell {
+      width: 56px !important;
+      height: 56px !important;
+      padding: 0 !important;
+      line-height: 1 !important;
+    }
+
   </style>
 </head>
 <body>
