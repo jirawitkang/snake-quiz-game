@@ -186,10 +186,9 @@
       overflow-x: auto;
     }
 
+    /* ขนาดและหน้าตาการ์ดพื้นฐาน */
     .cell-card {
       position: relative;
-      width: 64px;
-      height: 64px;
       background: #ffffff;
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.18);
@@ -198,53 +197,58 @@
       justify-content: center;
       transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
     }
-
-    .cell-card .cell-label {
-      font-weight: 700;
-      font-size: 12px;
-      color: #333;
+    
+    /* การ์ดช่องเล่น 1–30 → ให้เป็นสี่เหลี่ยมจัตุรัส */
+    .cell-card.play-cell {
+      width: 56px;   /* ปรับให้เท่ากับ height */
+      height: 56px;  /* ตอนนี้เลยเป็นจัตุรัสจริง ๆ */
     }
-
+    
+    /* การ์ด label แถวบนสุด (Start / 1–30 / Finish) */
+    .label-cell {
+      width: 56px;
+      height: 40px;
+    }
+    
     .label-cell .cell-label {
       font-size: 11px;
       color: #555;
     }
-
+    
+    /* Start / Finish card จริงของแต่ละแถวผู้เล่น (ไม่ต้องจัตุรัส) */
     .start-cell,
     .finish-cell {
       background: #f4f4f4;
       min-width: 70px;
+      height: 56px;   /* สูงเท่ากับ play-cell เพื่อให้แถวเรียงตรงกัน */
     }
-
+    
+    /* เส้นแบ่ง start/finish */
     .start-cell {
-      border-right: 3px solid #1976d2;
+      border-right: 3px solid #1976d2;  /* น้ำเงิน */
     }
-
+    
     .finish-cell {
-      border-left: 3px solid #43a047;
+      border-left: 3px solid #43a047;   /* เขียว */
     }
-
+    
     /* สีการ์ดตามสถานะ (พาสเทลแต่เข้มขึ้น) */
-    .cell-card.play-cell {
-      background: #ffffff;
-    }
-
     .cell-card.play-cell.cell-dice {
-      background: #64b5f6;   /* น้ำเงินฟ้า */
+      background: #64b5f6;   /* ฟ้าเข้มแนวพาสเทล */
     }
-
+    
     .cell-card.play-cell.cell-correct {
-      background: #81c784;   /* เขียว */
+      background: #81c784;   /* เขียวพาสเทลเข้ม */
     }
-
+    
     .cell-card.play-cell.cell-wrong {
-      background: #e57373;   /* แดง */
+      background: #e57373;   /* แดงพาสเทลเข้ม */
     }
-
+    
     .cell-card.play-cell.cell-past {
       background: #9e9e9e;   /* เทาเข้ม */
     }
-
+    
     .cell-card:hover {
       transform: translateY(-3px) rotateX(6deg);
       box-shadow: 0 8px 14px rgba(0,0,0,0.25);
@@ -253,19 +257,19 @@
     /* หมากแบบ pin Google Map */
     .token {
       position: absolute;
-      bottom: -6px;
-      right: 8px;
-      width: 26px;
-      height: 26px;
-      background: #1976d2;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
+      top: 50%;
+      left: 50%;
+      width: 28px;
+      height: 28px;
+      background: #1976d2;          /* สีหลักของหมาก (เดี๋ยว JS จะ override เป็นสีผู้เล่น) */
+      border-radius: 50% 50% 50% 0;  /* ทรงหยดน้ำ */
+      transform: translate(-50%, -60%) rotate(-45deg);
       box-shadow: 0 3px 6px rgba(0,0,0,0.3);
       display: flex;
       align-items: center;
       justify-content: center;
     }
-
+    
     .token-inner {
       width: 14px;
       height: 14px;
@@ -277,7 +281,7 @@
       font-size: 11px;
       font-weight: 700;
       color: #333;
-      transform: rotate(45deg);
+      transform: rotate(45deg);  /* หมุนกลับให้ตัวหนังสือตรง */
     }
 
     #roundInfo {
