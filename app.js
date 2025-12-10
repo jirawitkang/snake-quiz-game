@@ -1616,65 +1616,23 @@ async function moveToAnswering(oldRoomData) {
   await update(ref(db), updates);
 }
 
-// ---------------- Board Rendering ----------------
+// ---------------- Board Rendering (multi-row, per player) ----------------
 function renderBoard(roomData, players) {
-  const phase = roomData.phase || "idle";
-  const currentRound = roomData.currentRound || 0;
-  const history = roomData.history || {};
-
+  const entries = Object.entries(players || {});
   boardEl.innerHTML = "";
 
-  // ---------- helper สำหรับเก็บสีช่องต่อผู้เล่น ----------
-  const STATE_NONE = 0;
-  const STATE_PAST = 1;
-  const STATE_DICE = 2;
-  const STATE_CORRECT = 3;
-  const STATE_WRONG = 4;
-
-  function applyState(stateArr, pos, state) {
-    if (pos < 0 || pos > BOARD_SIZE) return;
-    const current = stateArr[pos] || STATE_NONE;
-
-    if (state === STATE_PAST) {
-      if (current === STATE_NONE) stateArr[pos] = STATE_PAST;
-    } else if (state === STATE_DICE) {
-      if (current === STATE_NONE || current === STATE_PAST) {
-        stateArr[pos] = STATE_DICE;
-      }
-    } else if (state === STATE_CORRECT || state === STATE_WRONG) {
-      stateArr[pos] = state;
-    }
+  if (entries.length === 0) {
+    boardEl.textContent = "ยังไม่มีผู้เล่นบนกระดาน";
+    return;
   }
 
-  function markRange(stateArr, fromPos, toPos, state) {
-    if (fromPos == null || toPos == null) return;
+  const phase = roomData.phase || "idle";
 
-    let from = Math.max(0, Math.min(BOARD_SIZE, fromPos));
-    let to = Math.max(0, Math.min(BOARD_SIZE, toPos));
-
-    if (from === to) {
-      applyState(stateArr, to, state);
-      return;
-    }
-
-    const step = from < to ? 1 : -1;
-    for (let pos = from + step; step > 0 ? pos <= to : pos >= to; pos += step) {
-      applyState(stateArr, pos, state);
-    }
-  }
-
-  const roundKeys = Object.keys(history)
-    .filter((k) => k.startsWith("round_"))
-    .sort((a, b) => {
-      const ra = parseInt(a.split("_")[1] || "0", 10);
-      const rb = parseInt(b.split("_")[1] || "0", 10);
-      return ra - rb;
-    });
-
-  // ---------- แถวบนสุด: Label START | 1..30 | FINISH ----------
+  // ---------------- แถวบนสุด: Label Start + 1–30 + Finish ----------------
   const labelRow = document.createElement("div");
   labelRow.classList.add("board-label-row");
 
+  // ช่องชื่อ (เว้นไว้ให้ตรงกับชื่อผู้เล่นด้านล่าง)
   const emptyName = document.createElement("div");
   emptyName.classList.add("player-row-name");
   emptyName.textContent = "";
@@ -1683,145 +1641,109 @@ function renderBoard(roomData, players) {
   const labelTrack = document.createElement("div");
   labelTrack.classList.add("board-track");
 
+  // การ์ด Start (เฉพาะ label row)
   const startLabelCard = document.createElement("div");
   startLabelCard.classList.add("cell-card", "start-cell", "label-cell");
-  const startLabelText = document.createElement("div");
-  startLabelText.classList.add("cell-label");
-  startLabelText.textContent = "START";
-  startLabelCard.appendChild(startLabelText);
+  const startLabelSpan = document.createElement("span");
+  startLabelSpan.classList.add("cell-label");
+  startLabelSpan.textContent = "Start";
+  startLabelCard.appendChild(startLabelSpan);
   labelTrack.appendChild(startLabelCard);
 
+  // การ์ด 1–30 (เฉพาะ label row)
   for (let i = 1; i <= BOARD_SIZE; i++) {
-    const cell = document.createElement("div");
-    cell.classList.add("cell-card", "label-cell");
-    const label = document.createElement("div");
-    label.classList.add("cell-label");
-    label.textContent = i;
-    cell.appendChild(label);
-    labelTrack.appendChild(cell);
+    const numCard = document.createElement("div");
+    numCard.classList.add("cell-card", "play-cell", "label-cell");
+    const numSpan = document.createElement("span");
+    numSpan.classList.add("cell-label");
+    numSpan.textContent = i;
+    numCard.appendChild(numSpan);
+    labelTrack.appendChild(numCard);
   }
 
+  // การ์ด Finish (เฉพาะ label row)
   const finishLabelCard = document.createElement("div");
   finishLabelCard.classList.add("cell-card", "finish-cell", "label-cell");
-  const finishLabelText = document.createElement("div");
-  finishLabelText.classList.add("cell-label");
-  finishLabelText.textContent = "FINISH";
-  finishLabelCard.appendChild(finishLabelText);
+  const finishLabelSpan = document.createElement("span");
+  finishLabelSpan.classList.add("cell-label");
+  finishLabelSpan.textContent = "Finish";
+  finishLabelCard.appendChild(finishLabelSpan);
   labelTrack.appendChild(finishLabelCard);
 
   labelRow.appendChild(labelTrack);
   boardEl.appendChild(labelRow);
 
-  const playerEntries = Object.entries(players || {});
+  // ---------------- แสดงแถวต่อผู้เล่น ----------------
+  const sortedEntries = entries.sort((a, b) => {
+    const nameA = (a[1].name || a[0] || "").toString();
+    const nameB = (b[1].name || b[0] || "").toString();
+    return nameA.localeCompare(nameB, "th");
+  });
 
-  for (const [pid, p] of playerEntries) {
-    const stateArr = new Array(BOARD_SIZE + 1).fill(STATE_NONE);
-
-    let lastFinal = 0;
-
-    for (const rk of roundKeys) {
-      const rNum = parseInt(rk.split("_")[1] || "0", 10);
-      const roundData = history[rk] || {};
-      const answers = roundData.answers || {};
-      const rec = answers[pid];
-      if (!rec) continue;
-
-      const basePosHist = typeof rec.basePosition === "number" ? rec.basePosition : lastFinal;
-      const finalPosHist = typeof rec.finalPosition === "number" ? rec.finalPosition : basePosHist;
-
-      if (rNum < currentRound) {
-        markRange(stateArr, lastFinal, basePosHist, STATE_PAST);
-        markRange(stateArr, basePosHist, finalPosHist, STATE_PAST);
-      } else if (rNum === currentRound) {
-        if (phase === "result" || phase === "ended") {
-          markRange(stateArr, lastFinal, basePosHist, STATE_DICE);
-
-          if (rec.correct === true) {
-            markRange(stateArr, basePosHist, finalPosHist, STATE_CORRECT);
-          } else {
-            markRange(stateArr, basePosHist, finalPosHist, STATE_WRONG);
-          }
-        } else if (phase === "answering" || phase === "questionCountdown") {
-          markRange(stateArr, lastFinal, basePosHist, STATE_DICE);
-        } else if (phase === "rolling") {
-          const currentPos = p.position || 0;
-          markRange(stateArr, lastFinal, currentPos, STATE_DICE);
-        }
-      }
-
-      lastFinal = finalPosHist;
-    }
-
-    if (
-      currentRound > 0 &&
-      (phase === "rolling" || phase === "answering" || phase === "questionCountdown") &&
-      !roundKeys.some((rk) => parseInt(rk.split("_")[1] || "0", 10) === currentRound)
-    ) {
-      const currentPos = p.position || 0;
-      if (currentPos !== lastFinal) {
-        markRange(stateArr, lastFinal, currentPos, STATE_DICE);
-      }
-    }
-
+  for (const [pid, p] of sortedEntries) {
     const row = document.createElement("div");
     row.classList.add("player-row");
 
-    const displayName = (p.name || pid).slice(0, 12);
-    const nameCol = document.createElement("div");
-    nameCol.classList.add("player-row-name");
-    nameCol.textContent = displayName;
-    row.appendChild(nameCol);
+    // ชื่อผู้เล่น (ตัดให้ไม่ยาวเกิน)
+    const nameDiv = document.createElement("div");
+    nameDiv.classList.add("player-row-name");
+    const fullName = p.name || pid;
+    nameDiv.textContent = fullName.length > 12 ? fullName.slice(0, 11) + "…" : fullName;
+    row.appendChild(nameDiv);
 
-    const track = document.createElement("div");
-    track.classList.add("board-track");
+    // แถวการ์ดของผู้เล่นคนนี้
+    const trackDiv = document.createElement("div");
+    trackDiv.classList.add("board-track");
 
+    // การ์ด Start (ของแถวนี้ ไม่ต้องมี label แล้ว)
     const startCell = document.createElement("div");
-    startCell.classList.add("cell-card", "start-cell", "play-cell");
-    track.appendChild(startCell);
+    startCell.classList.add("cell-card", "start-cell");
+    trackDiv.appendChild(startCell);
 
-    const playCells = [];
+    const position = p.position || 0;
+    const lastRoll = p.lastRoll || 0;
+
+    // สำหรับ phase "rolling" → คำนวณช่องที่เดินผ่านจากการทอย (ให้เป็นสีฟ้า)
+    let diceStart = null;
+    let diceEnd = null;
+    if (phase === "rolling" && lastRoll > 0 && position > 0) {
+      diceEnd = position;
+      diceStart = Math.max(1, position - lastRoll + 1);
+    }
+
+    // สร้างการ์ด 1–30 ของผู้เล่นคนนี้
     for (let i = 1; i <= BOARD_SIZE; i++) {
       const cell = document.createElement("div");
       cell.classList.add("cell-card", "play-cell");
 
-      const state = stateArr[i];
-      if (state === STATE_PAST) {
-        cell.classList.add("cell-past");
-      } else if (state === STATE_DICE) {
+      // ถ้าอยู่ในช่วงที่เดินจากการทอยลูกเต๋าในรอบนี้ → สีฟ้า
+      if (diceStart !== null && i >= diceStart && i <= diceEnd) {
         cell.classList.add("cell-dice");
-      } else if (state === STATE_CORRECT) {
-        cell.classList.add("cell-correct");
-      } else if (state === STATE_WRONG) {
-        cell.classList.add("cell-wrong");
       }
 
-      playCells[i] = cell;
-      track.appendChild(cell);
+      // ถ้าตำแหน่งปัจจุบันของผู้เล่นอยู่ที่ช่องนี้ → วาง token
+      if (i === position) {
+        const token = document.createElement("div");
+        token.classList.add("token");
+        token.style.backgroundColor = p.color || "#1976d2";
+
+        const tokenInner = document.createElement("div");
+        tokenInner.classList.add("token-inner");
+        tokenInner.textContent = fullName.charAt(0) || "?";
+
+        token.appendChild(tokenInner);
+        cell.appendChild(token);
+      }
+
+      trackDiv.appendChild(cell);
     }
 
+    // การ์ด Finish (แถวผู้เล่น)
     const finishCell = document.createElement("div");
-    finishCell.classList.add("cell-card", "finish-cell", "play-cell");
-    track.appendChild(finishCell);
+    finishCell.classList.add("cell-card", "finish-cell");
+    trackDiv.appendChild(finishCell);
 
-    const pos = p.position || 0;
-    let tokenParent = startCell;
-    if (pos > 0) {
-      const idx = Math.min(pos, BOARD_SIZE);
-      tokenParent = playCells[idx] || startCell;
-    }
-
-    const token = document.createElement("div");
-    token.classList.add("token");
-    token.style.backgroundColor = p.color || "#1976d2";
-
-    const tokenInner = document.createElement("div");
-    tokenInner.classList.add("token-inner");
-    tokenInner.textContent = (p.name || pid).trim().charAt(0) || "?";
-
-    token.appendChild(tokenInner);
-    tokenParent.appendChild(token);
-
-    row.appendChild(track);
+    row.appendChild(trackDiv);
     boardEl.appendChild(row);
   }
 }
