@@ -472,31 +472,56 @@
       <!-- Host -->
       <div class="card">
         <h2>สร้างห้อง (Host)</h2>
-        ...
+      
+        <label>ชื่อของคุณ (Host)</label>
+        <input id="hostNameInput" placeholder="เช่น ครูเอ, Teacher A" />
+      
         <button id="createRoomBtn" class="btn-primary">ถัดไป: ตั้งค่าเกม</button>
-  
-        <div id="hostGameOptions" class="mt-14">
+      
+        <div id="hostGameOptions" class="mt-14" style="display:none;">
           <div class="section-title">GAME SETTINGS</div>
-  
+      
           <div class="card-split">
             <div class="split-col">
-              <!-- กลุ่มคำถาม/รอบ -->
-              ...
+              <label>ชุดคำถามที่ใช้ในเกม</label>
+              <select id="questionSetSelect">
+                <option value="general">ชุดคำถามทั่วไป</option>
+                <option value="setA">ชุดคำถามตัวอย่าง A</option>
+                <option value="setB">ชุดคำถามตัวอย่าง B</option>
+              </select>
+      
+              <label>จำนวนรอบสูงสุดของเกม</label>
+              <input id="maxRoundsInput" type="number" min="1" value="10" />
             </div>
+      
             <div class="split-col">
-              <!-- กลุ่มผู้ชนะ/เดินหน้า/ถอย -->
-              ...
+              <label>จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อมีผู้เข้าเส้นชัยครบ)</label>
+              <input id="maxWinnersInput" type="number" min="1" value="5" />
+      
+              <label>จำนวนช่องที่ได้เดินเพิ่มเมื่อตอบถูก</label>
+              <input id="rewardCorrectInput" type="number" value="1" />
+      
+              <label>จำนวนช่องที่ต้องเดินถอยเมื่อตอบผิด / ตอบไม่ทัน</label>
+              <input id="penaltyWrongInput" type="number" value="-1" />
             </div>
           </div>
-  
-          <button id="confirmCreateRoomBtn" class="btn-primary mt-14">ยืนยันสร้างห้อง</button>
+      
+          <button id="confirmCreateRoomBtn" class="btn-primary mt-14">
+            ยืนยันสร้างห้อง
+          </button>
         </div>
       </div>
   
       <!-- Player -->
       <div class="card">
         <h2>เข้าห้อง (Player)</h2>
-        ...
+      
+        <label>Room Code</label>
+        <input id="roomCodeInput" placeholder="เช่น ABC123" />
+      
+        <label>ชื่อนักเรียน</label>
+        <input id="playerNameInput" placeholder="เช่น นร.01, นร.ภูมิ, ฯลฯ" />
+      
         <button id="joinRoomBtn" class="btn-primary">Join ห้อง</button>
       </div>
     </div>
