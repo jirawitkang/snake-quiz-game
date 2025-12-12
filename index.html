@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Snake Quiz – Multiplayer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="ui.css" />
   <style>
     body {
       font-family: sans-serif;
@@ -445,114 +446,106 @@
     }
 
   </style>
+  <link rel="stylesheet" href="ui.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>Snake Quiz – Multiplayer</h1>
-
-    <div class="row">
-      <!-- Host: Create Room -->
-      <div class="card">
-        <h2>สร้างห้อง (สำหรับครู / Host)</h2>
-        <label>ชื่อของคุณ (Host)</label>
-        <input id="hostNameInput" placeholder="เช่น ครูเอ, Teacher A" />
-        <button id="createRoomBtn">ถัดไป: ตั้งค่าเกม</button>
-
-        <!-- ตัวเลือกเกมของ Host ก่อนสร้างห้องจริง -->
-        <div id="hostGameOptions">
-          <h3>ตั้งค่าเกมก่อนสร้างห้อง</h3>
-
-          <label>ชุดคำถามที่ใช้ในเกม</label>
-          <select id="questionSetSelect">
-            <option value="general">ชุดคำถามทั่วไป</option>
-            <option value="setA">ชุดคำถามตัวอย่าง A</option>
-            <option value="setB">ชุดคำถามตัวอย่าง B</option>
-          </select>
-
-          <label>จำนวนรอบสูงสุดของเกม</label>
-          <input id="maxRoundsInput" type="number" min="1" value="10" />
-
-          <label>จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อมีผู้เข้าเส้นชัยครบ)</label>
-          <input id="maxWinnersInput" type="number" min="1" value="5" />
-
-          <label>จำนวนช่องที่ได้เดินเพิ่มเมื่อตอบถูก</label>
-          <input id="rewardCorrectInput" type="number" value="1" />
-
-          <label>จำนวนช่องที่ต้องเดินถอยเมื่อตอบผิด / ตอบไม่ทัน</label>
-          <input id="penaltyWrongInput" type="number" value="-1" />
-
-          <button id="confirmCreateRoomBtn">ยืนยันสร้างห้อง</button>
-          <p class="info">
-            เมื่อกด "ยืนยันสร้างห้อง" แล้ว จะสร้าง Room Code และสามารถให้ผู้เล่น Join ได้
-          </p>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-badge">SQ</div>
+        <div class="brand-title">
+          <strong>Snake Quiz – Multiplayer</strong>
+          <span>Library Purple Theme</span>
         </div>
-
-        <p class="info">
-          ขั้นตอน: 1) กรอกชื่อ Host → 2) ตั้งค่าเกม → 3) ยืนยันสร้างห้อง แล้วแชร์ Room Code ให้นักเรียน
-        </p>
       </div>
-
-      <!-- Player: Join Room -->
-      <div class="card">
-        <h2>เข้าห้อง (สำหรับนักเรียน)</h2>
-        <label>Room Code</label>
-        <input id="roomCodeInput" placeholder="เช่น ABC123" />
-        <label>ชื่อนักเรียน</label>
-        <input id="playerNameInput" placeholder="เช่น นร.01, นร.ภูมิ, ฯลฯ" />
-        <button id="joinRoomBtn">Join ห้อง</button>
-        <p class="info">
-          นักเรียนกรอกรหัสห้องที่ครูให้ แล้วใส่ชื่อของตัวเองเพื่อต่อเข้าห้อง
-        </p>
+      <div class="header-meta">
+        <div class="pill" id="uiRoomPill">Room: -</div>
+        <div class="pill" id="uiRolePill">Role: -</div>
       </div>
     </div>
+  </header>
 
-    <!-- Lobby: รายชื่อผู้เล่น -->
-    <div id="lobby">
+  <div class="container">
+    <div class="section-title">LIBRARY RESOURCES</div>
+  
+    <div class="grid-2">
+      <!-- Host -->
+      <div class="card">
+        <h2>สร้างห้อง (Host)</h2>
+        ...
+        <button id="createRoomBtn" class="btn-primary">ถัดไป: ตั้งค่าเกม</button>
+  
+        <div id="hostGameOptions" class="mt-14">
+          <div class="section-title">GAME SETTINGS</div>
+  
+          <div class="card-split">
+            <div class="split-col">
+              <!-- กลุ่มคำถาม/รอบ -->
+              ...
+            </div>
+            <div class="split-col">
+              <!-- กลุ่มผู้ชนะ/เดินหน้า/ถอย -->
+              ...
+            </div>
+          </div>
+  
+          <button id="confirmCreateRoomBtn" class="btn-primary mt-14">ยืนยันสร้างห้อง</button>
+        </div>
+      </div>
+  
+      <!-- Player -->
+      <div class="card">
+        <h2>เข้าห้อง (Player)</h2>
+        ...
+        <button id="joinRoomBtn" class="btn-primary">Join ห้อง</button>
+      </div>
+    </div>
+  
+    <!-- Lobby -->
+    <div class="section-title mt-14">LOBBY</div>
+    <div class="card">
       <div id="roomInfo"></div>
-      <div id="roleInfo"></div>
-
+      <div id="roleInfo" class="muted"></div>
+  
       <p><strong>รายชื่อผู้เล่นในห้อง:</strong></p>
       <ul id="playerList"></ul>
-      <p class="info">* สถานะผู้เล่น / ทอยล่าสุด / ตอบล่าสุด จะอัปเดตแบบ realtime</p>
-
-      <!-- Host only: ปุ่มควบคุมรอบ / คำถาม -->
-      <div id="hostRoundControls">
-        <button id="startRoundBtn">เริ่มรอบใหม่ (Host)</button>
-        <button id="startQuestionBtn">เริ่มคำถาม (Host)</button>
-        <button id="revealAnswerBtn">เฉลยคำถาม & ขยับตัว (Host)</button>
-        <p class="info">
-          1) กด "เริ่มรอบใหม่" → นักเรียนทอยลูกเต๋ารอบละ 1 ครั้ง<br>
-          2) เมื่อทุกคนทอยครบ กด "เริ่มคำถาม" → ขึ้นนับถอยหลัง 3,2,1 และเข้าสู่ช่วงตอบ<br>
-          3) เมื่อหมดเวลา หรือทุกคนตอบครบ กด "เฉลยคำถาม & ขยับตัว"
-        </p>
+  
+      <div id="hostRoundControls" class="mt-10">
+        <button id="startRoundBtn" class="btn-primary">เริ่มรอบใหม่ (Host)</button>
+        <button id="startQuestionBtn" class="btn-ghost">เริ่มคำถาม (Host)</button>
+        <button id="revealAnswerBtn" class="btn-ghost">เฉลยคำถาม & ขยับตัว (Host)</button>
       </div>
     </div>
-
-    <!-- Game Area: กระดาน + ปุ่ม Roll + คำถาม -->
-    <div id="gameArea">
-      <h2>กระดานเกม</h2>
+  
+    <!-- Game Area -->
+    <div class="section-title mt-14">GAME BOARD</div>
+    <div id="gameArea" class="card">
       <div id="roundInfo"></div>
-      <div id="phaseInfo"></div>
-
-      <div id="board"></div>
-
-      <div id="playerControls">
-        <button id="rollDiceBtn">ทอยลูกเต๋า (สำหรับผู้เล่น)</button>
-        <div id="playerStatus"></div>
+      <div id="phaseInfo" class="muted"></div>
+  
+      <div class="game-shell mt-10">
+        <div>
+          <div id="board"></div>
+        </div>
+  
+        <div>
+          <div id="playerControls">
+            <button id="rollDiceBtn" class="btn-primary">ทอยลูกเต๋า</button>
+            <div id="playerStatus" class="muted mt-10"></div>
+          </div>
+  
+          <div id="questionArea" class="mt-14">
+            <div id="countdownDisplay"></div>
+            <div id="questionText"></div>
+            <div id="choicesContainer"></div>
+          </div>
+        </div>
       </div>
-
-      <div id="questionArea">
-        <div id="countdownDisplay"></div>
-        <div id="questionText"></div>
-        <div id="choicesContainer"></div>
-      </div>
-
-      <!-- สรุปผลหลังจบเกม -->
-      <div id="endGameArea" style="display:none; margin-top:1rem; border-top:1px solid #ddd; padding-top:0.75rem;">
+  
+      <div id="endGameArea" style="display:none; margin-top:1rem;">
         <h3>สรุปผลเกม</h3>
         <div id="endGameSummary"></div>
       </div>
-
     </div>
   </div>
 
