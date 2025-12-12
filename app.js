@@ -366,6 +366,11 @@ joinRoomBtn.addEventListener("click", async () => {
 // ---------------- Lobby View ----------------
 function enterLobbyView() {
   lobbyEl.style.display = "block";
+  const uiRoomPill = document.getElementById("uiRoomPill");
+  const uiRolePill = document.getElementById("uiRolePill");
+  
+  if (uiRoomPill) uiRoomPill.textContent = `Room: ${currentRoomCode || "-"}`;
+  if (uiRolePill) uiRolePill.textContent = `Role: ${currentRole || "-"}`;
 
   if (currentRoomCode) {
     roomInfoEl.textContent = `Room Code: ${currentRoomCode}`;
