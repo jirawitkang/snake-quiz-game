@@ -376,31 +376,35 @@ joinRoomBtn.addEventListener("click", async () => {
 
 // ---------------- Lobby View ----------------
 function enterLobbyView() {
-  lobbyEl.style.display = "block";
-  const uiRoomPill = document.getElementById("uiRoomPill");
-  const uiRolePill = document.getElementById("uiRolePill");
-  
-  if (uiRoomPill) uiRoomPill.textContent = `Room: ${currentRoomCode || "-"}`;
-  if (uiRolePill) uiRolePill.textContent = `Role: ${currentRole || "-"}`;
+  // กัน null ทุกตัว (UI ใหม่บางอันอาจไม่มี)
+  if (lobbyEl) lobbyEl.style.display = "block";
 
-  if (currentRoomCode) {
-    roomInfoEl.textContent = `Room Code: ${currentRoomCode}`;
-  } else {
-    roomInfoEl.textContent = "";
+  if (roomInfoEl) {
+    roomInfoEl.textContent = currentRoomCode ? `Room Code: ${currentRoomCode}` : "";
   }
 
   if (currentRole === "host") {
-    roleInfoEl.textContent =
-      "คุณเป็น Host (ครู): จอของคุณจะใช้ดูสถานะของนักเรียนทุกคนตลอดเกม";
-    hostRoundControlsEl.style.display = "block";
+    if (roleInfoEl) {
+      roleInfoEl.textContent =
+        "คุณเป็น Host (ครู): จอของคุณจะใช้ดูสถานะของนักเรียนทุกคนตลอดเกม";
+    }
+    if (hostRoundControlsEl) hostRoundControlsEl.style.display = "block";
   } else if (currentRole === "player") {
-    roleInfoEl.textContent =
-      "คุณเป็นผู้เล่น: รอครูเริ่มรอบใหม่ → ทอยลูกเต๋า → ตอบคำถามในแต่ละรอบ";
-    hostRoundControlsEl.style.display = "none";
+    if (roleInfoEl) {
+      roleInfoEl.textContent =
+        "คุณเป็นผู้เล่น: รอครูเริ่มรอบใหม่ → ทอยลูกเต๋า → ตอบคำถามในแต่ละรอบ";
+    }
+    if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
   } else {
-    roleInfoEl.textContent = "";
-    hostRoundControlsEl.style.display = "none";
+    if (roleInfoEl) roleInfoEl.textContent = "";
+    if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
   }
+
+  // ถ้ามี pill บน header (ธีมใหม่) ก็อัปเดตด้วย
+  const uiRoomPill = document.getElementById("uiRoomPill");
+  const uiRolePill = document.getElementById("uiRolePill");
+  if (uiRoomPill) uiRoomPill.textContent = `Room: ${currentRoomCode || "-"}`;
+  if (uiRolePill) uiRolePill.textContent = `Role: ${currentRole || "-"}`;
 }
 
 // ---------------- Subscribe Room Realtime ----------------
