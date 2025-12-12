@@ -207,16 +207,19 @@ function getPathCells(from, to) {
 
 // ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
 createRoomBtn.addEventListener("click", () => {
-  const hostName = hostNameInput.value.trim();
+  const hostNameEl = document.getElementById("hostNameInput");
+  const hostName = (hostNameEl?.value || "").trim();
+
   if (!hostName) {
     alert("กรุณากรอกชื่อของ Host ก่อน");
     return;
   }
 
-  // ล็อคชื่อ + แสดง panel ตั้งค่าเกม
-  hostNameInput.disabled = true;
+  hostNameEl.disabled = true;
   createRoomBtn.disabled = true;
-  hostGameOptionsEl.style.display = "block";
+
+  const hostGameOptionsEl = document.getElementById("hostGameOptions");
+  if (hostGameOptionsEl) hostGameOptionsEl.style.display = "block";
 });
 
 // ---------------- Host: Step 2 – ยืนยันสร้างห้อง ----------------
@@ -284,8 +287,16 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
 
 // ---------------- Player: Join Room ----------------
 joinRoomBtn.addEventListener("click", async () => {
-  const roomCode = roomCodeInput.value.trim().toUpperCase();
-  const playerNameRaw = playerNameInput.value.trim();
+  const roomCodeEl = document.getElementById("roomCodeInput");
+  const playerNameEl = document.getElementById("playerNameInput");
+
+  const roomCode = (roomCodeEl?.value || "").trim().toUpperCase();
+  const playerNameRaw = (playerNameEl?.value || "").trim();
+
+  if (!roomCode || !playerNameRaw) {
+    alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
+    return;
+  }
 
   if (!roomCode || !playerNameRaw) {
     alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
