@@ -259,14 +259,27 @@ function enterLobbyView() {
 
   if (currentRole === "host") {
     if (roleInfoEl) roleInfoEl.textContent = "คุณเป็น Host: ใช้ปุ่มควบคุมรอบและคำถาม";
-    if (hostRoundControlsEl) hostRoundControlsEl.style.display = "flex";
+  
+    if (hostRoundControlsEl) {
+      hostRoundControlsEl.style.display = "flex";
+      hostRoundControlsEl.style.visibility = "visible";
+      hostRoundControlsEl.style.pointerEvents = "auto";
+    }
+  
   } else if (currentRole === "player") {
-    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็น Player: รอ Host เริ่มรอบ → ทอยเต๋า → ตอบคำถาม";
-    if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
+    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็นผู้เล่น: รอครูเริ่มรอบ → ทอยเต๋า → ตอบคำถาม";
+  
+    if (hostRoundControlsEl) {
+      hostRoundControlsEl.style.display = "flex";      // ✅ จองพื้นที่ไว้
+      hostRoundControlsEl.style.visibility = "hidden"; // ✅ ไม่ให้เห็น
+      hostRoundControlsEl.style.pointerEvents = "none";
+    }
+  
   } else {
     if (roleInfoEl) roleInfoEl.textContent = "";
     if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
   }
+
   // ✅ ปุ่มขวาสุดบนแถบ LOBBY
   if (cancelRoomBtn) cancelRoomBtn.style.display = (currentRole === "host") ? "inline-block" : "none";
   if (leaveRoomBtn)  leaveRoomBtn.style.display  = (currentRole === "player") ? "inline-block" : "none";
