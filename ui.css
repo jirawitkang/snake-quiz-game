@@ -385,7 +385,7 @@ button:disabled{
   display:flex;
   align-items:center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 
 .lobby-badges{
@@ -460,4 +460,30 @@ button:disabled{
 #playerList tbody tr:last-child td:last-child,
 #endGameSummary tbody tr:last-child td:last-child{
   border-bottom-right-radius: var(--radius-sm);
+}
+
+/* ===== Lobby card: host controls at top-right without changing card height ===== */
+.lobby-card{
+  position: relative;
+  padding-top: 56px; /* กันพื้นที่ด้านบนไว้เท่ากันทั้ง Host และ Player */
+}
+
+.lobby-top-controls{
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ให้ปุ่มชุดนี้เล็กลง (สูงเท่าชิป badge) */
+.lobby-top-controls button{
+  height: var(--lobby-chip-h, 28px);
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: none;
 }
