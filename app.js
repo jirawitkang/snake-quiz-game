@@ -258,10 +258,10 @@ function enterLobbyView() {
   }
 
   if (currentRole === "host") {
-    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็น Host (ครู): ใช้ปุ่มควบคุมรอบและคำถาม";
-    if (hostRoundControlsEl) hostRoundControlsEl.style.display = "block";
+    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็น Host: ใช้ปุ่มควบคุมรอบและคำถาม";
+    if (hostRoundControlsEl) hostRoundControlsEl.style.display = "flex";
   } else if (currentRole === "player") {
-    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็นผู้เล่น: รอครูเริ่มรอบ → ทอยเต๋า → ตอบคำถาม";
+    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็น Player: รอ Host เริ่มรอบ → ทอยเต๋า → ตอบคำถาม";
     if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
   } else {
     if (roleInfoEl) roleInfoEl.textContent = "";
