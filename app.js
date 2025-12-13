@@ -839,8 +839,17 @@ startQuestionBtn.addEventListener("click", async () => {
     return room;
   });
 
-  if (!tx.committed) alert("เริ่มคำถามไม่ได้ (ยังมีคนไม่ทอย หรือ phase ไม่ถูกต้อง)");
-  clearTimer();
+  if (!tx.committed) {
+  alert("เริ่มคำถามไม่ได้ (ยังมีคนไม่ทอย หรือ phase ไม่ถูกต้อง)");
+  return;
+}
+
+// ✅ เคลียร์ timer เก่า + ตั้ง auto-advance กันค้าง
+clearTimer();
+countdownAutoTimeout = setTimeout(() => {
+  moveCountdownToAnsweringTx().catch((e) => console.error("auto-advance failed:", e));
+}, 3080); // 3s + buffer เล็กน้อย
+
 });
 
 // ---------------- Host: Reveal Answer & Move (Transaction) ----------------
@@ -1194,41 +1203,42 @@ function ensureTimer(roomData, targetPhase) {
   
       if (remaining <= 0) {
         clearTimer();
-  
-        // ✅ กันค้าง: ถ้าครูอยู่หน้านี้ ให้บังคับเปลี่ยนเป็น answering
         if (currentRole === "host" && currentRoomCode) {
-          moveToAnswering().catch((e) =>
-            console.error("moveToAnswering failed:", e)
-          );
+          moveCountdownToAnsweringTx().catch((e) => console.error(e));
         }
       }
     }, 250);
   }
 
   if (phase === "answering") {
-    const start = roomData.answerStartAt;
     const duration = roomData.answerTimeSeconds || 20;
-
-    if (!Number.isFinite(start)) {
+  
+    // ✅ fallback: ถ้า phase เป็น answering แต่ answerStartAt ไม่ถูกตั้ง
+    if (!Number.isFinite(roomData.answerStartAt)) {
+      if (currentRole === "host" && currentRoomCode) {
+        update(ref(db), { [`rooms/${currentRoomCode}/answerStartAt`]: Date.now() })
+          .catch((e) => console.error("fix answerStartAt failed:", e));
+      }
       countdownDisplayEl.textContent = "รอเริ่มจับเวลา…";
       return;
     }
-
-    timerInterval = setInterval(async () => {
+  
+    const start = roomData.answerStartAt;
+  
+    timerInterval = setInterval(() => {
       const now = Date.now();
       let remaining = Math.ceil((start + duration * 1000 - now) / 1000);
       if (remaining < 0) remaining = 0;
+  
       countdownDisplayEl.textContent = `เหลือเวลา ${remaining} วินาที`;
-
+  
       if (remaining <= 0) {
         clearTimer();
-        // Host set flag หมดเวลา
+  
+        // Host set flag หมดเวลา (ไม่ใช้ async ใน interval)
         if (currentRole === "host" && currentRoomCode && roomData.answerDeadlineExpired !== true) {
-          try {
-            await update(ref(db), { [`rooms/${currentRoomCode}/answerDeadlineExpired`]: true });
-          } catch (e) {
-            console.error("Error setting answerDeadlineExpired:", e);
-          }
+          update(ref(db), { [`rooms/${currentRoomCode}/answerDeadlineExpired`]: true })
+            .catch((e) => console.error("Error setting answerDeadlineExpired:", e));
         }
       }
     }, 250);
@@ -1250,6 +1260,24 @@ async function moveToAnswering() {
     [`rooms/${currentRoomCode}/phase`]: "answering",
     [`rooms/${currentRoomCode}/answerStartAt`]: now,
     [`rooms/${currentRoomCode}/answerDeadlineExpired`]: false,
+  });
+}
+
+// ---------------- “เลื่อน countdown → answering ----------------
+async function moveCountdownToAnsweringTx() {
+  if (currentRole !== "host" || !currentRoomCode) return;
+
+  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+  const now = Date.now();
+
+  await runTransaction(roomRef, (room) => {
+    if (!room) return room;
+    if (room.phase !== "questionCountdown") return; // ไม่ใช่ countdown แล้วก็ไม่ต้องทำอะไร
+
+    room.phase = "answering";
+    room.answerStartAt = now;              // ✅ สำคัญมาก กัน “รอเริ่มจับเวลา…”
+    room.answerDeadlineExpired = false;
+    return room;
   });
 }
 
