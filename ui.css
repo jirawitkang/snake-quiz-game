@@ -503,3 +503,23 @@ button:disabled{
   .lobby-card-head{ flex-wrap: wrap; }
   .role-line{ flex: 1 1 100%; }
 }
+
+/* ===== Fix spacing inside Lobby card (ul#playerList contains a table) ===== */
+#playerList{
+  padding: 0 !important;
+  margin: 0 !important;
+  list-style: none;
+}
+
+/* ให้ table ชิดตาม padding ของการ์ดเท่ากันซ้าย-ขวา และไม่มี margin ล่างแปลก ๆ */
+#playerList table{
+  margin: 0 !important;
+  width: 100%;
+}
+
+#playerList th:first-child,
+#playerList td:first-child{
+  width: 54px;
+  text-align: center;
+  font-weight: 900;
+}
