@@ -1,5 +1,5 @@
 // app.js
-// Step D + Game Settings: Round + Board + Dice + Question Sets + Reward/Penalty
+// Stable Multiplayer: transactions for dice/answer/host actions
 
 import { initializeApp as firebaseInitializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -9,14 +9,14 @@ import {
   get,
   onValue,
   update,
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// ---------------- Firebase Config ของคุณ ----------------
+// ---------------- Firebase Config ----------------
 const firebaseConfig = {
   apiKey: "AIzaSyCOT002ZBTw_roNiN_9npuGJZpuFg3TB5s",
   authDomain: "snake-quiz-cdf1c.firebaseapp.com",
-  databaseURL:
-    "https://snake-quiz-cdf1c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  databaseURL: "https://snake-quiz-cdf1c-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "snake-quiz-cdf1c",
   storageBucket: "snake-quiz-cdf1c.firebasestorage.app",
   messagingSenderId: "58607066678",
@@ -24,93 +24,47 @@ const firebaseConfig = {
   measurementId: "G-32FNRV7FH4",
 };
 
-console.log("app.js loaded (Step D + settings)");
+console.log("app.js loaded (Stable Transactions)");
 const app = firebaseInitializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ---------------- ค่าคงที่ของเกม ----------------
+// ---------------- Constants ----------------
 const BOARD_SIZE = 30;
+const STORAGE_KEY = "SQ_SESSION_V1";
 
-// ชุดคำถามหลายเซ็ต (ตัวอย่าง) — แก้ให้เป็นชุดของคุณเองได้
+// ---------------- Question Sets ----------------
 const QUESTION_SETS = {
   general: [
-    {
-      text: "2 + 2 เท่ากับเท่าใด?",
-      choices: { A: "3", B: "4", C: "5", D: "22" },
-      correctOption: "B",
-      timeLimit: 10,
-    },
-    {
-      text: "เมืองหลวงของประเทศไทยคือเมืองใด?",
-      choices: {
-        A: "เชียงใหม่",
-        B: "ขอนแก่น",
-        C: "กรุงเทพมหานคร",
-        D: "ภูเก็ต",
-      },
-      correctOption: "C",
-      timeLimit: 10,
-    },
+    { text: "2 + 2 เท่ากับเท่าใด?", choices: { A: "3", B: "4", C: "5", D: "22" }, correctOption: "B", timeLimit: 10 },
+    { text: "เมืองหลวงของประเทศไทยคือเมืองใด?", choices: { A: "เชียงใหม่", B: "ขอนแก่น", C: "กรุงเทพมหานคร", D: "ภูเก็ต" }, correctOption: "C", timeLimit: 10 },
   ],
   setA: [
-    {
-      text: "HTML ย่อมาจากข้อใด?",
-      choices: {
-        A: "HyperText Markup Language",
-        B: "HighText Machine Language",
-        C: "Hyperlinks and Text Markup Language",
-        D: "Home Tool Markup Language",
-      },
-      correctOption: "A",
-      timeLimit: 10,
-    },
-    {
-      text: "HTTP status code 404 หมายถึง?",
-      choices: {
-        A: "OK",
-        B: "Not Found",
-        C: "Forbidden",
-        D: "Bad Request",
-      },
-      correctOption: "B",
-      timeLimit: 10,
-    },
+    { text: "HTML ย่อมาจากข้อใด?", choices: { A: "HyperText Markup Language", B: "HighText Machine Language", C: "Hyperlinks and Text Markup Language", D: "Home Tool Markup Language" }, correctOption: "A", timeLimit: 10 },
+    { text: "HTTP status code 404 หมายถึง?", choices: { A: "OK", B: "Not Found", C: "Forbidden", D: "Bad Request" }, correctOption: "B", timeLimit: 10 },
   ],
   setB: [
-    {
-      text: "ข้อใดต่อไปนี้คือหน่วยของความถี่?",
-      choices: { A: "นิวตัน", B: "วัตต์", C: "เฮิรตซ์", D: "จูล" },
-      correctOption: "C",
-      timeLimit: 10,
-    },
-    {
-      text: "H2O คือสารใด?",
-      choices: { A: "คาร์บอนไดออกไซด์", B: "น้ำ", C: "ไฮโดรเจน", D: "ออกซิเจน" },
-      correctOption: "B",
-      timeLimit: 10,
-    },
+    { text: "ข้อใดต่อไปนี้คือหน่วยของความถี่?", choices: { A: "นิวตัน", B: "วัตต์", C: "เฮิรตซ์", D: "จูล" }, correctOption: "C", timeLimit: 10 },
+    { text: "H2O คือสารใด?", choices: { A: "คาร์บอนไดออกไซด์", B: "น้ำ", C: "ไฮโดรเจน", D: "ออกซิเจน" }, correctOption: "B", timeLimit: 10 },
   ],
 };
 
 function getQuestionSetById(id) {
-  return QUESTION_SETS[id] || QUESTION_SETS["general"] || [];
+  return QUESTION_SETS[id] || QUESTION_SETS.general || [];
 }
-
 function getQuestionSetLengthForRoom(roomData) {
   const setId = roomData.gameSettings?.questionSetId || "general";
   const set = getQuestionSetById(setId);
   return set.length || 1;
 }
-
 function getQuestionFromRoom(roomData, index) {
   const setId = roomData.gameSettings?.questionSetId || "general";
   const set = getQuestionSetById(setId);
   if (!set.length) return null;
-  const i = index % set.length;
+  const i = (index ?? 0) % set.length;
   return set[i];
 }
 
-// ---------------- DOM elements ----------------
+// ---------------- DOM ----------------
 const createRoomBtn = document.getElementById("createRoomBtn");
 const hostNameInput = document.getElementById("hostNameInput");
 const hostGameOptionsEl = document.getElementById("hostGameOptions");
@@ -156,227 +110,82 @@ let currentRoomCode = null;
 let currentRole = null; // "host" | "player"
 let currentPlayerId = null;
 
+let roomUnsub = null;
+
 let timerInterval = null;
 let timerPhase = null;
 let timerRound = 0;
 
-// ---------------- Helpers ----------------
+// ---------------- Utils ----------------
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+function clampPos(pos) {
+  const p = Number(pos ?? 1);
+  if (!Number.isFinite(p)) return 1;
+  return Math.max(1, Math.min(BOARD_SIZE, Math.trunc(p)));
+}
 function createId(prefix) {
   return prefix + "_" + Math.random().toString(36).substring(2, 10);
 }
-
 function createRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
+  for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
   return code;
 }
-
 function randomColor() {
   const colors = ["#e91e63", "#9c27b0", "#3f51b5", "#009688", "#ff9800", "#795548"];
   return colors[Math.floor(Math.random() * colors.length)];
 }
-
 function clearTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
   timerPhase = null;
   timerRound = 0;
 }
-
-// คืนลิสต์เลขช่องที่หมาก "เดินผ่าน" จาก from → to (รวมปลายทาง ไม่รวมจุดเริ่ม)
-// ใช้ได้ทั้งเดินหน้าและถอยหลัง
 function getPathCells(from, to) {
   const cells = [];
   if (from === to) return cells;
   const step = from < to ? 1 : -1;
   let pos = from + step;
   while (true) {
-    if (pos >= 1 && pos <= BOARD_SIZE) {
-      cells.push(pos);
-    }
+    if (pos >= 1 && pos <= BOARD_SIZE) cells.push(pos);
     if (pos === to) break;
     pos += step;
   }
   return cells;
 }
-
-// ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
-createRoomBtn.addEventListener("click", () => {
-  const hostNameEl = document.getElementById("hostNameInput");
-  const hostName = (hostNameEl?.value || "").trim();
-
-  if (!hostName) {
-    alert("กรุณากรอกชื่อของ Host ก่อน");
-    return;
-  }
-
-  hostNameEl.disabled = true;
-  createRoomBtn.disabled = true;
-
-  const hostGameOptionsEl = document.getElementById("hostGameOptions");
-  if (hostGameOptionsEl) hostGameOptionsEl.style.display = "block";
-});
-
-// ---------------- Host: Step 2 – ยืนยันสร้างห้อง ----------------
-confirmCreateRoomBtn.addEventListener("click", async () => {
-  const hostName = hostNameInput.value.trim();
-  if (!hostName) {
-    alert("กรุณากรอกชื่อของ Host");
-    return;
-  }
-
-  const questionSetId = questionSetSelect.value || "general";
-  const maxRounds = parseInt(maxRoundsInput.value, 10) || 10;
-  const maxWinners = parseInt(maxWinnersInput.value, 10) || 5;
-  const rewardCorrect = parseInt(rewardCorrectInput.value, 10) || 1;
-  let penaltyWrong = parseInt(penaltyWrongInput.value, 10);
-  if (Number.isNaN(penaltyWrong)) {
-    penaltyWrong = -1; // default ถ้าไม่ได้กรอก หรือกรอกมั่ว
-  }
-
-  const roomCode = createRoomCode();
-  const hostId = createId("host");
-
-  currentRoomCode = roomCode;
-  currentRole = "host";
-  currentPlayerId = null;
-
-  const roomRef = ref(db, `rooms/${roomCode}`);
-
-  try {
-    await set(roomRef, {
-      createdAt: Date.now(),
-      status: "lobby",
-      hostId: hostId,
-      hostName: hostName,
-      boardSize: BOARD_SIZE,
-      currentRound: 0,
-      phase: "idle", // idle | rolling | questionCountdown | answering | result | ended
-      questionIndex: null,
-      questionCountdownStartAt: null,
-      questionCountdownSeconds: 3,
-      answerStartAt: null,
-      answerTimeSeconds: null,
-      answerDeadlineExpired: false,
-      gameSettings: {
-        questionSetId,
-        maxRounds,
-        maxWinners,
-        rewardCorrect,  // เดินหน้าเมื่อตอบถูก
-        penaltyWrong,   // ถอยหลังเมื่อตอบผิด/ไม่ทัน
-      },
-    });
-
-    console.log("Room created:", roomCode);
-    hostGameOptionsEl.style.display = "none";
-    enterLobbyView();
-    subscribeRoom(roomCode);
-    alert(
-      `สร้างห้องสำเร็จ!\nRoom Code: ${roomCode}\nแชร์รหัสนี้ให้นักเรียนใช้ Join ได้เลย`
-    );
-  } catch (err) {
-    console.error("Error creating room:", err);
-    alert("มีปัญหาในการสร้างห้อง ดู error ใน Console");
-  }
-});
-
-// ---------------- Player: Join Room ----------------
-joinRoomBtn.addEventListener("click", async () => {
-  const roomCodeEl = document.getElementById("roomCodeInput");
-  const playerNameEl = document.getElementById("playerNameInput");
-
-  const roomCode = (roomCodeEl?.value || "").trim().toUpperCase();
-  const playerNameRaw = (playerNameEl?.value || "").trim();
-
-  if (!roomCode || !playerNameRaw) {
-    alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
-    return;
-  }
-
-  if (!roomCode || !playerNameRaw) {
-    alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
-    return;
-  }
-
-  const playerName = playerNameRaw;
-  const playerNameKey = playerNameRaw.toLowerCase();
-
-  const roomRef = ref(db, `rooms/${roomCode}`);
-  const snap = await get(roomRef);
-
-  if (!snap.exists()) {
-    alert("ไม่พบห้องนี้ กรุณาตรวจสอบ Room Code");
-    return;
-  }
-
-  const roomData = snap.val();
-  if (roomData.status !== "lobby") {
-    alert("ห้องนี้ไม่อยู่ในสถานะ Lobby อาจเริ่มเกมไปแล้ว");
-    return;
-  }
-
-  // ---------- เช็คชื่อซ้ำกับ Host ----------
-  const hostName = (roomData.hostName || "").trim();
-  const hostNameKey = hostName.toLowerCase();
-  if (hostNameKey && hostNameKey === playerNameKey) {
-    alert("ชื่อนี้ซ้ำกับชื่อ Host กรุณาใช้ชื่ออื่น");
-    return;
-  }
-
-  // ---------- เช็คชื่อซ้ำกับ Player คนอื่น ----------
-  const players = roomData.players || {};
-  for (const [, p] of Object.entries(players)) {
-    const existingName = (p.name || "").trim();
-    if (existingName.toLowerCase() === playerNameKey) {
-      alert("มีผู้เล่นใช้ชื่อนี้ในห้องแล้ว กรุณาใช้ชื่ออื่น");
-      return;
-    }
-  }
-
-  // ---------- ผ่านแล้วค่อยสร้างผู้เล่น ----------
-  const playerId = createId("p");
-
-  currentRoomCode = roomCode;
-  currentRole = "player";
-  currentPlayerId = playerId;
-
-  const playerRef = ref(db, `rooms/${roomCode}/players/${playerId}`);
-
-  try {
-    await set(playerRef, {
-      name: playerName,
-      color: randomColor(),
-      position: 1,          // เริ่มที่ช่อง 1
-      lastRoll: null,
-      hasRolled: false,
-      answered: false,
-      answer: null,
-      lastAnswerCorrect: null,
-      joinedAt: Date.now(),
-      finished: false,
-      finishedRound: null,
-      finishedBy: null,     // "dice" | "answer"
-      startOfRoundPos: 1,
-    });
-
-    console.log("Joined room:", roomCode, "as", playerName);
-    enterLobbyView();
-    subscribeRoom(roomCode);
-    alert(`เข้าห้องสำเร็จ! คุณอยู่ในห้อง ${roomCode}`);
-  } catch (err) {
-    console.error("Error joining room:", err);
-    alert("มีปัญหาในการ Join ห้อง ดู error ใน Console");
-  }
-});
+function saveSession() {
+  const payload = { room: currentRoomCode, role: currentRole, pid: currentPlayerId };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+function clearSession() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+function setHeaderPills() {
+  const uiRoomPill = document.getElementById("uiRoomPill");
+  const uiRolePill = document.getElementById("uiRolePill");
+  if (uiRoomPill) uiRoomPill.textContent = `Room: ${currentRoomCode || "-"}`;
+  if (uiRolePill) uiRolePill.textContent = `Role: ${currentRole || "-"}`;
+}
+function lockEntryUI(locked) {
+  // กันกดซ้ำ/กันสับ role ระหว่างเล่น
+  hostNameInput.disabled = locked;
+  createRoomBtn.disabled = locked;
+  confirmCreateRoomBtn.disabled = locked;
+  roomCodeInput.disabled = locked;
+  playerNameInput.disabled = locked;
+  joinRoomBtn.disabled = locked;
+}
 
 // ---------------- Lobby View ----------------
 function enterLobbyView() {
-  // กัน null ทุกตัว (UI ใหม่บางอันอาจไม่มี)
   if (lobbyEl) lobbyEl.style.display = "block";
 
   if (roomInfoEl) {
@@ -384,45 +193,36 @@ function enterLobbyView() {
   }
 
   if (currentRole === "host") {
-    if (roleInfoEl) {
-      roleInfoEl.textContent =
-        "คุณเป็น Host (ครู): จอของคุณจะใช้ดูสถานะของนักเรียนทุกคนตลอดเกม";
-    }
+    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็น Host (ครู): ใช้ปุ่มควบคุมรอบและคำถาม";
     if (hostRoundControlsEl) hostRoundControlsEl.style.display = "block";
   } else if (currentRole === "player") {
-    if (roleInfoEl) {
-      roleInfoEl.textContent =
-        "คุณเป็นผู้เล่น: รอครูเริ่มรอบใหม่ → ทอยลูกเต๋า → ตอบคำถามในแต่ละรอบ";
-    }
+    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็นผู้เล่น: รอครูเริ่มรอบ → ทอยเต๋า → ตอบคำถาม";
     if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
   } else {
     if (roleInfoEl) roleInfoEl.textContent = "";
     if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
   }
 
-  // ถ้ามี pill บน header (ธีมใหม่) ก็อัปเดตด้วย
-  const uiRoomPill = document.getElementById("uiRoomPill");
-  const uiRolePill = document.getElementById("uiRolePill");
-  if (uiRoomPill) uiRoomPill.textContent = `Room: ${currentRoomCode || "-"}`;
-  if (uiRolePill) uiRolePill.textContent = `Role: ${currentRole || "-"}`;
+  setHeaderPills();
 }
 
-// ---------------- Subscribe Room Realtime ----------------
+// ---------------- Subscribe Room ----------------
 function subscribeRoom(roomCode) {
-  const roomRef = ref(db, `rooms/${roomCode}`);
+  if (roomUnsub) {
+    try { roomUnsub(); } catch {}
+    roomUnsub = null;
+  }
 
-  onValue(roomRef, (snapshot) => {
-    if (!snapshot.exists()) {
-      console.warn("Room not found anymore:", roomCode);
-      return;
-    }
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  roomUnsub = onValue(roomRef, (snapshot) => {
+    if (!snapshot.exists()) return;
 
     const roomData = snapshot.val();
     const players = roomData.players || {};
     const hostName = roomData.hostName || "(ไม่ทราบชื่อ)";
     const gs = roomData.gameSettings || {};
 
-    if (currentRoomCode === roomCode) {
+    if (currentRoomCode === roomCode && roomInfoEl) {
       const questionSetId = gs.questionSetId || "general";
       const maxRounds = gs.maxRounds ?? 10;
       const maxWinners = gs.maxWinners ?? 5;
@@ -446,11 +246,223 @@ function subscribeRoom(roomCode) {
   });
 }
 
-// ---------------- Render Player List (สถานะผู้เล่น) ----------------
-function renderPlayerList(roomData, playersObj) {
-  playerListEl.innerHTML = "";
+// ---------------- Restore Session ----------------
+(async function attemptRestoreSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
 
-  const entries = Object.entries(playersObj);
+    const s = JSON.parse(raw);
+    if (!s?.room || !s?.role) return;
+
+    const snap = await get(ref(db, `rooms/${String(s.room).toUpperCase()}`));
+    if (!snap.exists()) return;
+
+    const roomData = snap.val();
+
+    // host restore (simple)
+    if (s.role === "host") {
+      currentRoomCode = String(s.room).toUpperCase();
+      currentRole = "host";
+      currentPlayerId = null;
+      enterLobbyView();
+      subscribeRoom(currentRoomCode);
+      lockEntryUI(true);
+      return;
+    }
+
+    // player restore: if pid exists -> use; else try match by name is not stored (we keep pid only)
+    if (s.role === "player") {
+      const roomCode = String(s.room).toUpperCase();
+      const pid = s.pid;
+      if (pid && roomData.players?.[pid]) {
+        currentRoomCode = roomCode;
+        currentRole = "player";
+        currentPlayerId = pid;
+        enterLobbyView();
+        subscribeRoom(currentRoomCode);
+        lockEntryUI(true);
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("restore session failed:", e);
+  }
+})();
+
+// ---------------- Host Step 1: show game settings ----------------
+createRoomBtn.addEventListener("click", () => {
+  const hostName = (hostNameInput?.value || "").trim();
+  if (!hostName) {
+    alert("กรุณากรอกชื่อของ Host ก่อน");
+    return;
+  }
+  hostNameInput.disabled = true;
+  createRoomBtn.disabled = true;
+  if (hostGameOptionsEl) hostGameOptionsEl.style.display = "block";
+});
+
+// ---------------- Host Step 2: create room ----------------
+confirmCreateRoomBtn.addEventListener("click", async () => {
+  const hostName = (hostNameInput.value || "").trim();
+  if (!hostName) {
+    alert("กรุณากรอกชื่อของ Host");
+    return;
+  }
+
+  const questionSetId = questionSetSelect.value || "general";
+  const maxRounds = Math.max(1, parseInt(maxRoundsInput.value, 10) || 10);
+  const maxWinners = Math.max(1, parseInt(maxWinnersInput.value, 10) || 5);
+  const rewardCorrect = parseInt(rewardCorrectInput.value, 10);
+  const penaltyWrong = parseInt(penaltyWrongInput.value, 10);
+
+  const roomRefBase = (code) => ref(db, `rooms/${code}`);
+
+  // collision-safe (few tries)
+  let roomCode = null;
+  for (let i = 0; i < 6; i++) {
+    const c = createRoomCode();
+    const s = await get(roomRefBase(c));
+    if (!s.exists()) { roomCode = c; break; }
+  }
+  if (!roomCode) {
+    alert("สร้างห้องไม่สำเร็จ (รหัสชนกันหลายครั้ง) ลองใหม่อีกครั้ง");
+    hostNameInput.disabled = false;
+    createRoomBtn.disabled = false;
+    return;
+  }
+
+  const hostId = createId("host");
+
+  currentRoomCode = roomCode;
+  currentRole = "host";
+  currentPlayerId = null;
+
+  try {
+    await set(roomRefBase(roomCode), {
+      createdAt: Date.now(),
+      status: "lobby",      // lobby | playing | finished
+      hostId,
+      hostName,
+      boardSize: BOARD_SIZE,
+      currentRound: 0,
+      phase: "idle",        // idle | rolling | questionCountdown | answering | result | ended
+      questionIndex: null,
+      questionCountdownStartAt: null,
+      questionCountdownSeconds: 3,
+      answerStartAt: null,
+      answerTimeSeconds: null,
+      answerDeadlineExpired: false,
+      winners: [],
+      history: {},
+      gameSettings: {
+        questionSetId,
+        maxRounds,
+        maxWinners,
+        rewardCorrect: Number.isFinite(rewardCorrect) ? rewardCorrect : 1,
+        penaltyWrong: Number.isFinite(penaltyWrong) ? penaltyWrong : -1,
+      },
+    });
+
+    if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
+    enterLobbyView();
+    subscribeRoom(roomCode);
+    lockEntryUI(true);
+    saveSession();
+
+    alert(`สร้างห้องสำเร็จ!\nRoom Code: ${roomCode}\nแชร์รหัสนี้ให้นักเรียนใช้ Join ได้เลย`);
+  } catch (err) {
+    console.error("Error creating room:", err);
+    alert("มีปัญหาในการสร้างห้อง ดู error ใน Console");
+    hostNameInput.disabled = false;
+    createRoomBtn.disabled = false;
+  }
+});
+
+// ---------------- Player: Join Room ----------------
+joinRoomBtn.addEventListener("click", async () => {
+  const roomCode = (roomCodeInput?.value || "").trim().toUpperCase();
+  const playerNameRaw = (playerNameInput?.value || "").trim();
+
+  if (!roomCode || !playerNameRaw) {
+    alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
+    return;
+  }
+
+  const playerName = playerNameRaw;
+  const playerNameKey = playerNameRaw.toLowerCase();
+
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  const snap = await get(roomRef);
+
+  if (!snap.exists()) {
+    alert("ไม่พบห้องนี้ กรุณาตรวจสอบ Room Code");
+    return;
+  }
+
+  const roomData = snap.val();
+
+  // ✅ กัน join กลางเกม
+  if (roomData.status !== "lobby" || (roomData.currentRound || 0) > 0) {
+    alert("ห้องนี้เริ่มเกมแล้ว ไม่สามารถ Join เพิ่มได้");
+    return;
+  }
+
+  // ตรวจชื่อซ้ำกับ host
+  const hostNameKey = String(roomData.hostName || "").trim().toLowerCase();
+  if (hostNameKey && hostNameKey === playerNameKey) {
+    alert("ชื่อนี้ซ้ำกับชื่อ Host กรุณาใช้ชื่ออื่น");
+    return;
+  }
+
+  // ตรวจชื่อซ้ำกับผู้เล่น
+  const players = roomData.players || {};
+  for (const [, p] of Object.entries(players)) {
+    const existingName = String(p.name || "").trim().toLowerCase();
+    if (existingName === playerNameKey) {
+      alert("มีผู้เล่นใช้ชื่อนี้ในห้องแล้ว กรุณาใช้ชื่ออื่น");
+      return;
+    }
+  }
+
+  const playerId = createId("p");
+
+  currentRoomCode = roomCode;
+  currentRole = "player";
+  currentPlayerId = playerId;
+
+  try {
+    await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+      name: playerName,
+      color: randomColor(),
+      position: 1,
+      lastRoll: null,
+      hasRolled: false,
+      answered: false,
+      answer: null,
+      lastAnswerCorrect: null,
+      joinedAt: Date.now(),
+      finished: false,
+      finishedRound: null,
+      finishedBy: null,
+      startOfRoundPos: 1,
+    });
+
+    enterLobbyView();
+    subscribeRoom(roomCode);
+    lockEntryUI(true);
+    saveSession();
+
+    alert(`เข้าห้องสำเร็จ! คุณอยู่ในห้อง ${roomCode}`);
+  } catch (err) {
+    console.error("Error joining room:", err);
+    alert("มีปัญหาในการ Join ห้อง ดู error ใน Console");
+  }
+});
+
+// ---------------- Render Player List ----------------
+function renderPlayerList(roomData, playersObj) {
+  const entries = Object.entries(playersObj || {});
   const phase = roomData.phase || "idle";
   const deadlineExpired = roomData.answerDeadlineExpired === true;
 
@@ -460,915 +472,558 @@ function renderPlayerList(roomData, playersObj) {
 
   const history = roomData.history || {};
 
-  // เตรียมโครง per-player
+  if (!playerListEl) return;
+  if (entries.length === 0) {
+    playerListEl.innerHTML = `<div class="muted">ยังไม่มีผู้เล่นเข้าห้อง</div>`;
+    return;
+  }
+
+  // build per-player stats
   const perPlayer = {};
   for (const [pid, p] of entries) {
     perPlayer[pid] = {
       id: pid,
       name: p.name || pid,
-      position: p.position || 1,
+      position: clampPos(p.position),
       lastRoll: p.lastRoll ?? null,
       hasRolled: !!p.hasRolled,
       answered: !!p.answered,
       lastAnswerCorrect: p.lastAnswerCorrect,
-      finished: !!p.finished,
+      finished: !!p.finished || clampPos(p.position) >= BOARD_SIZE,
       rolls: [],
       answerSymbols: [],
     };
   }
 
-  // ไล่ history เพื่อต่อ string ทอยเต๋า + ถูก/ผิด
+  // parse history
   const roundKeys = Object.keys(history)
     .filter((k) => k.startsWith("round_"))
-    .sort((a, b) => {
-      const ra = parseInt(a.split("_")[1] || "0", 10);
-      const rb = parseInt(b.split("_")[1] || "0", 10);
-      return ra - rb;
-    });
+    .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
 
   for (const rk of roundKeys) {
     const roundData = history[rk] || {};
     const answers = roundData.answers || {};
-
     for (const [pid, rec] of Object.entries(answers)) {
-      if (!perPlayer[pid]) {
-        perPlayer[pid] = {
-          id: pid,
-          name: rec.playerName || pid,
-          position: playersObj[pid]?.position || 1,
-          lastRoll: playersObj[pid]?.lastRoll ?? null,
-          hasRolled: !!playersObj[pid]?.hasRolled,
-          answered: !!playersObj[pid]?.answered,
-          lastAnswerCorrect: playersObj[pid]?.lastAnswerCorrect,
-          finished: !!playersObj[pid]?.finished,
-          rolls: [],
-          answerSymbols: [],
-        };
-      }
+      if (!perPlayer[pid]) continue;
+      if (rec.diceRoll != null) perPlayer[pid].rolls.push(rec.diceRoll);
 
-      if (rec.diceRoll != null) {
-        perPlayer[pid].rolls.push(rec.diceRoll);
-      }
-
-      // เคส neutral (เช่น เข้าเส้นชัยด้วยลูกเต๋า และไม่ควรนับสถิติคำถาม)
+      // neutral (finish by dice) -> don't count Q
       const finalPos = rec.finalPosition ?? perPlayer[pid].position;
       const basePos = rec.basePosition ?? finalPos;
       const neutralFinishByDice =
-        rec.correct == null &&
-        !rec.answered &&
-        basePos >= BOARD_SIZE &&
-        finalPos >= BOARD_SIZE;
+        rec.correct == null && !rec.answered && basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
 
-      if (neutralFinishByDice) {
-        continue;
-      }
+      if (neutralFinishByDice) continue;
 
-      if (rec.correct === true) {
-        perPlayer[pid].answerSymbols.push("✅");
-      } else {
-        perPlayer[pid].answerSymbols.push("❌");
-      }
+      if (rec.correct === true) perPlayer[pid].answerSymbols.push("✅");
+      else perPlayer[pid].answerSymbols.push("❌");
     }
   }
 
-  // helper: สถานะผู้เล่นตาม phase
   function getStatusText(p) {
-    const pos = p.position || 1;
-    const isFinished = p.finished || pos >= BOARD_SIZE;
-
-    if (isFinished) {
-      return "เข้าเส้นชัยแล้ว (ช่อง 30)";
+    if (p.finished) return "เข้าเส้นชัยแล้ว (ช่อง 30)";
+    if (phase === "rolling") return p.hasRolled ? `ทอยแล้ว (${p.lastRoll ?? "-"} แต้ม)` : "ยังไม่ทอยลูกเต๋า";
+    if (phase === "questionCountdown") return "รอคำถามรอบนี้";
+    if (phase === "answering") {
+      if (deadlineExpired) return p.answered ? "ตอบแล้ว (รอเฉลย)" : "ตอบไม่ทัน";
+      return p.answered ? "ตอบแล้ว (รอเฉลย)" : "กำลังตอบ / ยังไม่ตอบ";
     }
-    if (phase === "rolling") {
-      if (!p.hasRolled) return "ยังไม่ทอยลูกเต๋า";
-      return `ทอยแล้ว (ได้ ${p.lastRoll ?? "-"} แต้ม)`;
-    } else if (phase === "questionCountdown") {
-      return "รอคำถามรอบนี้";
-    } else if (phase === "answering") {
-      if (deadlineExpired) {
-        if (p.answered) return "ตอบแล้ว (รอเฉลย)";
-        return "ตอบไม่ทัน";
-      } else {
-        if (p.answered) return "ตอบแล้ว (รอเฉลย)";
-        return "กำลังหาคำตอบ / ยังไม่ตอบ";
-      }
-    } else if (phase === "result") {
-      const moveCorrectText =
-        rewardCorrect >= 0 ? `+${rewardCorrect}` : `${rewardCorrect}`;
-      const moveWrongText =
-        penaltyWrong >= 0 ? `+${penaltyWrong}` : `${penaltyWrong}`;
-
-      if (p.lastAnswerCorrect === true) {
-        return `ตอบถูก (${moveCorrectText} ช่อง)`;
-      } else if (p.lastAnswerCorrect === false) {
-        if (p.answered) {
-          return `ตอบผิด (${moveWrongText} ช่อง)`;
-        }
-        return `ตอบไม่ทัน (${moveWrongText} ช่อง)`;
-      }
+    if (phase === "result") {
+      const moveCorrectText = rewardCorrect >= 0 ? `+${rewardCorrect}` : `${rewardCorrect}`;
+      const moveWrongText = penaltyWrong >= 0 ? `+${penaltyWrong}` : `${penaltyWrong}`;
+      if (p.lastAnswerCorrect === true) return `ตอบถูก (${moveCorrectText} ช่อง)`;
+      if (p.lastAnswerCorrect === false) return p.answered ? `ตอบผิด (${moveWrongText} ช่อง)` : `ตอบไม่ทัน (${moveWrongText} ช่อง)`;
       return "รอรอบถัดไป";
-    } else if (phase === "ended") {
-      return "เกมจบแล้ว";
     }
+    if (phase === "ended") return "เกมจบแล้ว";
     return "รอเริ่มรอบใหม่";
   }
 
-  const statsArray = Object.values(perPlayer).sort((a, b) => {
-    return (a.name || "").localeCompare(b.name || "");
-  });
-
-  if (statsArray.length === 0) {
-    playerListEl.textContent = "ยังไม่มีผู้เล่นเข้าห้อง";
-    return;
-  }
+  const statsArray = Object.values(perPlayer).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   let html = `
-    <table>
-      <thead>
-        <tr>
-          <th class="name-col">ผู้เล่น</th>
-          <th>ตำแหน่งปัจจุบัน</th>
-          <th>ทอยลูกเต๋าทุกครั้ง</th>
-          <th>ผลคำถามทุกข้อ</th>
-          <th>สถานะผู้เล่น</th>
-        </tr>
-      </thead>
-      <tbody>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name-col">ผู้เล่น</th>
+            <th>ตำแหน่ง</th>
+            <th>ทอยเต๋า</th>
+            <th>คำถาม</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody>
   `;
 
-  statsArray.forEach((p) => {
-    const rollsText = p.rolls.join("") || "-";
-    const answersText = p.answerSymbols.join("") || "-";
-    const statusText = getStatusText(p);
-
+  for (const p of statsArray) {
     html += `
       <tr>
-        <td class="name-col">${p.name}</td>
+        <td class="name-col">${escapeHtml(p.name)}</td>
         <td>${p.position}</td>
-        <td>${rollsText}</td>
-        <td>${answersText}</td>
-        <td>${statusText}</td>
+        <td>${escapeHtml(p.rolls.join(" ") || "-")}</td>
+        <td>${escapeHtml(p.answerSymbols.join(" ") || "-")}</td>
+        <td>${escapeHtml(getStatusText(p))}</td>
       </tr>
     `;
-  });
+  }
 
-  html += `</tbody></table>`;
-
+  html += `</tbody></table></div>`;
   playerListEl.innerHTML = html;
 }
 
-// ---------------- Host: Start New Round ----------------
+// ---------------- Host: Start New Round (Transaction) ----------------
 startRoundBtn.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  const snap = await get(roomRef);
-  if (!snap.exists()) return;
 
-  const roomData = snap.val();
-  const players = roomData.players || {};
-  const currentRound = roomData.currentRound || 0;
+  const result = await runTransaction(roomRef, (room) => {
+    if (!room) return room;
 
-  const questionSetLen = getQuestionSetLengthForRoom(roomData);
+    const phase = room.phase || "idle";
+    if (phase === "ended") return; // abort
 
-  const updates = {};
-  updates[`rooms/${currentRoomCode}/currentRound`] = currentRound + 1;
-  updates[`rooms/${currentRoomCode}/phase`] = "rolling";
-  updates[`rooms/${currentRoomCode}/questionIndex`] =
-    currentRound % (questionSetLen || 1);
-  updates[`rooms/${currentRoomCode}/questionCountdownStartAt`] = null;
-  updates[`rooms/${currentRoomCode}/answerStartAt`] = null;
-  updates[`rooms/${currentRoomCode}/answerTimeSeconds`] = null;
-  updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
+    // ✅ ไม่ให้ข้ามตอนกำลัง countdown/answering
+    if (phase === "questionCountdown" || phase === "answering") return;
 
-  for (const [pid, p] of Object.entries(players)) {
-    const posNow = p.position || 1;
+    const gs = room.gameSettings || {};
+    const maxRounds = Math.max(1, gs.maxRounds ?? 10);
+    const currentRound = room.currentRound || 0;
+    if (currentRound >= maxRounds) return; // abort (should be ended by reveal)
 
-    // เก็บตำแหน่ง ณ ตอนเริ่มรอบนี้ไว้ใช้ทำ "สีเทา"
-    updates[`rooms/${currentRoomCode}/players/${pid}/startOfRoundPos`] = posNow;
+    const players = room.players || {};
+    const questionSetLen = getQuestionSetLengthForRoom(room);
 
-    if (p.finished || posNow >= BOARD_SIZE) {
-      // คนที่เข้าเส้นชัยแล้ว: ไม่ต้องทอย แต่ถือว่า hasRolled = true
-      updates[`rooms/${currentRoomCode}/players/${pid}/hasRolled`] = true;
-    } else {
-      updates[`rooms/${currentRoomCode}/players/${pid}/lastRoll`] = null;
-      updates[`rooms/${currentRoomCode}/players/${pid}/hasRolled`] = false;
+    const newRound = currentRound + 1;
+    room.currentRound = newRound;
+    room.phase = "rolling";
+    room.status = room.status === "lobby" ? "playing" : (room.status || "playing");
+    room.questionIndex = (newRound - 1) % (questionSetLen || 1);
+    room.questionCountdownStartAt = null;
+    room.answerStartAt = null;
+    room.answerTimeSeconds = null;
+    room.answerDeadlineExpired = false;
+
+    for (const [pid, p] of Object.entries(players)) {
+      const posNow = clampPos(p.position);
+      p.startOfRoundPos = posNow;
+
+      if (p.finished || posNow >= BOARD_SIZE) {
+        p.hasRolled = true; // finished players auto-rolled
+      } else {
+        p.lastRoll = null;
+        p.hasRolled = false;
+      }
+
+      p.answered = false;
+      p.answer = null;
+      p.lastAnswerCorrect = null;
+      players[pid] = p;
     }
 
-    // reset การตอบคำถาม
-    updates[`rooms/${currentRoomCode}/players/${pid}/answered`] = false;
-    updates[`rooms/${currentRoomCode}/players/${pid}/answer`] = null;
-    updates[`rooms/${currentRoomCode}/players/${pid}/lastAnswerCorrect`] = null;
-  }
+    room.players = players;
+    return room;
+  });
 
-  clearTimer();
-  await update(ref(db), updates);
+  if (!result.committed) {
+    alert("เริ่มรอบใหม่ไม่ได้ (อาจถึงรอบสูงสุดแล้ว หรืออยู่ในช่วงตอบ/นับถอยหลัง)");
+  } else {
+    clearTimer();
+  }
 });
 
-// ---------------- Player: Roll Dice ----------------
+// ---------------- Player: Roll Dice (Transaction-safe) ----------------
 rollDiceBtn.addEventListener("click", async () => {
   if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
 
-  const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  const snap = await get(roomRef);
-  if (!snap.exists()) return;
-
-  const roomData = snap.val();
-  if (roomData.phase !== "rolling") {
-    alert("ตอนนี้ยังไม่ใช่ช่วงทอยลูกเต๋า (รอครูเริ่มรอบ)");
-    return;
+  rollDiceBtn.disabled = true;
+  try {
+    await animateDiceAndCommitRoll();
+  } finally {
+    // ปล่อยให้ onValue คุมสถานะปุ่มต่อ (ถ้าพังจะกลับมา enabled)
+    setTimeout(() => { rollDiceBtn.disabled = false; }, 400);
   }
-
-  const players = roomData.players || {};
-  const me = players[currentPlayerId];
-  if (!me) {
-    alert("ไม่พบข้อมูลผู้เล่นของคุณในห้อง");
-    return;
-  }
-
-  const pos = me.position || 1;
-  if (me.finished || pos >= BOARD_SIZE) {
-    alert("คุณเข้าเส้นชัยแล้ว ไม่ต้องทอยลูกเต๋า");
-    return;
-  }
-
-  if (me.hasRolled) {
-    alert("คุณทอยลูกเต๋าในรอบนี้ไปแล้ว");
-    return;
-  }
-
-  const basePos = me.position || 1;
-
-  await animateDiceAndCommitRoll(basePos);
 });
 
-// ---------------- Host: Start Question (Countdown) ----------------
+async function animateDiceAndCommitRoll() {
+  const totalDuration = 1500;
+  const start = Date.now();
+  let displayRoll = 1;
+
+  return new Promise((resolve) => {
+    const step = async () => {
+      const elapsed = Date.now() - start;
+      if (elapsed >= totalDuration) {
+        const finalRoll = displayRoll;
+        try {
+          await finalizeRollTransaction(finalRoll);
+        } catch (e) {
+          console.error(e);
+          alert("ทอยเต๋าไม่สำเร็จ (ลองใหม่)");
+        }
+        resolve();
+        return;
+      }
+
+      displayRoll = Math.floor(Math.random() * 6) + 1;
+      if (playerStatusEl) playerStatusEl.textContent = `กำลังทอยลูกเต๋า... ได้ ${displayRoll}`;
+      setTimeout(step, 90);
+    };
+    step();
+  });
+}
+
+async function finalizeRollTransaction(roll) {
+  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+
+  const now = Date.now();
+
+  const tx = await runTransaction(roomRef, (room) => {
+    if (!room) return room;
+
+    if (room.phase !== "rolling") return; // abort
+    if ((room.currentRound || 0) <= 0) return; // abort
+
+    const players = room.players || {};
+    const me = players[currentPlayerId];
+    if (!me) return;
+
+    const pos = clampPos(me.position);
+    const finished = !!me.finished || pos >= BOARD_SIZE;
+    if (finished) return;
+
+    if (me.hasRolled) return;
+
+    const startPos = pos;
+    let newPos = clampPos(startPos + roll);
+
+    me.lastRoll = roll;
+    me.position = newPos;
+    me.hasRolled = true;
+
+    // finished by dice
+    if (newPos >= BOARD_SIZE) {
+      me.finished = true;
+      me.finishedRound = room.currentRound || 0;
+      me.finishedBy = "dice";
+    }
+
+    // log dice move
+    const r = room.currentRound || 0;
+    room.history = room.history || {};
+    const roundKey = `round_${r}`;
+    room.history[roundKey] = room.history[roundKey] || {};
+    room.history[roundKey].diceMoves = room.history[roundKey].diceMoves || {};
+    room.history[roundKey].diceMoves[currentPlayerId] = {
+      playerId: currentPlayerId,
+      playerName: me.name || "",
+      fromPosition: startPos,
+      toPosition: newPos,
+      diceRoll: roll,
+      pathCells: getPathCells(startPos, newPos),
+      timestamp: now,
+    };
+
+    // winners update
+    room.winners = Array.isArray(room.winners) ? room.winners : [];
+    const winnerIds = new Set(room.winners.map((w) => w.playerId));
+    if (newPos >= BOARD_SIZE && !winnerIds.has(currentPlayerId)) {
+      room.winners.push({
+        playerId: currentPlayerId,
+        playerName: me.name || currentPlayerId,
+        finishedRound: r,
+        rank: room.winners.length + 1,
+      });
+    }
+
+    // end condition (by winners or all finished)
+    const gs = room.gameSettings || {};
+    const maxWinners = Math.max(1, gs.maxWinners ?? 5);
+    const totalPlayers = Object.keys(players).length;
+    const targetWinners = Math.min(maxWinners, totalPlayers);
+
+    const finishedCount = Object.values(players).filter((p) => (p.finished || clampPos(p.position) >= BOARD_SIZE)).length;
+    if (room.winners.length >= targetWinners || finishedCount === totalPlayers) {
+      room.phase = "ended";
+      room.status = "finished";
+      room.endInfo = {
+        endedAt: now,
+        endReason: "winners",
+        maxRounds: gs.maxRounds ?? 10,
+        maxWinners,
+        winnerCount: room.winners.length,
+      };
+    }
+
+    players[currentPlayerId] = me;
+    room.players = players;
+    return room;
+  });
+
+  if (!tx.committed) {
+    throw new Error("Roll transaction aborted");
+  }
+}
+
+// ---------------- Host: Start Question (Transaction) ----------------
 startQuestionBtn.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  const snap = await get(roomRef);
-  if (!snap.exists()) return;
-
-  const roomData = snap.val();
-  const players = roomData.players || {};
-  const phase = roomData.phase;
-
-  // นับเฉพาะคนที่ยังไม่เข้าเส้นชัย
-  const activePlayers = Object.values(players).filter(
-    (p) => !p.finished && (p.position || 1) < BOARD_SIZE
-  );
-  const totalActive = activePlayers.length;
-  const rolledCount = activePlayers.filter((p) => p.hasRolled).length;
-
-  if (phase !== "rolling") {
-    alert("ต้องอยู่ในช่วงทอยลูกเต๋าก่อนจึงจะเริ่มคำถามได้");
-    return;
-  }
-  if (totalActive === 0 || rolledCount < totalActive) {
-    alert("ยังมีผู้เล่นที่ยังไม่ทอยลูกเต๋า");
-    return;
-  }
-
-  const questionIndex =
-    roomData.questionIndex ??
-    ((roomData.currentRound - 1) % getQuestionSetLengthForRoom(roomData));
-  const question = getQuestionFromRoom(roomData, questionIndex);
-  if (!question) {
-    alert("ยังไม่ได้ตั้งคำถามในชุดที่เลือก");
-    return;
-  }
-
   const now = Date.now();
-  const updates = {};
-  updates[`rooms/${currentRoomCode}/phase`] = "questionCountdown";
-  updates[`rooms/${currentRoomCode}/questionIndex`] = questionIndex;
-  updates[`rooms/${currentRoomCode}/questionCountdownStartAt`] = now;
-  updates[`rooms/${currentRoomCode}/questionCountdownSeconds`] = 3;
-  updates[`rooms/${currentRoomCode}/answerStartAt`] = null;
-  updates[`rooms/${currentRoomCode}/answerTimeSeconds`] = question.timeLimit;
-  updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
 
+  const tx = await runTransaction(roomRef, (room) => {
+    if (!room) return room;
+    if (room.phase !== "rolling") return;
+
+    const players = room.players || {};
+    const activePlayers = Object.values(players).filter((p) => !p.finished && clampPos(p.position) < BOARD_SIZE);
+    const totalActive = activePlayers.length;
+    const rolledCount = activePlayers.filter((p) => !!p.hasRolled).length;
+    if (totalActive > 0 && rolledCount < totalActive) return; // abort
+
+    const questionIndex = room.questionIndex ?? 0;
+    const q = getQuestionFromRoom(room, questionIndex);
+    if (!q) return;
+
+    room.phase = "questionCountdown";
+    room.questionCountdownStartAt = now;
+    room.questionCountdownSeconds = 3;
+    room.answerStartAt = null;
+    room.answerTimeSeconds = q.timeLimit;
+    room.answerDeadlineExpired = false;
+
+    return room;
+  });
+
+  if (!tx.committed) alert("เริ่มคำถามไม่ได้ (ยังมีคนไม่ทอย หรือ phase ไม่ถูกต้อง)");
   clearTimer();
-  await update(ref(db), updates);
 });
 
-// ---------------- Host: Reveal Answer & Move Tokens ----------------
+// ---------------- Host: Reveal Answer & Move (Transaction) ----------------
 revealAnswerBtn.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  const snap = await get(roomRef);
-  if (!snap.exists()) return;
-
-  const roomData = snap.val();
-
-  if (roomData.phase !== "answering") {
-    alert("ต้องอยู่ในช่วงตอบคำถาม ก่อนเฉลย");
-    return;
-  }
-
-  const players = roomData.players || {};
-  const questionIndex = roomData.questionIndex ?? 0;
-  const question = getQuestionFromRoom(roomData, questionIndex);
-  if (!question) {
-    alert("ไม่พบข้อมูลคำถาม");
-    return;
-  }
-
-  const gs = roomData.gameSettings || {};
-  const rewardCorrect = Number.isFinite(gs.rewardCorrect)
-    ? gs.rewardCorrect
-    : 1;
-  const penaltyWrong = Number.isFinite(gs.penaltyWrong)
-    ? gs.penaltyWrong
-    : -1;
-  const maxRounds = gs.maxRounds || 10;
-  const maxWinners = gs.maxWinners || 5;
-
-  const questionSetId = gs.questionSetId || "general";
-  const currentRound = roomData.currentRound || 0;
-
   const now = Date.now();
-  const updates = {};
 
-  let winners = roomData.winners || [];
-  const winnerIds = new Set(winners.map((w) => w.playerId));
+  const tx = await runTransaction(roomRef, (room) => {
+    if (!room) return room;
+    if (room.phase !== "answering") return;
 
-  // === วนผู้เล่นทีละคน เพื่อขยับตำแหน่ง + บันทึก history ===
-  for (const [pid, p] of Object.entries(players)) {
-    const alreadyFinished = !!p.finished;
-    const basePosRaw = p.position || 1;
-    const basePos = Math.max(1, Math.min(BOARD_SIZE, basePosRaw));
+    const players = room.players || {};
+    const gs = room.gameSettings || {};
 
-    // ถ้าจบเกมไปแล้ว "จากรอบก่อนหน้านี้" → ข้าม ไม่ต้อง log ซ้ำ
-    if (alreadyFinished && p.finishedRound != null && p.finishedRound < currentRound) {
-      continue;
-    }
+    const rewardCorrect = Number.isFinite(gs.rewardCorrect) ? gs.rewardCorrect : 1;
+    const penaltyWrong = Number.isFinite(gs.penaltyWrong) ? gs.penaltyWrong : -1;
+    const maxRounds = Math.max(1, gs.maxRounds ?? 10);
+    const maxWinners = Math.max(1, gs.maxWinners ?? 5);
 
-    let answered = !!p.answered;
-    let ans = p.answer;
-    let correct = null;
-    let configuredMove = 0;
-    let pos = basePos;
+    const questionIndex = room.questionIndex ?? 0;
+    const q = getQuestionFromRoom(room, questionIndex);
+    if (!q) return;
 
-    if (!alreadyFinished) {
-      // ----- ยังไม่เข้าเส้นชัย → คิดผลตามตอบถูก/ผิด -----
-      configuredMove = penaltyWrong; // default = ผิด/ไม่ตอบ
-      correct = false;
+    const questionSetId = gs.questionSetId || "general";
+    const currentRound = room.currentRound || 0;
 
-      if (answered && ans === question.correctOption) {
-        configuredMove = rewardCorrect;
-        correct = true;
+    room.history = room.history || {};
+    const roundKey = `round_${currentRound}`;
+    room.history[roundKey] = room.history[roundKey] || {};
+    room.history[roundKey].answers = room.history[roundKey].answers || {};
+
+    room.winners = Array.isArray(room.winners) ? room.winners : [];
+    const winnerIds = new Set(room.winners.map((w) => w.playerId));
+
+    for (const [pid, p] of Object.entries(players)) {
+      const basePos = clampPos(p.position);
+      const alreadyFinished = !!p.finished || basePos >= BOARD_SIZE;
+
+      let answered = !!p.answered;
+      let ans = p.answer ?? null;
+
+      let correct = null;
+      let configuredMove = 0;
+      let finalPos = basePos;
+
+      if (!alreadyFinished) {
+        correct = answered && ans === q.correctOption;
+        configuredMove = correct ? rewardCorrect : penaltyWrong;
+        finalPos = clampPos(basePos + configuredMove);
+
+        p.position = finalPos;
+        p.lastAnswerCorrect = correct;
+
+        if (finalPos >= BOARD_SIZE) {
+          p.finished = true;
+          p.finishedRound = currentRound;
+          p.finishedBy = "answer";
+        }
+      } else {
+        // neutral record for finished players this round (no Q stats)
+        answered = false;
+        ans = null;
+        correct = null;
+        configuredMove = 0;
+        finalPos = basePos;
       }
 
-      pos = basePos + configuredMove;
-      if (pos < 1) pos = 1;
-      if (pos > BOARD_SIZE) pos = BOARD_SIZE;
-
-      // ถ้ารอบนี้ทำให้ถึง/เกินช่อง 30 จาก "ตอบคำถาม"
-      if (pos >= BOARD_SIZE) {
-        updates[`rooms/${currentRoomCode}/players/${pid}/finished`] = true;
-        updates[`rooms/${currentRoomCode}/players/${pid}/finishedRound`] =
-          currentRound;
-        updates[`rooms/${currentRoomCode}/players/${pid}/finishedBy`] = "answer";
-      }
-    } else {
-      // ----- คนที่เพิ่งเข้าเส้นชัยด้วยลูกเต๋าในรอบนี้ (finishedRound === currentRound) -----
-      answered = false;
-      ans = null;
-      correct = null;
-      configuredMove = 0;
-      pos = basePos;
-      // ไม่ขยับตำแหน่งเพิ่มเติม
-    }
-
-    const actualDelta = pos - basePos;
-
-    // อัปเดตตำแหน่ง
-    updates[`rooms/${currentRoomCode}/players/${pid}/position`] = pos;
-
-    // บันทึกว่ารอบนี้ "ถูก/ผิด" เฉพาะคนที่ยังเล่นอยู่
-    if (correct === true || correct === false) {
-      updates[`rooms/${currentRoomCode}/players/${pid}/lastAnswerCorrect`] = correct;
-    }
-
-    // เก็บ history ของรอบนี้
-    const historyPath = `rooms/${currentRoomCode}/history/round_${currentRound}/answers/${pid}`;
-    updates[historyPath] = {
-      playerId: pid,
-      playerName: p.name || "",
-      questionSetId,
-      questionIndex,
-      questionText: question.text,
-      selectedOption: ans ?? null,
-      correct,
-      answered,
-      diceRoll: p.lastRoll ?? null,
-      basePosition: basePos,
-      finalPosition: pos,
-      configuredMove,
-      actualDelta,
-      timestamp: now,
-    };
-
-    // เช็กเข้าเส้นชัยเพื่อบันทึกใน winners
-    if (pos >= BOARD_SIZE && !winnerIds.has(pid)) {
-      const finishedRound = p.finishedRound ?? currentRound;
-      winners.push({
+      // history record
+      room.history[roundKey].answers[pid] = {
         playerId: pid,
-        playerName: p.name || pid,
-        finishedRound: finishedRound,
-        rank: winners.length + 1,
-      });
-      winnerIds.add(pid);
+        playerName: p.name || "",
+        questionSetId,
+        questionIndex,
+        questionText: q.text,
+        selectedOption: ans,
+        correct,
+        answered,
+        diceRoll: p.lastRoll ?? null,
+        basePosition: basePos,
+        finalPosition: finalPos,
+        configuredMove,
+        actualDelta: finalPos - basePos,
+        timestamp: now,
+      };
+
+      // winners update
+      if (finalPos >= BOARD_SIZE && !winnerIds.has(pid)) {
+        room.winners.push({
+          playerId: pid,
+          playerName: p.name || pid,
+          finishedRound: p.finishedRound ?? currentRound,
+          rank: room.winners.length + 1,
+        });
+        winnerIds.add(pid);
+      }
+
+      players[pid] = p;
     }
-  }
 
-  // เขียน winners กลับ DB
-  updates[`rooms/${currentRoomCode}/winners`] = winners;
+    room.players = players;
 
-  const totalPlayers = Object.keys(players).length;
-  const targetWinners = Math.min(maxWinners, totalPlayers);
+    // end game decision
+    const totalPlayers = Object.keys(players).length;
+    const targetWinners = Math.min(maxWinners, totalPlayers);
 
-  let gameEnded = false;
-  let endReason = null;
+    let gameEnded = false;
+    let endReason = null;
 
-  if (winners.length >= targetWinners || winners.length === totalPlayers) {
-    gameEnded = true;
-    endReason = "winners";
-  } else if (currentRound >= maxRounds) {
-    gameEnded = true;
-    endReason = "rounds";
-  }
+    if (room.winners.length >= targetWinners || room.winners.length === totalPlayers) {
+      gameEnded = true;
+      endReason = "winners";
+    } else if (currentRound >= maxRounds) {
+      gameEnded = true;
+      endReason = "rounds";
+    }
 
-  if (gameEnded) {
-    updates[`rooms/${currentRoomCode}/phase`] = "ended";
-    updates[`rooms/${currentRoomCode}/status`] = "finished";
-    updates[`rooms/${currentRoomCode}/endInfo`] = {
-      endedAt: now,
-      endReason,
-      maxRounds,
-      maxWinners,
-      winnerCount: winners.length,
-    };
-  } else {
-    updates[`rooms/${currentRoomCode}/phase`] = "result";
-  }
+    if (gameEnded) {
+      room.phase = "ended";
+      room.status = "finished";
+      room.endInfo = {
+        endedAt: now,
+        endReason,
+        maxRounds,
+        maxWinners,
+        winnerCount: room.winners.length,
+      };
+    } else {
+      room.phase = "result";
+    }
 
+    return room;
+  });
+
+  if (!tx.committed) alert("เฉลยไม่ได้ (phase ไม่ถูกต้อง)");
   clearTimer();
-  await update(ref(db), updates);
 });
 
-// ---------------- Game View (Board + Question) ----------------
+// ---------------- Game View ----------------
 function updateGameView(roomData, players) {
   const round = roomData.currentRound || 0;
   const phase = roomData.phase || "idle";
 
-  if (round > 0) {
-    gameAreaEl.style.display = "block";
-  } else {
-    gameAreaEl.style.display = "none";
-  }
-
-  if (round > 0) {
-    roundInfoEl.textContent = `รอบที่: ${round}`;
-  } else {
-    roundInfoEl.textContent = "ยังไม่ได้เริ่มรอบ";
-  }
+  if (gameAreaEl) gameAreaEl.style.display = round > 0 ? "block" : "none";
+  if (roundInfoEl) roundInfoEl.textContent = round > 0 ? `รอบที่: ${round}` : "ยังไม่ได้เริ่มรอบ";
 
   let phaseText = "";
   switch (phase) {
-    case "rolling":
-      phaseText = "กำลังทอยลูกเต๋า";
-      break;
-    case "questionCountdown":
-      phaseText = "เตรียมคำถาม | นับถอยหลัง 3, 2, 1";
-      break;
-    case "answering":
-      phaseText = "กำลังตอบคำถาม";
-      break;
-    case "result":
-      phaseText = "สรุปผลคำถามรอบนี้";
-      break;
-    case "ended":
-      phaseText = "เกมจบแล้ว";
-      break;
-    default:
-      phaseText = "รอ Host เริ่มรอบใหม่";
+    case "rolling": phaseText = "กำลังทอยลูกเต๋า"; break;
+    case "questionCountdown": phaseText = "เตรียมคำถาม | นับถอยหลัง"; break;
+    case "answering": phaseText = "กำลังตอบคำถาม"; break;
+    case "result": phaseText = "สรุปผลคำถามรอบนี้"; break;
+    case "ended": phaseText = "เกมจบแล้ว"; break;
+    default: phaseText = "รอ Host เริ่มรอบใหม่";
   }
-  phaseInfoEl.textContent = `สถานะรอบ: ${phaseText}`;
+  if (phaseInfoEl) phaseInfoEl.textContent = `สถานะรอบ: ${phaseText}`;
 
   renderBoard(roomData, players);
   updateRoleControls(roomData, players);
   updateQuestionUI(roomData, players);
 
-  // แสดง/ซ่อนหน้า end game
   if (phase === "ended") {
-    endGameAreaEl.style.display = "block";
+    if (endGameAreaEl) endGameAreaEl.style.display = "block";
     renderEndGameSummary(roomData, players);
   } else {
-    endGameAreaEl.style.display = "none";
-    endGameSummaryEl.innerHTML = "";
+    if (endGameAreaEl) endGameAreaEl.style.display = "none";
+    if (endGameSummaryEl) endGameSummaryEl.innerHTML = "";
   }
 }
 
-// ---------------- End Game Summary ----------------
-function renderEndGameSummary(roomData, players) {
-  const history = roomData.history || {};
-  const winners = roomData.winners || [];
-  const gs = roomData.gameSettings || {};
-  const maxRounds = gs.maxRounds || 10;
-  const maxWinners = gs.maxWinners || 5;
-  const endInfo = roomData.endInfo || {};
-  const endReason = endInfo.endReason || "unknown";
-
-  // เตรียมสถิติพื้นฐาน per player
-  const perPlayer = {};
-  for (const [pid, p] of Object.entries(players)) {
-    perPlayer[pid] = {
-      id: pid,
-      name: p.name || pid,
-      correct: 0,
-      wrong: 0,
-      timeout: 0,
-      rolls: [],
-      answerSymbols: [],
-      finalPosition: p.position || 1,
-      finishRound: p.finishedRound ?? null,
-      finishViaDice: p.finishedBy === "dice" ? true : null,
-      rank: null,
-    };
-  }
-
-  // ไล่ history ตามรอบเพื่อต่อข้อมูล
-  const roundKeys = Object.keys(history)
-    .filter((k) => k.startsWith("round_"))
-    .sort((a, b) => {
-      const ra = parseInt(a.split("_")[1] || "0", 10);
-      const rb = parseInt(b.split("_")[1] || "0", 10);
-      return ra - rb;
-    });
-
-  for (const rk of roundKeys) {
-    const roundData = history[rk] || {};
-    const answers = roundData.answers || {};
-    const roundNumber = parseInt(rk.split("_")[1] || "0", 10);
-
-    for (const [pid, rec] of Object.entries(answers)) {
-      if (!perPlayer[pid]) {
-        perPlayer[pid] = {
-          id: pid,
-          name: rec.playerName || pid,
-          correct: 0,
-          wrong: 0,
-          timeout: 0,
-          rolls: [],
-          answerSymbols: [],
-          finalPosition: players[pid]?.position || 1,
-          finishRound: null,
-          finishViaDice: null,
-          rank: null,
-        };
-      }
-
-      const stat = perPlayer[pid];
-
-      if (rec.diceRoll != null) {
-        stat.rolls.push(rec.diceRoll);
-      }
-
-      const finalPos = rec.finalPosition ?? stat.finalPosition;
-      const basePos = rec.basePosition ?? (finalPos - (rec.configuredMove || 0));
-
-      // เคส neutral: เข้าเส้นชัยด้วยลูกเต๋า (basePos >= 30) แล้วไม่ตอบคำถาม
-      const neutralFinishByDice =
-        rec.correct == null &&
-        !rec.answered &&
-        basePos >= BOARD_SIZE &&
-        finalPos >= BOARD_SIZE;
-
-      if (neutralFinishByDice) {
-        // ใช้แต่ข้อมูล finalPosition/basePosition เพื่อ mark finishRound ด้านล่าง
-        // แต่ไม่เพิ่ม correct/wrong/timeout และไม่เพิ่มสัญลักษณ์
-      } else {
-        // ถูก / ผิด / ไม่ตอบ
-        if (rec.correct === true) {
-          stat.correct += 1;
-          stat.answerSymbols.push("✅");
-        } else {
-          if (rec.answered) {
-            stat.wrong += 1;
-          } else {
-            stat.timeout += 1;
-          }
-          stat.answerSymbols.push("❌");
-        }
-      }
-
-      // เช็ก "รอบแรกที่เข้าเส้นชัย"
-      if (
-        finalPos >= BOARD_SIZE &&
-        (stat.finishRound == null || roundNumber < stat.finishRound)
-      ) {
-        stat.finishRound = roundNumber;
-        stat.finishViaDice = basePos >= BOARD_SIZE;
-      }
-    }
-  }
-
-  const statsArray = Object.values(perPlayer).map((s) => {
-    const totalQ = s.correct + s.wrong + s.timeout;
-    const pct = totalQ > 0 ? (s.correct / totalQ) * 100 : 0;
-    return {
-      ...s,
-      pctCorrect: pct,
-    };
-  });
-
-  const finishers = statsArray.filter((s) => s.finishRound != null);
-  const nonFinishers = statsArray.filter((s) => s.finishRound == null);
-
-  // จัดอันดับ finishers
-  finishers.sort((a, b) => {
-    if (a.finishRound !== b.finishRound) {
-      return a.finishRound - b.finishRound;
-    }
-    if (a.finishViaDice !== b.finishViaDice) {
-      return a.finishViaDice ? -1 : 1;
-    }
-    if (b.pctCorrect !== a.pctCorrect) {
-      return b.pctCorrect - a.pctCorrect;
-    }
-    return (a.name || "").localeCompare(b.name || "");
-  });
-
-  // จัดอันดับ non-finishers
-  nonFinishers.sort((a, b) => {
-    if (b.finalPosition !== a.finalPosition) {
-      return b.finalPosition - a.finalPosition;
-    }
-    if (b.pctCorrect !== a.pctCorrect) {
-      return b.pctCorrect - a.pctCorrect;
-    }
-    return (a.name || "").localeCompare(b.name || "");
-  });
-
-  const combined = [...finishers, ...nonFinishers];
-
-  // ให้ค่า rank แบบอันดับร่วม + ข้ามอันดับ
-  let lastKey = null;
-  let lastRank = 0;
-  let index = 0;
-
-  for (const s of combined) {
-    index++;
-    let key;
-    if (s.finishRound != null) {
-      key = `F|${s.finishRound}|${s.finishViaDice ? 1 : 0}|${Math.round(
-        s.pctCorrect
-      )}`;
-    } else {
-      key = `N|${s.finalPosition}|${Math.round(s.pctCorrect)}`;
-    }
-
-    if (key === lastKey) {
-      s.rank = lastRank;
-    } else {
-      s.rank = index;
-      lastRank = s.rank;
-      lastKey = key;
-    }
-  }
-
-  // ---------------- Host View ----------------
-  if (currentRole === "host") {
-    let reasonText = "";
-    if (endReason === "winners") {
-      reasonText = `เกมจบเพราะมีผู้เข้าเส้นชัยครบ ${Math.min(
-        maxWinners,
-        Object.keys(players).length
-      )} คน`;
-    } else if (endReason === "rounds") {
-      reasonText = `เกมจบเพราะเล่นครบ ${maxRounds} รอบแล้ว`;
-    } else {
-      reasonText = "เกมจบแล้ว";
-    }
-
-    let html = `<p><strong>${reasonText}</strong></p>`;
-
-    if (winners.length > 0) {
-      html += `<p>ผู้เข้าเส้นชัย (ตามลำดับที่ถึงเส้นชัยจริง):</p><ul>`;
-      winners
-        .sort((a, b) => a.finishedRound - b.finishedRound || a.rank - b.rank)
-        .forEach((w) => {
-          html += `<li>อันดับเข้าเส้นชัย ${w.rank}: ${w.playerName} (รอบที่เข้าเส้นชัย: ${w.finishedRound})</li>`;
-        });
-      html += `</ul>`;
-    }
-
-    html += `
-      <h4>สรุปผลรายผู้เล่น</h4>
-      <table>
-        <thead>
-          <tr>
-            <th>อันดับ</th>
-            <th class="name-col">ผู้เล่น</th>
-            <th>ตำแหน่งสุดท้าย</th>
-            <th>ถึงเส้นชัย?</th>
-            <th>รอบที่ถึง</th>
-            <th>วิธีถึง (ทอย/ตอบ)</th>
-            <th>ถูก</th>
-            <th>ผิด/ไม่ทัน</th>
-            <th>% ถูก</th>
-            <th>ทอยลูกเต๋า (ทุกครั้ง)</th>
-            <th>ผลคำถาม (ทุกข้อ)</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    combined.forEach((s) => {
-      const totalQ = s.correct + s.wrong + s.timeout;
-      const totalWrongLike = s.wrong + s.timeout;
-      const pctText =
-        totalQ > 0 ? Math.round(s.pctCorrect).toString() + "%" : "-";
-      const rollsText = s.rolls.join("") || "-";
-      const answersText = s.answerSymbols.join("") || "-";
-      const finishFlag = s.finishRound != null ? "✅" : "-";
-      const finishRoundText = s.finishRound != null ? s.finishRound : "-";
-      let finishMethod = "-";
-      if (s.finishRound != null) {
-        finishMethod = s.finishViaDice ? "ทอยถึง 30" : "ตอบถูกจนถึง 30";
-      }
-
-      html += `
-        <tr>
-          <td>${s.rank ?? "-"}</td>
-          <td class="name-col">${s.name}</td>
-          <td>${s.finalPosition}</td>
-          <td>${finishFlag}</td>
-          <td>${finishRoundText}</td>
-          <td>${finishMethod}</td>
-          <td>${s.correct}</td>
-          <td>${totalWrongLike}</td>
-          <td>${pctText}</td>
-          <td>${rollsText}</td>
-          <td>${answersText}</td>
-        </tr>
-      `;
-    });
-
-    html += `</tbody></table>`;
-
-    endGameSummaryEl.innerHTML = html;
-    return;
-  }
-
-  // ---------------- Player View ----------------
-  if (currentRole === "player") {
-    const meStat = combined.find((s) => s.id === currentPlayerId) || null;
-    let html = "<p><strong>เกมจบแล้ว</strong></p>";
-
-    if (meStat) {
-      const totalQ = meStat.correct + meStat.wrong + meStat.timeout;
-      const totalWrongLike = meStat.wrong + meStat.timeout;
-      const pctText =
-        totalQ > 0 ? Math.round(meStat.pctCorrect).toString() + "%" : "-";
-
-      html += `<p>สรุปผลของคุณ: <strong>${meStat.name}</strong></p>`;
-      html += `<ul>`;
-      html += `<li>อันดับ: <strong>${meStat.rank ?? "-"}</strong></li>`;
-      html += `<li>ตำแหน่งสุดท้ายบนกระดาน: <strong>${meStat.finalPosition}</strong></li>`;
-      html += `<li>ถึงเส้นชัยหรือไม่: <strong>${
-        meStat.finishRound != null ? "ถึง" : "ยังไม่ถึง"
-      }</strong></li>`;
-      if (meStat.finishRound != null) {
-        html += `<li>รอบที่ถึงเส้นชัย: <strong>${meStat.finishRound}</strong></li>`;
-        html += `<li>วิธีถึงเส้นชัย: <strong>${
-          meStat.finishViaDice ? "ทอยลูกเต๋าได้ถึงช่อง 30" : "ตอบคำถามจนถึงช่อง 30"
-        }</strong></li>`;
-      }
-      html += `<li>ตอบถูก: <strong>${meStat.correct}</strong> ข้อ</li>`;
-      html += `<li>ตอบผิด/ไม่ทัน: <strong>${totalWrongLike}</strong> ข้อ</li>`;
-      html += `<li>เปอร์เซ็นต์ตอบถูก: <strong>${pctText}</strong></li>`;
-      html += `<li>ผลทอยลูกเต๋าทุกครั้ง: <strong>${
-        meStat.rolls.join("") || "-"
-      }</strong></li>`;
-      html += `<li>ผลคำถามทุกข้อ: <strong>${
-        meStat.answerSymbols.join("") || "-"
-      }</strong></li>`;
-      html += `</ul>`;
-    }
-
-    if (winners.length > 0) {
-      html += `<p><strong>ผู้เข้าเส้นชัย</strong></p><ul>`;
-      winners
-        .sort((a, b) => a.finishedRound - b.finishedRound || a.rank - b.rank)
-        .forEach((w) => {
-          html += `<li>อันดับเข้าเส้นชัย ${w.rank}: ${w.playerName}</li>`;
-        });
-      html += `</ul>`;
-    }
-
-    endGameSummaryEl.innerHTML = html;
-  }
-}
-
-// ---------------- ปุ่ม / Status ตามบทบาท ----------------
+// ---------------- Role Controls ----------------
 function updateRoleControls(roomData, players) {
   const phase = roomData.phase || "idle";
   const round = roomData.currentRound || 0;
-  const deadlineExpired = roomData.answerDeadlineExpired === true;
 
-  // ---------- ส่วนของ Player ----------
   if (currentRole === "player") {
-    const me =
-      (players && currentPlayerId && players[currentPlayerId]) || {};
-
-    const pos = me.position || 1;
+    const me = (players && currentPlayerId && players[currentPlayerId]) || {};
+    const pos = clampPos(me.position);
     const finished = !!me.finished || pos >= BOARD_SIZE;
     const rolled = !!me.hasRolled;
-    const canRoll = phase === "rolling" && !rolled && !finished;
 
-    rollDiceBtn.style.display = "inline-block";
+    const canRoll = phase === "rolling" && !rolled && !finished;
+    rollDiceBtn.style.display = phase === "ended" ? "none" : "inline-block";
     rollDiceBtn.disabled = !canRoll;
 
-    const posText = pos;
-    const lastRollText =
-      me.lastRoll != null ? me.lastRoll : "-";
-
-    playerStatusEl.textContent = `ตำแหน่งของคุณ: ${posText} | ทอยล่าสุด: ${lastRollText}`;
+    const lastRollText = me.lastRoll != null ? me.lastRoll : "-";
+    playerStatusEl.textContent = `ตำแหน่งของคุณ: ${pos} | ทอยล่าสุด: ${lastRollText}`;
 
     if (finished) {
-      playerStatusEl.textContent += " | คุณเข้าเส้นชัยแล้ว (ช่อง 30) รอดูเพื่อนเล่นต่อ";
+      playerStatusEl.textContent += " | คุณเข้าเส้นชัยแล้ว";
       rollDiceBtn.disabled = true;
     } else if (phase === "idle" || round === 0) {
       playerStatusEl.textContent += " | รอ Host เริ่มรอบใหม่";
     } else if (phase === "rolling" && rolled) {
-      playerStatusEl.textContent += " | คุณทอยในรอบนี้แล้ว รอผู้เล่นคนอื่น";
+      playerStatusEl.textContent += " | คุณทอยแล้ว รอคนอื่น";
     } else if (phase === "answering") {
-      if (deadlineExpired) {
-        if (me.answered) {
-          playerStatusEl.textContent += " | ตอบแล้ว รอ Host เฉลย";
-        } else {
-          playerStatusEl.textContent += " | หมดเวลา ไม่สามารถตอบได้แล้ว";
-        }
-      } else {
-        playerStatusEl.textContent += " | กำลังตอบคำถาม";
-      }
+      playerStatusEl.textContent += " | กำลังตอบคำถาม";
     } else if (phase === "ended") {
       playerStatusEl.textContent += " | เกมจบแล้ว ดูสรุปผลด้านล่าง";
-      rollDiceBtn.style.display = "none";
     }
-  }
-  // ---------- ส่วนของ Host ----------
-  else if (currentRole === "host") {
+  } else if (currentRole === "host") {
     rollDiceBtn.style.display = "none";
-    playerStatusEl.textContent =
-      "คุณกำลังดูสถานะของนักเรียนทั้งหมด / ใช้ปุ่มด้านบนเพื่อควบคุมรอบและคำถาม";
-  }
-  // ---------- คนที่ยังไม่เลือกบทบาท ----------
-  else {
+    playerStatusEl.textContent = "คุณเป็น Host: ใช้ปุ่มด้านบนควบคุมรอบและคำถาม";
+  } else {
     rollDiceBtn.style.display = "none";
     playerStatusEl.textContent = "";
   }
 
-  // ---------- ปุ่มควบคุมฝั่ง Host ----------
   if (currentRole === "host") {
-    const playerList = Object.values(players || {});
-    const activePlayers = playerList.filter(
-      (p) => !p.finished && (p.position || 1) < BOARD_SIZE
-    );
+    const list = Object.values(players || {});
+    const activePlayers = list.filter((p) => !p.finished && clampPos(p.position) < BOARD_SIZE);
     const totalActive = activePlayers.length;
     const rolledActive = activePlayers.filter((p) => p.hasRolled).length;
     const answeredActive = activePlayers.filter((p) => p.answered).length;
 
-    startRoundBtn.disabled = phase === "ended";
+    startRoundBtn.disabled = (phase === "ended");
+    startQuestionBtn.style.display = (phase === "ended") ? "none" : "inline-block";
+    revealAnswerBtn.style.display = (phase === "ended") ? "none" : "inline-block";
 
-    startQuestionBtn.style.display = "inline-block";
-    startQuestionBtn.disabled = !(
-      phase === "rolling" &&
-      totalActive > 0 &&
-      rolledActive === totalActive
-    );
+    startQuestionBtn.disabled = !(phase === "rolling" && (totalActive === 0 || rolledActive === totalActive));
+    revealAnswerBtn.disabled = (phase !== "answering");
 
-    revealAnswerBtn.style.display = "inline-block";
-    revealAnswerBtn.disabled = phase !== "answering";
-
-    if (phase === "rolling") {
-      phaseInfoEl.textContent += ` | ทอยแล้ว ${rolledActive}/${totalActive} คน`;
-    } else if (phase === "answering") {
-      phaseInfoEl.textContent += ` | ตอบแล้ว ${answeredActive}/${totalActive} คน`;
-      if (deadlineExpired) {
-        phaseInfoEl.textContent += " | หมดเวลาแล้ว";
-      }
-    } else if (phase === "ended") {
-      startRoundBtn.disabled = true;
-      startQuestionBtn.style.display = "none";
-      revealAnswerBtn.style.display = "none";
-      phaseInfoEl.textContent += " | เกมจบแล้ว";
-    }
+    if (phase === "rolling") phaseInfoEl.textContent += ` | ทอยแล้ว ${rolledActive}/${totalActive} คน`;
+    if (phase === "answering") phaseInfoEl.textContent += ` | ตอบแล้ว ${answeredActive}/${totalActive} คน`;
   } else {
     startRoundBtn.disabled = true;
     startQuestionBtn.style.display = "none";
@@ -1376,185 +1031,12 @@ function updateRoleControls(roomData, players) {
   }
 }
 
-// ---------------- Animate Dice And Commit Roll ----------------
-async function animateDiceAndCommitRoll(basePosition) {
-  return new Promise((resolve) => {
-    rollDiceBtn.disabled = true;
-
-    const totalDuration = 3000;
-    const start = Date.now();
-    let displayRoll = 1;
-
-    function step() {
-      const elapsed = Date.now() - start;
-      const remaining = totalDuration - elapsed;
-
-      if (remaining <= 0) {
-        const finalRoll = displayRoll;
-        finalizeRoll(finalRoll, basePosition).then(resolve);
-        return;
-      }
-
-      displayRoll = Math.floor(Math.random() * 6) + 1;
-
-      if (currentRole === "player") {
-        playerStatusEl.textContent = `กำลังทอยลูกเต๋า... ได้ ${displayRoll}`;
-      }
-
-      let delay;
-      if (elapsed < 1000) {
-        delay = 80;
-      } else if (elapsed < 2000) {
-        delay = 150;
-      } else {
-        delay = 250;
-      }
-
-      setTimeout(step, delay);
-    }
-
-    step();
-  });
-}
-
-async function finalizeRoll(roll, basePosition) {
-  const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  let roomData = null;
-  let currentRound = 0;
-  let playerName = "";
-
-  // อ่านข้อมูลห้องก่อน
-  try {
-    const snap = await get(roomRef);
-    if (snap.exists()) {
-      roomData = snap.val();
-      currentRound = roomData.currentRound || 0;
-      playerName = roomData.players?.[currentPlayerId]?.name || "";
-    }
-  } catch (e) {
-    console.error("Error reading room before finalizeRoll:", e);
-  }
-
-  const startPos = basePosition || 1;
-  let newPos = startPos + roll;
-  if (newPos < 1) newPos = 1;
-  if (newPos > BOARD_SIZE) newPos = BOARD_SIZE;
-
-  const updates = {};
-  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/lastRoll`] = roll;
-  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/position`] = newPos;
-  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/hasRolled`] = true;
-
-  // ถ้าเดินด้วยลูกเต๋าแล้วถึง/เกิน 30 → mark finished ทันที
-  if (newPos >= BOARD_SIZE) {
-    updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/finished`] = true;
-    updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/finishedRound`] =
-      currentRound;
-    updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/finishedBy`] =
-      "dice";
-  }
-
-  // บันทึก history การเดินด้วยลูกเต๋า
-  try {
-    if (roomData && currentRound > 0) {
-      const dicePath = getPathCells(startPos, newPos);
-      updates[
-        `rooms/${currentRoomCode}/history/round_${currentRound}/diceMoves/${currentPlayerId}`
-      ] = {
-        playerId: currentPlayerId,
-        playerName: playerName,
-        fromPosition: startPos,
-        toPosition: newPos,
-        diceRoll: roll,
-        pathCells: dicePath,
-        timestamp: Date.now(),
-      };
-    }
-  } catch (e) {
-    console.error("Error logging dice move history:", e);
-  }
-
-  // ---------- เช็กจบเกมกรณีเข้าเส้นชัยด้วยลูกเต๋า ----------
-  if (roomData) {
-    const gs = roomData.gameSettings || {};
-    const maxRounds = gs.maxRounds || 10;
-    const maxWinners = gs.maxWinners || 5;
-
-    const players = roomData.players || {};
-    const totalPlayers = Object.keys(players).length;
-
-    // clone player ปัจจุบันใน snapshot ให้มีตำแหน่งใหม่
-    const meSnapshot = players[currentPlayerId] || {};
-    const meAfter = {
-      ...meSnapshot,
-      position: newPos,
-      finished: newPos >= BOARD_SIZE ? true : !!meSnapshot.finished,
-      finishedRound:
-        newPos >= BOARD_SIZE ? currentRound : meSnapshot.finishedRound,
-      finishedBy: newPos >= BOARD_SIZE ? "dice" : meSnapshot.finishedBy,
-    };
-    players[currentPlayerId] = meAfter;
-
-    // winners ปัจจุบัน
-    let winners = roomData.winners || [];
-    const winnerIds = new Set(winners.map((w) => w.playerId));
-
-    // ถ้าเพิ่งเข้าเส้นชัยด้วยลูกเต๋า → ใส่ลง winners ด้วย
-    if (newPos >= BOARD_SIZE && !winnerIds.has(currentPlayerId)) {
-      winners.push({
-        playerId: currentPlayerId,
-        playerName: meAfter.name || currentPlayerId,
-        finishedRound: currentRound,
-        rank: winners.length + 1,
-      });
-      winnerIds.add(currentPlayerId);
-    }
-
-    // นับจำนวนคนที่ "จบแล้ว" (finished หรืออยู่ที่ช่อง 30 ขึ้นไป)
-    const finishedCount = Object.values(players).filter(
-      (p) => p.finished || (p.position || 1) >= BOARD_SIZE
-    ).length;
-    const targetWinners = Math.min(maxWinners, totalPlayers);
-
-    let gameEnded = false;
-    let endReason = null;
-
-    if (winners.length >= targetWinners || finishedCount === totalPlayers) {
-      // จบเพราะครบจำนวนผู้เข้าเส้นชัย หรือทุกคนเข้าเส้นชัยแล้ว
-      gameEnded = true;
-      endReason = "winners";
-    } else if (currentRound >= maxRounds) {
-      // สำรอง: เผื่อมาเรียกจากรอบสุดท้าย (จริง ๆ เคสนี้มักจะไปจบใน revealAnswer อยู่แล้ว)
-      gameEnded = true;
-      endReason = "rounds";
-    }
-
-    // อัปเดต winners กลับเข้า DB เสมอ (ไม่ว่าจะจบหรือยัง)
-    updates[`rooms/${currentRoomCode}/winners`] = winners;
-
-    if (gameEnded) {
-      updates[`rooms/${currentRoomCode}/phase`] = "ended";
-      updates[`rooms/${currentRoomCode}/status`] = "finished";
-      updates[`rooms/${currentRoomCode}/endInfo`] = {
-        endedAt: Date.now(),
-        endReason,
-        maxRounds,
-        maxWinners,
-        winnerCount: winners.length,
-      };
-    }
-  }
-
-  await update(ref(db), updates);
-}
-
 // ---------------- Question UI + Timer ----------------
 function updateQuestionUI(roomData, players) {
   const phase = roomData.phase || "idle";
   const round = roomData.currentRound || 0;
   const questionIndex = roomData.questionIndex;
-  const question =
-    questionIndex != null ? getQuestionFromRoom(roomData, questionIndex) : null;
+  const question = questionIndex != null ? getQuestionFromRoom(roomData, questionIndex) : null;
 
   if (round === 0) {
     questionAreaEl.style.display = "none";
@@ -1568,89 +1050,73 @@ function updateQuestionUI(roomData, players) {
     questionTextEl.textContent = `เตรียมคำถามรอบที่ ${round} …`;
     choicesContainerEl.innerHTML = "";
     ensureTimer(roomData, "questionCountdown");
-  } else if (phase === "answering" && question) {
+    return;
+  }
+
+  if (phase === "answering" && question) {
     questionAreaEl.style.display = "block";
     questionTextEl.textContent = question.text;
 
-    const me = players[currentPlayerId] || {};
+    const me = players?.[currentPlayerId] || {};
     const selectedOption = me.answer || null;
-    const deadlineExpired = roomData.answerDeadlineExpired === true;
+
+    // ✅ กันตอบหลังหมดเวลา แม้ flag ยัง false (เช่น host หลุด)
+    const startAt = roomData.answerStartAt;
+    const duration = roomData.answerTimeSeconds;
+    const now = Date.now();
+    const computedExpired =
+      Number.isFinite(startAt) && Number.isFinite(duration)
+        ? now > (startAt + duration * 1000)
+        : false;
+
+    const deadlineExpired = roomData.answerDeadlineExpired === true || computedExpired;
     const disableButtons = deadlineExpired || !!me.finished;
 
-    renderChoicesForPhase(
-      question,
-      selectedOption,
-      question.correctOption,
-      false,
-      disableButtons
-    );
+    renderChoicesForPhase(question, selectedOption, question.correctOption, false, disableButtons);
     ensureTimer(roomData, "answering");
-  } else if (phase === "result" && question) {
+    return;
+  }
+
+  if (phase === "result" && question) {
     questionAreaEl.style.display = "block";
     questionTextEl.textContent = `เฉลยรอบที่ ${round}: ${question.text}`;
     countdownDisplayEl.textContent = "";
 
     let selectedOption = null;
     if (currentRole === "player") {
-      const me = players[currentPlayerId] || {};
+      const me = players?.[currentPlayerId] || {};
       selectedOption = me.answer || null;
     }
 
-    renderChoicesForPhase(
-      question,
-      selectedOption,
-      question.correctOption,
-      true,
-      true
-    );
+    renderChoicesForPhase(question, selectedOption, question.correctOption, true, true);
     clearTimer();
-  } else {
-    questionAreaEl.style.display = "none";
-    countdownDisplayEl.textContent = "";
-    clearTimer();
+    return;
   }
+
+  questionAreaEl.style.display = "none";
+  countdownDisplayEl.textContent = "";
+  clearTimer();
 }
 
-function renderChoicesForPhase(
-  question,
-  selectedOption,
-  correctOption,
-  showResultOnly,
-  disableAnswerButtons = false
-) {
+function renderChoicesForPhase(question, selectedOption, correctOption, showResultOnly, disableAnswerButtons = false) {
   choicesContainerEl.innerHTML = "";
-
   if (!question) return;
 
-  const entries = Object.entries(question.choices);
-  for (const [key, text] of entries) {
+  for (const [key, text] of Object.entries(question.choices)) {
     const btn = document.createElement("button");
     btn.classList.add("choice-btn");
     btn.textContent = `${key}. ${text}`;
 
     if (showResultOnly) {
-      if (key === correctOption) {
-        btn.classList.add("correct");
-      }
-      if (
-        selectedOption &&
-        selectedOption === key &&
-        selectedOption !== correctOption
-      ) {
-        btn.classList.add("wrong");
-      }
+      if (key === correctOption) btn.classList.add("correct");
+      if (selectedOption && selectedOption === key && selectedOption !== correctOption) btn.classList.add("wrong");
       btn.disabled = true;
     } else {
-      if (selectedOption && key === selectedOption) {
-        btn.classList.add("selected");
-      }
+      if (selectedOption && key === selectedOption) btn.classList.add("selected");
+      btn.disabled = disableAnswerButtons;
 
-      if (disableAnswerButtons) {
-        btn.disabled = true;
-      } else if (currentRole === "player") {
-        btn.addEventListener("click", () => {
-          submitAnswer(key);
-        });
+      if (!disableAnswerButtons && currentRole === "player") {
+        btn.addEventListener("click", () => submitAnswerTx(key));
       }
     }
 
@@ -1658,7 +1124,6 @@ function renderChoicesForPhase(
   }
 }
 
-// ---------------- Timer สำหรับ countdown / answering ----------------
 function ensureTimer(roomData, targetPhase) {
   const phase = roomData.phase || "idle";
   const round = roomData.currentRound || 0;
@@ -1668,18 +1133,20 @@ function ensureTimer(roomData, targetPhase) {
     countdownDisplayEl.textContent = "";
     return;
   }
-
-  if (timerPhase === phase && timerRound === round && timerInterval) {
-    return;
-  }
+  if (timerPhase === phase && timerRound === round && timerInterval) return;
 
   clearTimer();
   timerPhase = phase;
   timerRound = round;
 
   if (phase === "questionCountdown") {
-    const start = roomData.questionCountdownStartAt || Date.now();
+    const start = roomData.questionCountdownStartAt;
     const duration = roomData.questionCountdownSeconds || 3;
+
+    if (!Number.isFinite(start)) {
+      countdownDisplayEl.textContent = "รอครูเริ่มนับถอยหลัง…";
+      return;
+    }
 
     timerInterval = setInterval(async () => {
       const now = Date.now();
@@ -1689,14 +1156,22 @@ function ensureTimer(roomData, targetPhase) {
 
       if (remaining <= 0) {
         clearTimer();
+        // Host จะเป็นคนเปลี่ยน phase โดยอัตโนมัติ
         if (currentRole === "host" && currentRoomCode) {
-          await moveToAnswering(roomData);
+          await moveToAnsweringTx(round);
         }
       }
     }, 250);
-  } else if (phase === "answering") {
-    const start = roomData.answerStartAt || Date.now();
+  }
+
+  if (phase === "answering") {
+    const start = roomData.answerStartAt;
     const duration = roomData.answerTimeSeconds || 20;
+
+    if (!Number.isFinite(start)) {
+      countdownDisplayEl.textContent = "รอเริ่มจับเวลา…";
+      return;
+    }
 
     timerInterval = setInterval(async () => {
       const now = Date.now();
@@ -1706,16 +1181,10 @@ function ensureTimer(roomData, targetPhase) {
 
       if (remaining <= 0) {
         clearTimer();
-
-        if (
-          currentRole === "host" &&
-          currentRoomCode &&
-          roomData.answerDeadlineExpired !== true
-        ) {
+        // Host set flag หมดเวลา
+        if (currentRole === "host" && currentRoomCode && roomData.answerDeadlineExpired !== true) {
           try {
-            await update(ref(db), {
-              [`rooms/${currentRoomCode}/answerDeadlineExpired`]: true,
-            });
+            await update(ref(db), { [`rooms/${currentRoomCode}/answerDeadlineExpired`]: true });
           } catch (e) {
             console.error("Error setting answerDeadlineExpired:", e);
           }
@@ -1725,136 +1194,152 @@ function ensureTimer(roomData, targetPhase) {
   }
 }
 
-// Host: เปลี่ยนจาก questionCountdown → answering
-async function moveToAnswering(oldRoomData) {
+// host: questionCountdown -> answering (Transaction)
+async function moveToAnsweringTx(expectedRound) {
   if (currentRole !== "host" || !currentRoomCode) return;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  const snap = await get(roomRef);
-  if (!snap.exists()) return;
-
-  const roomData = snap.val();
-  if (roomData.phase !== "questionCountdown") return;
-
   const now = Date.now();
-  const updates = {};
-  updates[`rooms/${currentRoomCode}/phase`] = "answering";
-  updates[`rooms/${currentRoomCode}/answerStartAt`] = now;
-  updates[`rooms/${currentRoomCode}/answerDeadlineExpired`] = false;
 
-  await update(ref(db), updates);
+  await runTransaction(roomRef, (room) => {
+    if (!room) return room;
+    if (room.phase !== "questionCountdown") return;
+    if ((room.currentRound || 0) !== expectedRound) return;
+
+    room.phase = "answering";
+    room.answerStartAt = now;
+    room.answerDeadlineExpired = false;
+    return room;
+  });
+}
+
+// ---------------- Player: Submit Answer (Transaction-safe) ----------------
+async function submitAnswerTx(optionKey) {
+  if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
+
+  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+  const now = Date.now();
+
+  const tx = await runTransaction(roomRef, (room) => {
+    if (!room) return room;
+    if (room.phase !== "answering") return;
+
+    const startAt = room.answerStartAt;
+    const duration = room.answerTimeSeconds;
+
+    const computedExpired =
+      Number.isFinite(startAt) && Number.isFinite(duration)
+        ? now > (startAt + duration * 1000)
+        : false;
+
+    if (room.answerDeadlineExpired === true || computedExpired) {
+      room.answerDeadlineExpired = true;
+      return room;
+    }
+
+    const players = room.players || {};
+    const me = players[currentPlayerId];
+    if (!me) return;
+
+    const pos = clampPos(me.position);
+    if (me.finished || pos >= BOARD_SIZE) return;
+    if (me.answered) return;
+
+    me.answer = optionKey;
+    me.answered = true;
+    players[currentPlayerId] = me;
+    room.players = players;
+
+    return room;
+  });
+
+  if (!tx.committed) {
+    alert("ส่งคำตอบไม่สำเร็จ (อาจหมดเวลาแล้ว)");
+  }
 }
 
 // ---------------- Board Rendering ----------------
 function renderBoard(roomData, players) {
+  if (!boardEl) return;
+
   const currentRound = roomData.currentRound || 0;
   const history = roomData.history || {};
 
   boardEl.innerHTML = "";
 
-  // ---------- แถวบนสุด: Label ----------
+  // label row
   const labelRow = document.createElement("div");
   labelRow.className = "board-label-row";
 
-  const labelNameSpacer = document.createElement("div");
-  labelNameSpacer.className = "player-row-name";
-  labelNameSpacer.textContent = "";
-  labelRow.appendChild(labelNameSpacer);
+  const spacer = document.createElement("div");
+  spacer.className = "player-row-name";
+  labelRow.appendChild(spacer);
 
   const labelTrack = document.createElement("div");
   labelTrack.className = "board-track";
 
   const startLabelCell = document.createElement("div");
   startLabelCell.className = "cell-card start-cell";
-  const startSpan = document.createElement("span");
-  startSpan.className = "cell-label";
-  startSpan.textContent = "Start";
-  startLabelCell.appendChild(startSpan);
+  startLabelCell.innerHTML = `<span class="cell-label">Start</span>`;
   labelTrack.appendChild(startLabelCell);
 
   for (let i = 1; i <= BOARD_SIZE; i++) {
-    const labelCell = document.createElement("div");
-    labelCell.className = "cell-card play-cell";
-    const span = document.createElement("span");
-    span.className = "cell-label";
-    span.textContent = i;
-    labelCell.appendChild(span);
-    labelTrack.appendChild(labelCell);
+    const c = document.createElement("div");
+    c.className = "cell-card play-cell";
+    c.innerHTML = `<span class="cell-label">${i}</span>`;
+    labelTrack.appendChild(c);
   }
 
   const finishLabelCell = document.createElement("div");
   finishLabelCell.className = "cell-card finish-cell";
-  const finishSpan = document.createElement("span");
-  finishSpan.className = "cell-label";
-  finishSpan.textContent = "Finish";
-  finishLabelCell.appendChild(finishSpan);
+  finishLabelCell.innerHTML = `<span class="cell-label">Finish</span>`;
   labelTrack.appendChild(finishLabelCell);
 
   labelRow.appendChild(labelTrack);
   boardEl.appendChild(labelRow);
 
-  // helper: สีช่องของผู้เล่นหนึ่งคน
   function buildCellStateForPlayer(pid, p) {
     const state = new Array(BOARD_SIZE + 1).fill("none");
+    const priority = { none: 0, past: 1, dice: 2, wrong: 3, correct: 4 };
 
-    const priority = {
-      none: 0,
-      past: 1,
-      dice: 2,
-      wrong: 3,
-      correct: 4,
-    };
     const setState = (pos, value) => {
       if (pos < 1 || pos > BOARD_SIZE) return;
-      if (priority[value] > priority[state[pos]]) {
-        state[pos] = value;
-      }
+      if (priority[value] > priority[state[pos]]) state[pos] = value;
     };
 
-    const startOfRound = p.startOfRoundPos ?? 1;
-    const currentPos = p.position || 1;
+    const startOfRound = clampPos(p.startOfRoundPos ?? 1);
+    const currentPos = clampPos(p.position);
 
-    // เทา: ช่อง 1 → startOfRound (เดินมาจากรอบก่อน)
-    for (let pos = 1; pos <= Math.min(startOfRound, BOARD_SIZE); pos++) {
-      setState(pos, "past");
-    }
+    for (let pos = 1; pos <= Math.min(startOfRound, BOARD_SIZE); pos++) setState(pos, "past");
 
     const currKey = `round_${currentRound}`;
     const currRoundData = history[currKey] || {};
     const recNow = (currRoundData.answers || {})[pid] || null;
 
     if (!recNow) {
-      // ยังไม่เฉลยคำถามรอบนี้
       if (p.hasRolled && p.lastRoll != null) {
         const from = startOfRound;
         const to = currentPos;
-        if (to >= from) {
-          for (let pos = from + 1; pos <= to; pos++) {
-            setState(pos, "dice");
-          }
-        }
+        if (to >= from) for (let pos = from + 1; pos <= to; pos++) setState(pos, "dice");
       }
     } else {
-      const basePos = recNow.basePosition ?? startOfRound;
-      const finalPos = recNow.finalPosition ?? currentPos;
+      const basePos = clampPos(recNow.basePosition ?? startOfRound);
+      const finalPos = clampPos(recNow.finalPosition ?? currentPos);
 
-      for (let pos = startOfRound + 1; pos <= basePos; pos++) {
-        setState(pos, "dice");
-      }
+      for (let pos = startOfRound + 1; pos <= basePos; pos++) setState(pos, "dice");
 
       const moveType = recNow.correct ? "correct" : "wrong";
       const qStart = Math.min(basePos, finalPos);
       const qEnd = Math.max(basePos, finalPos);
-      for (let pos = qStart + 1; pos <= qEnd; pos++) {
-        setState(pos, moveType);
-      }
+      for (let pos = qStart + 1; pos <= qEnd; pos++) setState(pos, moveType);
     }
 
     return state;
   }
 
-  // ---------- แถวผู้เล่น ----------
-  Object.entries(players || {}).forEach(([pid, p]) => {
+  const sorted = Object.entries(players || {}).sort(([,a],[,b]) => String(a.name||"").localeCompare(String(b.name||"")));
+
+  for (const [pid, p] of sorted) {
     const row = document.createElement("div");
     row.className = "player-row";
 
@@ -1871,26 +1356,16 @@ function renderBoard(roomData, players) {
     track.appendChild(startCell);
 
     const cellState = buildCellStateForPlayer(pid, p);
-    const playerPos = p.position || 1;
+    const playerPos = clampPos(p.position);
 
     for (let pos = 1; pos <= BOARD_SIZE; pos++) {
       const cell = document.createElement("div");
       cell.className = "cell-card play-cell";
 
-      switch (cellState[pos]) {
-        case "past":
-          cell.classList.add("cell-past");
-          break;
-        case "dice":
-          cell.classList.add("cell-dice");
-          break;
-        case "wrong":
-          cell.classList.add("cell-wrong");
-          break;
-        case "correct":
-          cell.classList.add("cell-correct");
-          break;
-      }
+      if (cellState[pos] === "past") cell.classList.add("cell-past");
+      if (cellState[pos] === "dice") cell.classList.add("cell-dice");
+      if (cellState[pos] === "wrong") cell.classList.add("cell-wrong");
+      if (cellState[pos] === "correct") cell.classList.add("cell-correct");
 
       if (playerPos === pos) {
         const token = document.createElement("div");
@@ -1899,7 +1374,7 @@ function renderBoard(roomData, players) {
 
         const inner = document.createElement("div");
         inner.className = "token-inner";
-        inner.textContent = (p.name || "?").charAt(0);
+        inner.textContent = String(p.name || "?").charAt(0);
 
         token.appendChild(inner);
         cell.appendChild(token);
@@ -1914,46 +1389,50 @@ function renderBoard(roomData, players) {
 
     row.appendChild(track);
     boardEl.appendChild(row);
-  });
+  }
 }
 
-// ---------------- Player: ส่งคำตอบ ----------------
-async function submitAnswer(optionKey) {
-  if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
+// ---------------- End Game Summary (ใช้ของเดิมได้ แต่เพิ่ม wrapper + escape) ----------------
+function renderEndGameSummary(roomData, players) {
+  const winners = roomData.winners || [];
+  const gs = roomData.gameSettings || {};
+  const maxRounds = gs.maxRounds || 10;
+  const maxWinners = gs.maxWinners || 5;
+  const endInfo = roomData.endInfo || {};
+  const endReason = endInfo.endReason || "unknown";
 
-  const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  const snap = await get(roomRef);
-  if (!snap.exists()) return;
-  const roomData = snap.val();
+  const reasonText =
+    endReason === "winners"
+      ? `เกมจบเพราะมีผู้เข้าเส้นชัยครบ ${Math.min(maxWinners, Object.keys(players).length)} คน`
+      : endReason === "rounds"
+      ? `เกมจบเพราะเล่นครบ ${maxRounds} รอบแล้ว`
+      : "เกมจบแล้ว";
 
-  if (roomData.phase !== "answering") {
-    alert("ตอนนี้ยังไม่ใช่ช่วงตอบคำถาม");
-    return;
+  let html = `<p><strong>${escapeHtml(reasonText)}</strong></p>`;
+
+  if (winners.length > 0) {
+    html += `<p><strong>ผู้เข้าเส้นชัย</strong></p><ul>`;
+    winners
+      .slice()
+      .sort((a, b) => (a.finishedRound - b.finishedRound) || (a.rank - b.rank))
+      .forEach((w) => {
+        html += `<li>อันดับเข้าเส้นชัย ${escapeHtml(w.rank)}: ${escapeHtml(w.playerName)} (รอบ ${escapeHtml(w.finishedRound)})</li>`;
+      });
+    html += `</ul>`;
   }
 
-  if (roomData.answerDeadlineExpired === true) {
-    alert("หมดเวลาตอบคำถามแล้ว");
-    return;
-  }
-
-  const players = roomData.players || {};
-  const me = players[currentPlayerId];
-  if (!me) return;
-
-  const pos = me.position || 1;
-  if (me.finished || pos >= BOARD_SIZE) {
-    alert("คุณเข้าเส้นชัยแล้ว ไม่ต้องตอบคำถาม");
-    return;
-  }
-
-  if (me.answered) {
-    alert("คุณตอบคำถามรอบนี้ไปแล้ว");
-    return;
-  }
-
-  const updates = {};
-  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/answer`] = optionKey;
-  updates[`rooms/${currentRoomCode}/players/${currentPlayerId}/answered`] = true;
-
-  await update(ref(db), updates);
+  endGameSummaryEl.innerHTML = html;
 }
+
+// ---------------- (สำคัญ) เปลี่ยน phase จาก questionCountdown -> answering โดยอัตโนมัติ ----------------
+// (ทำผ่าน ensureTimer + moveToAnsweringTx)
+
+// ---------------- เมื่อ role set แล้วให้เปิด lobby ----------------
+function initUiIfReady() {
+  if (currentRoomCode && currentRole) {
+    enterLobbyView();
+    subscribeRoom(currentRoomCode);
+    lockEntryUI(true);
+  }
+}
+initUiIfReady();
