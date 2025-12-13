@@ -433,6 +433,10 @@ button:disabled{
   color: var(--p-800);
 }
 
+.lobby-bar{
+  margin-bottom: 12px;
+}
+
 /* ===== Round table corners (player list + end summary) ===== */
 #playerList table,
 #endGameSummary table{
