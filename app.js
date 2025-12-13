@@ -365,16 +365,33 @@ function subscribeRoom(roomCode) {
   }
 })();
 
-// ---------------- Host Step 1: show game settings ----------------
+// ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
 createRoomBtn.addEventListener("click", () => {
   const hostName = (hostNameInput?.value || "").trim();
+
   if (!hostName) {
     alert("กรุณากรอกชื่อของ Host ก่อน");
     return;
   }
+
+  // lock input + button
   hostNameInput.disabled = true;
   createRoomBtn.disabled = true;
-  if (hostGameOptionsEl) hostGameOptionsEl.style.display = "block";
+
+  // ✅ บังคับแสดงแบบชนะทุก CSS (รวม !important)
+  if (!hostGameOptionsEl) {
+    alert("ไม่พบแผงตั้งค่าเกม (#hostGameOptions) กรุณาตรวจสอบ id ใน index.html");
+    // unlock เพื่อให้แก้แล้วกดใหม่ได้
+    hostNameInput.disabled = false;
+    createRoomBtn.disabled = false;
+    return;
+  }
+
+  hostGameOptionsEl.style.setProperty("display", "block", "important");
+  hostGameOptionsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // debug แบบไม่รบกวน (เผื่อเช็ค)
+  console.log("[UI] open hostGameOptions");
 });
 
 // ---------------- Host Step 2: create room ----------------
@@ -1851,44 +1868,54 @@ function initUiIfReady() {
 }
 initUiIfReady();
 
-// ---------------- เพิ่ม “Reset UI” กลับหน้าแรก + leave room ----------------
+// ---------------- Reset UI กลับหน้าแรก ----------------
 function resetToHome(message) {
   clearTimer();
 
   // stop listener
-  if (roomUnsub) { try { roomUnsub(); } catch {} roomUnsub = null; }
+  if (roomUnsub) {
+    try { roomUnsub(); } catch {}
+    roomUnsub = null;
+  }
+
+  // clear session
+  if (typeof clearSession === "function") clearSession();
 
   // clear state
   currentRoomCode = null;
   currentRole = null;
   currentPlayerId = null;
 
-  // clear session
-  clearSession();
-
-  // reset UI
+  // ---------- UI: hide in-room sections ----------
   if (lobbyEl) lobbyEl.style.display = "none";
   if (gameAreaEl) gameAreaEl.style.display = "none";
   if (endGameAreaEl) endGameAreaEl.style.display = "none";
+
+  // clear dynamic areas
   if (playerListEl) playerListEl.innerHTML = "";
   if (boardEl) boardEl.innerHTML = "";
-  if (roomInfoEl) roomInfoEl.textContent = "";
+  if (roomInfoEl) roomInfoEl.textContent = ""; // (แม้จะซ่อนไว้ก็เคลียร์ได้)
   if (roleInfoEl) roleInfoEl.textContent = "";
 
+  // lobby badges (ถ้ามี)
+  if (lobbyBadgesEl) lobbyBadgesEl.innerHTML = "";
+
+  // ---------- UI: show entry (Host/Player cards) ----------
+  setEntryVisible(true);
+
+  // reset host panel
   if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
 
-  setEntryVisible(true); // ✅ กลับมาโชว์การ์ด Host/Player + LIBRARY RESOURCES
+  // unlock inputs/buttons (entry)
+  if (hostNameInput) hostNameInput.disabled = false;
+  if (createRoomBtn) createRoomBtn.disabled = false;
+  if (confirmCreateRoomBtn) confirmCreateRoomBtn.disabled = false;
 
-  // unlock inputs
-  hostNameInput.disabled = false;
-  createRoomBtn.disabled = false;
-  confirmCreateRoomBtn.disabled = false;
+  if (roomCodeInput) roomCodeInput.disabled = false;
+  if (playerNameInput) playerNameInput.disabled = false;
+  if (joinRoomBtn) joinRoomBtn.disabled = false;
 
-  roomCodeInput.disabled = false;
-  playerNameInput.disabled = false;
-  joinRoomBtn.disabled = false;
-
-  // pills
+  // header pills
   const uiRoomPill = document.getElementById("uiRoomPill");
   const uiRolePill = document.getElementById("uiRolePill");
   if (uiRoomPill) uiRoomPill.textContent = "Room: -";
