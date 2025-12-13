@@ -90,7 +90,6 @@ const entrySectionEl = document.getElementById("entrySection");
 const lobbyBadgesEl = document.getElementById("lobbyBadges");
 const cancelRoomBtn = document.getElementById("cancelRoomBtn");
 const leaveRoomBtn = document.getElementById("leaveRoomBtn");
-const cancelRoomBtn = document.getElementById("cancelRoomBtn");
 
 const hostRoundControlsEl = document.getElementById("hostRoundControls");
 const startRoundBtn = document.getElementById("startRoundBtn");
