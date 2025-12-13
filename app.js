@@ -1580,33 +1580,207 @@ function renderBoard(roomData, players) {
 
 // ---------------- End Game Summary (ใช้ของเดิมได้ แต่เพิ่ม wrapper + escape) ----------------
 function renderEndGameSummary(roomData, players) {
-  const winners = roomData.winners || [];
-  const gs = roomData.gameSettings || {};
-  const maxRounds = gs.maxRounds || 10;
-  const maxWinners = gs.maxWinners || 5;
+  const history = roomData.history || {};
+  const winners = Array.isArray(roomData.winners) ? roomData.winners : [];
   const endInfo = roomData.endInfo || {};
+  const gs = roomData.gameSettings || {};
+  const maxRounds = gs.maxRounds ?? "-";
+  const maxWinners = gs.maxWinners ?? "-";
   const endReason = endInfo.endReason || "unknown";
 
-  const reasonText =
-    endReason === "winners"
-      ? `เกมจบเพราะมีผู้เข้าเส้นชัยครบ ${Math.min(maxWinners, Object.keys(players).length)} คน`
-      : endReason === "rounds"
-      ? `เกมจบเพราะเล่นครบ ${maxRounds} รอบแล้ว`
-      : "เกมจบแล้ว";
+  // ---------- reason text ----------
+  let reasonText = "เกมจบแล้ว";
+  if (endReason === "winners") {
+    reasonText = `เกมจบเพราะมีผู้เข้าเส้นชัยครบ ${Math.min(
+      Number(maxWinners) || 0,
+      Object.keys(players || {}).length
+    )} คน`;
+  } else if (endReason === "rounds") {
+    reasonText = `เกมจบเพราะเล่นครบ ${maxRounds} รอบแล้ว`;
+  }
 
-  let html = `<p><strong>${escapeHtml(reasonText)}</strong></p>`;
+  // ---------- per-player base from players ----------
+  const perPlayer = {};
+  for (const [pid, p] of Object.entries(players || {})) {
+    perPlayer[pid] = {
+      id: pid,
+      name: p.name || pid,
+      finalPosition: p.position ?? 1,
+      finished: !!p.finished || (p.position ?? 1) >= BOARD_SIZE,
+      finishRound: p.finishedRound ?? null,
+      finishBy: p.finishedBy ?? null, // "dice" | "answer" | null
+      correct: 0,
+      wrong: 0,
+      timeout: 0,
+      rolls: [],
+      answerSymbols: [],
+      pctCorrect: 0,
+      rank: null,
+    };
+  }
+
+  // ---------- enrich from history (if exists) ----------
+  const roundKeys = Object.keys(history)
+    .filter((k) => k.startsWith("round_"))
+    .sort((a, b) => {
+      const ra = parseInt(a.split("_")[1] || "0", 10);
+      const rb = parseInt(b.split("_")[1] || "0", 10);
+      return ra - rb;
+    });
+
+  for (const rk of roundKeys) {
+    const roundData = history[rk] || {};
+    const answers = roundData.answers || {};
+
+    for (const [pid, rec] of Object.entries(answers)) {
+      if (!perPlayer[pid]) {
+        perPlayer[pid] = {
+          id: pid,
+          name: rec.playerName || pid,
+          finalPosition: players?.[pid]?.position ?? 1,
+          finished: !!players?.[pid]?.finished || (players?.[pid]?.position ?? 1) >= BOARD_SIZE,
+          finishRound: players?.[pid]?.finishedRound ?? null,
+          finishBy: players?.[pid]?.finishedBy ?? null,
+          correct: 0,
+          wrong: 0,
+          timeout: 0,
+          rolls: [],
+          answerSymbols: [],
+          pctCorrect: 0,
+          rank: null,
+        };
+      }
+
+      const s = perPlayer[pid];
+
+      if (rec.diceRoll != null) s.rolls.push(rec.diceRoll);
+
+      // เคส neutral: เข้าเส้นชัยด้วยลูกเต๋าและไม่ได้ตอบคำถาม
+      const basePos = rec.basePosition ?? null;
+      const finalPos = rec.finalPosition ?? null;
+      const neutralFinishByDice =
+        rec.correct == null &&
+        rec.answered === false &&
+        Number.isFinite(basePos) && Number.isFinite(finalPos) &&
+        basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
+
+      if (!neutralFinishByDice) {
+        if (rec.correct === true) {
+          s.correct += 1;
+          s.answerSymbols.push("✅");
+        } else {
+          if (rec.answered) s.wrong += 1;
+          else s.timeout += 1;
+          s.answerSymbols.push("❌");
+        }
+      }
+
+      // อัปเดตตำแหน่งสุดท้ายจาก history ถ้ามี
+      if (Number.isFinite(finalPos)) s.finalPosition = finalPos;
+      if (finalPos >= BOARD_SIZE && s.finishRound == null) {
+        const rn = parseInt(rk.split("_")[1] || "0", 10);
+        s.finishRound = rn;
+      }
+    }
+  }
+
+  // pct correct
+  for (const s of Object.values(perPlayer)) {
+    const totalQ = s.correct + s.wrong + s.timeout;
+    s.pctCorrect = totalQ > 0 ? (s.correct / totalQ) * 100 : 0;
+  }
+
+  // ---------- ranking ----------
+  // ใช้ winners เป็นหลัก ถ้ามี
+  const winMap = new Map();
+  winners.forEach((w) => winMap.set(w.playerId, w));
+
+  const stats = Object.values(perPlayer);
+
+  stats.sort((a, b) => {
+    const wa = winMap.has(a.id) ? (winMap.get(a.id).rank ?? 9999) : 9999;
+    const wb = winMap.has(b.id) ? (winMap.get(b.id).rank ?? 9999) : 9999;
+    if (wa !== wb) return wa - wb;
+
+    // รอง: finishRound น้อยกว่า, position มากกว่า, % ถูกมากกว่า
+    const fa = a.finishRound ?? 9999;
+    const fb = b.finishRound ?? 9999;
+    if (fa !== fb) return fa - fb;
+
+    if (b.finalPosition !== a.finalPosition) return b.finalPosition - a.finalPosition;
+    if (b.pctCorrect !== a.pctCorrect) return b.pctCorrect - a.pctCorrect;
+    return (a.name || "").localeCompare(b.name || "");
+  });
+
+  stats.forEach((s, i) => (s.rank = i + 1));
+
+  // ---------- build HTML ----------
+  let html = `<p><strong>สรุปผลเกม</strong></p>`;
+  html += `<p><strong>${reasonText}</strong></p>`;
 
   if (winners.length > 0) {
     html += `<p><strong>ผู้เข้าเส้นชัย</strong></p><ul>`;
     winners
       .slice()
-      .sort((a, b) => (a.finishedRound - b.finishedRound) || (a.rank - b.rank))
+      .sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999))
       .forEach((w) => {
-        html += `<li>อันดับเข้าเส้นชัย ${escapeHtml(w.rank)}: ${escapeHtml(w.playerName)} (รอบ ${escapeHtml(w.finishedRound)})</li>`;
+        html += `<li>อันดับเข้าเส้นชัย ${w.rank ?? "-"}: ${w.playerName} (รอบ ${w.finishedRound ?? "-"})</li>`;
       });
     html += `</ul>`;
   }
 
+  html += `
+    <h4>ตารางสรุปผลรายผู้เล่น</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>อันดับ</th>
+          <th class="name-col">ผู้เล่น</th>
+          <th>ตำแหน่งสุดท้าย</th>
+          <th>ถึงเส้นชัย?</th>
+          <th>รอบที่ถึง</th>
+          <th>วิธีถึง</th>
+          <th>ถูก</th>
+          <th>ผิด</th>
+          <th>ไม่ทัน</th>
+          <th>% ถูก</th>
+          <th>ทอยลูกเต๋า</th>
+          <th>ผลคำถาม</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  for (const s of stats) {
+    const pctText =
+      (s.correct + s.wrong + s.timeout) > 0 ? `${Math.round(s.pctCorrect)}%` : "-";
+    const rollsText = s.rolls.length ? s.rolls.join("") : "-";
+    const ansText = s.answerSymbols.length ? s.answerSymbols.join("") : "-";
+    const finishFlag = s.finished ? "✅" : "-";
+    const finishRoundText = s.finishRound != null ? s.finishRound : "-";
+    const finishByText = s.finished
+      ? (s.finishBy === "dice" ? "ทอยถึง" : s.finishBy === "answer" ? "ตอบถึง" : "-")
+      : "-";
+
+    html += `
+      <tr>
+        <td>${s.rank ?? "-"}</td>
+        <td class="name-col">${s.name}</td>
+        <td>${s.finalPosition ?? "-"}</td>
+        <td>${finishFlag}</td>
+        <td>${finishRoundText}</td>
+        <td>${finishByText}</td>
+        <td>${s.correct}</td>
+        <td>${s.wrong}</td>
+        <td>${s.timeout}</td>
+        <td>${pctText}</td>
+        <td>${rollsText}</td>
+        <td>${ansText}</td>
+      </tr>
+    `;
+  }
+
+  html += `</tbody></table>`;
   endGameSummaryEl.innerHTML = html;
 }
 
