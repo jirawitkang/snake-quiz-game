@@ -9,6 +9,7 @@ import {
   get,
   onValue,
   update,
+  remove,
   runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
@@ -86,6 +87,10 @@ const roleInfoEl = document.getElementById("roleInfo");
 const playerListEl = document.getElementById("playerList");
 const entrySectionEl = document.getElementById("entrySection");
 
+const lobbyBadgesEl = document.getElementById("lobbyBadges");
+const cancelRoomBtn = document.getElementById("cancelRoomBtn");
+const leaveRoomBtn = document.getElementById("leaveRoomBtn");
+
 const hostRoundControlsEl = document.getElementById("hostRoundControls");
 const startRoundBtn = document.getElementById("startRoundBtn");
 const startQuestionBtn = document.getElementById("startQuestionBtn");
@@ -152,6 +157,41 @@ function createRoomCode() {
   let code = "";
   for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
   return code;
+}
+function renderLobbyBadges(roomData) {
+  if (!lobbyBadgesEl) return;
+
+  const gs = roomData.gameSettings || {};
+  const hostName = roomData.hostName || "-";
+  const code = currentRoomCode || "-";
+
+  const questionSetId = gs.questionSetId || "general";
+  const maxRounds = gs.maxRounds ?? 10;
+  const maxWinners = gs.maxWinners ?? 5;
+
+  const rewardCorrect = Number.isFinite(gs.rewardCorrect) ? gs.rewardCorrect : 1;
+  const penaltyWrong = Number.isFinite(gs.penaltyWrong) ? gs.penaltyWrong : -1;
+
+  const rewardText = rewardCorrect >= 0 ? `+${rewardCorrect}` : `${rewardCorrect}`;
+  const penaltyText = penaltyWrong >= 0 ? `+${penaltyWrong}` : `${penaltyWrong}`;
+
+  const items = [
+    `Room: ${code}`,
+    `Host: ${hostName}`,
+    `ชุดคำถาม: ${questionSetId}`,
+    `รอบสูงสุด: ${maxRounds}`,
+    `เข้าเส้นชัย: ${maxWinners} คน`,
+    `ถูก: ${rewardText}`,
+    `ผิด/ไม่ทัน: ${penaltyText}`,
+  ];
+
+  lobbyBadgesEl.innerHTML = "";
+  for (const t of items) {
+    const el = document.createElement("div");
+    el.className = "lobby-badge";
+    el.textContent = t;
+    lobbyBadgesEl.appendChild(el);
+  }
 }
 function randomColor() {
   const colors = ["#e91e63", "#9c27b0", "#3f51b5", "#009688", "#ff9800", "#795548"];
@@ -230,6 +270,9 @@ function enterLobbyView() {
     if (roleInfoEl) roleInfoEl.textContent = "";
     if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
   }
+  // ✅ ปุ่มขวาสุดบนแถบ LOBBY
+  if (cancelRoomBtn) cancelRoomBtn.style.display = (currentRole === "host") ? "inline-block" : "none";
+  if (leaveRoomBtn)  leaveRoomBtn.style.display  = (currentRole === "player") ? "inline-block" : "none";
 
   setHeaderPills();
 }
@@ -250,6 +293,10 @@ function subscribeRoom(roomCode) {
     const hostName = roomData.hostName || "(ไม่ทราบชื่อ)";
     const gs = roomData.gameSettings || {};
 
+    // ✅ เพิ่มตรงนี้: อัปเดต badge บนแถบ LOBBY ทุกครั้งที่ room เปลี่ยน
+    renderLobbyBadges(roomData);
+
+    // (จะเก็บไว้หรือจะลบทิ้งก็ได้ เพราะใน index.html เราซ่อน roomInfoEl แล้ว)
     if (currentRoomCode === roomCode && roomInfoEl) {
       const questionSetId = gs.questionSetId || "general";
       const maxRounds = gs.maxRounds ?? 10;
