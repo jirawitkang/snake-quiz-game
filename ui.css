@@ -396,41 +396,41 @@ button:disabled{
   justify-content:flex-start;
 }
 
+/* ===== Lobby badges + actions: equal height across TH/EN ===== */
+:root{
+  --lobby-chip-h: 28px; /* ปรับได้ เช่น 26/28/30 */
+}
+
+.lobby-badge,
+.lobby-actions button{
+  height: var(--lobby-chip-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 10px;        /* แนวนอนเท่านั้น */
+  line-height: 1;         /* กันไทยดันสูง */
+  font-size: 12px;
+  font-weight: 900;
+
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* badge appearance */
 .lobby-badge{
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 800;
   color: var(--p-800);
-  white-space: nowrap;
   box-shadow: 0 6px 14px rgba(31,35,48,.08);
 }
 
-/* ===== Lobby actions buttons: compact like badges ===== */
-.lobby-actions button{
-  padding: 6px 10px;      /* ลดความสูง */
-  border-radius: 999px;   /* ให้เป็น pill */
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;         /* ไม่ให้สูงเกิน */
-  box-shadow: none;       /* ให้เรียบเหมือน badge */
-}
-
+/* actions appearance (ใช้ธีมเดียวกับ ghost) */
+.lobby-actions button{ box-shadow: none; }
 .lobby-actions .btn-ghost{
   background: var(--p-100);
   border: 1px solid rgba(75,60,140,.20);
   color: var(--p-800);
-}
-
-.btn-danger{
-  background:#c62828;
-  color:#fff;
-  box-shadow: 0 10px 18px rgba(198,40,40,.18);
-}
-.btn-danger:hover{
-  box-shadow: 0 14px 24px rgba(198,40,40,.22);
 }
 
 /* ===== Round table corners (player list + end summary) ===== */
