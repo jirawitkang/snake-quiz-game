@@ -103,20 +103,21 @@
         </div>
       </div>
     
-      <div class="card">
-        <!-- เก็บไว้กันโค้ดเก่าพัง แต่ซ่อนไว้ -->
-        <div id="roomInfo" style="display:none;"></div>
-    
-        <div id="roleInfo" class="muted"></div>
-    
-        <p><strong>รายชื่อผู้เล่นในห้อง:</strong></p>
-        <ul id="playerList"></ul>
-    
-        <div id="hostRoundControls" class="mt-10">
+      <div class="card lobby-card">
+        <!-- ปุ่มควบคุม Host: ลอยมุมขวาบน (ไม่กินความสูงการ์ด) -->
+        <div id="hostRoundControls" class="lobby-top-controls" style="display:none;">
           <button id="startRoundBtn" class="btn-primary">เริ่มรอบใหม่</button>
           <button id="startQuestionBtn" class="btn-ghost">เริ่มคำถาม</button>
           <button id="revealAnswerBtn" class="btn-ghost">เฉลยคำถาม</button>
         </div>
+      
+        <!-- เก็บไว้กันโค้ดเก่าพัง แต่ซ่อนไว้ -->
+        <div id="roomInfo" style="display:none;"></div>
+      
+        <div id="roleInfo" class="muted"></div>
+      
+        <p><strong>รายชื่อผู้เล่นในห้อง:</strong></p>
+        <ul id="playerList"></ul>
       </div>
     </div>
 
