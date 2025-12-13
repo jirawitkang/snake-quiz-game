@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <title>Snake Quiz – Multiplayer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Load once -->
   <link rel="stylesheet" href="ui.css" />
+
   <style>
     body {
       font-family: sans-serif;
@@ -13,9 +16,7 @@
       background: #f5f5f5;
     }
 
-    h1 {
-      text-align: center;
-    }
+    h1 { text-align: center; }
 
     .container {
       max-width: 900px;
@@ -26,11 +27,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
-    .row {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; }
 
     .card {
       flex: 1 1 260px;
@@ -39,11 +36,7 @@
       padding: 1rem;
     }
 
-    label {
-      display: block;
-      margin-bottom: 0.25rem;
-      font-weight: 600;
-    }
+    label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
 
     input, select {
       width: 100%;
@@ -66,37 +59,22 @@
       margin-top: 0.2rem;
     }
 
-    button:disabled {
-      background: #aaa;
-      cursor: default;
-    }
+    button:disabled { background: #aaa; cursor: default; }
 
-    .info {
-      font-size: 0.9rem;
-      color: #555;
-    }
+    .info { font-size: 0.9rem; color: #555; }
 
     #lobby {
       margin-top: 1rem;
       border-top: 1px solid #eee;
       padding-top: 1rem;
+      display: none;
     }
 
-    #roomInfo {
-      font-weight: 600;
-      margin-bottom: 0.3rem;
-    }
+    #roomInfo { font-weight: 600; margin-bottom: 0.3rem; }
 
-    #roleInfo {
-      font-size: 0.9rem;
-      color: #555;
-      margin-bottom: 0.5rem;
-    }
+    #roleInfo { font-size: 0.9rem; color: #555; margin-bottom: 0.5rem; }
 
-    #playerList {
-      list-style: none;
-      padding-left: 0;
-    }
+    #playerList { list-style: none; padding-left: 0; margin: 0; }
 
     #playerList li {
       margin-bottom: 0.3rem;
@@ -108,21 +86,11 @@
       gap: 0.1rem;
     }
 
-    .player-name {
-      font-weight: 600;
-    }
+    .player-name { font-weight: 600; }
+    .player-meta { font-size: 0.8rem; color: #555; }
 
-    .player-meta {
-      font-size: 0.8rem;
-      color: #555;
-    }
+    #hostRoundControls { margin-top: 0.75rem; display: none; }
 
-    #hostRoundControls {
-      margin-top: 0.75rem;
-      display: none;
-    }
-
-    /* Host game options */
     #hostGameOptions {
       margin-top: 0.75rem;
       padding: 0.75rem;
@@ -138,21 +106,16 @@
       font-size: 1rem;
     }
 
-    /* Game Area / Board */
     #gameArea {
       margin-top: 1.5rem;
       border-top: 1px solid #eee;
       padding-top: 1rem;
       display: none;
     }
-    
-    #board {
-      margin-top: 0.75rem;
-    }
-    
-    /* ====== กระดานเกม: การ์ด / แถว / label ====== */
 
-    /* แถว label ด้านบน (Start, 1–30, Finish) และแถวผู้เล่น ให้สูงเท่ากัน */
+    #board { margin-top: 0.75rem; }
+
+    /* ====== Board layout ====== */
     .board-label-row,
     .player-row {
       display: flex;
@@ -160,8 +123,7 @@
       gap: 8px;
       margin-bottom: 4px;
     }
-    
-    /* ช่องเล่น 1–30 ทุกแถว + การ์ดเลขด้านบน → สี่เหลี่ยมจตุรัสมนเล็กน้อย */
+
     .board-track .cell-card:not(.start-cell):not(.finish-cell),
     .board-label-row .cell-card:not(.start-cell):not(.finish-cell) {
       width: 16px !important;
@@ -175,45 +137,23 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      /* << ไม่ต้องกำหนด background ที่นี่แล้ว */
     }
-    
-    /* ให้การ์ดเลขบนแถว label เป็นพื้นขาว */
+
     .board-label-row .cell-card:not(.start-cell):not(.finish-cell) {
       background: #ffffff;
     }
-    
-    /* สีพื้นฐานช่องเล่น */
-    .cell-card.play-cell {
-      background: #ffffff;
-    }
-    
-    /* เดินจากแต้มลูกเต๋า – ฟ้าเข้มแนวพาสเทล */
-    .cell-card.play-cell.cell-dice {
-      background: #64b5f6 !important;
-    }
-    
-    /* ตอบถูก – เขียว */
-    .cell-card.play-cell.cell-correct {
-      background: #66bb6a !important;
-    }
-    
-    /* ตอบผิด/ถอยหลัง – แดง */
-    .cell-card.play-cell.cell-wrong {
-      background: #ef5350 !important;
-    }
-    
-    /* รอบเก่าแล้ว – เทา */
-    .cell-card.play-cell.cell-past {
-      background: #9e9e9e !important;
-    }
-    
-    /* Start / Finish (ทั้งแถว label และแถวผู้เล่น) ให้หน้าเดียวกันเป๊ะ */
+
+    .cell-card.play-cell { background: #ffffff; }
+    .cell-card.play-cell.cell-dice { background: #64b5f6 !important; }
+    .cell-card.play-cell.cell-correct { background: #66bb6a !important; }
+    .cell-card.play-cell.cell-wrong { background: #ef5350 !important; }
+    .cell-card.play-cell.cell-past { background: #9e9e9e !important; }
+
     .start-cell,
     .finish-cell {
       min-width: 56px !important;
       height: 16px !important;
-      border-radius: 4px !important;   /* จาก 10px → 4px ให้เหมือน 1–30 */
+      border-radius: 4px !important;
       background: #ffffff;
       box-shadow: 0 3px 6px rgba(0,0,0,0.18);
       display: flex;
@@ -221,27 +161,14 @@
       justify-content: center;
       box-sizing: border-box;
     }
-    
-    /* เส้นขอบ Start น้ำเงิน / Finish เขียว กลับมา */
-    .start-cell {
-      border-right: 3px solid #1976d2 !important;
-    }
-    .finish-cell {
-      border-left: 3px solid #43a047 !important;
-    }
-    
-    /* ฟอนต์ตัวเลข 1–30 และ Start/Finish ให้เล็กลง */
-    .board-label-row .cell-label {
-      font-size: 10px;
-      color: #444;
-    }
+
+    .start-cell { border-right: 3px solid #1976d2 !important; }
+    .finish-cell { border-left: 3px solid #43a047 !important; }
+
+    .board-label-row .cell-label { font-size: 10px; color: #444; }
     .start-cell .cell-label,
-    .finish-cell .cell-label {
-      font-size: 11px;
-      color: #333;
-    }
-    
-    /* แถวผู้เล่นห่างกันไม่มาก จะได้เห็นหลายคนในจอเดียว */
+    .finish-cell .cell-label { font-size: 11px; color: #333; }
+
     .player-row-name {
       flex: 0 0 120px;
       max-width: 120px;
@@ -255,68 +182,38 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    
+
     .board-track {
       display: flex;
       gap: 4px;
       align-items: center;
       min-height: 28px;
     }
-    
-    /* ====== สีการ์ดตามสถานะ (ตอนนี้ฝั่ง JS ยังใช้จริงเฉพาะ cell-dice) ====== */
 
-    .cell-card.play-cell {
-      background: #ffffff;
-    }
-    
-    /* เดินจากแต้มลูกเต๋า – ฟ้าเข้มแนวพาสเทล */
-    .cell-card.play-cell.cell-dice {
-      background: #64b5f6;
-    }
-    
-    /* ตอบถูก – เขียว */
-    .cell-card.play-cell.cell-correct {
-      background: #66bb6a;
-    }
-    
-    /* ตอบผิด/ถอยหลัง – แดง */
-    .cell-card.play-cell.cell-wrong {
-      background: #ef5350;
-    }
-    
-    /* รอบเก่าแล้ว – เทา */
-    .cell-card.play-cell.cell-past {
-      background: #9e9e9e;
-    }
-    
-    /* base ของการ์ดทุกใบ (รวม start/finish/1–30) */
     .cell-card {
-      position: relative;      /* ให้ token ยึดตำแหน่งจากการ์ด */
-      overflow: visible;       /* ให้หยดน้ำล้นออกจากการ์ดได้ */
-      border-radius: 4px;      /* มนเท่ากับช่อง 1–30 */
+      position: relative;
+      overflow: visible;
+      border-radius: 4px;
     }
 
-    /* ====== หมากผู้เล่นเป็นหยดน้ำ – ให้ "ปลายแหลม" อยู่กลางการ์ด ====== */
-
+    /* ====== Token ====== */
     .token {
       position: absolute;
       width: 22px;
       height: 22px;
-      background: #ffb300;           /* สีจริงจะถูก JS override ด้วยสีของผู้เล่น */
+      background: #ffb300;
       border-radius: 50% 50% 50% 0;
       box-shadow: 0 3px 6px rgba(0,0,0,0.3);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 2;                    /* ไม่ให้โดนการ์ดทับ */
-    
-      /* วางให้หยดน้ำอยู่ “เหนือ” การ์ด แล้วปลายแหลมจิ้มกลางการ์ด */
+      z-index: 2;
       left: 50%;
-      top: 0;                        /* ยึดขอบบนของการ์ด */
+      top: 0;
       transform-origin: 50% 50%;
       transform: translate(-50%, -40%) rotate(-45deg);
     }
-    
+
     .token-inner {
       width: 12px;
       height: 12px;
@@ -328,31 +225,14 @@
       font-size: 9px;
       font-weight: 700;
       color: #333;
-      transform: rotate(45deg);      /* ให้ตัวอักษรกลับมาตรง */
+      transform: rotate(45deg);
     }
 
-    #roundInfo {
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
+    #roundInfo { font-weight: 600; margin-bottom: 0.25rem; }
+    #phaseInfo { font-size: 0.9rem; color: #555; margin-bottom: 0.5rem; }
+    #playerStatus { margin-top: 0.5rem; font-size: 0.9rem; color: #333; }
+    #playerControls { margin-top: 0.5rem; }
 
-    #phaseInfo {
-      font-size: 0.9rem;
-      color: #555;
-      margin-bottom: 0.5rem;
-    }
-
-    #playerStatus {
-      margin-top: 0.5rem;
-      font-size: 0.9rem;
-      color: #333;
-    }
-
-    #playerControls {
-      margin-top: 0.5rem;
-    }
-
-    /* Question area */
     #questionArea {
       margin-top: 1rem;
       border-top: 1px dashed #ccc;
@@ -360,94 +240,31 @@
       display: none;
     }
 
-    #countdownDisplay {
-      font-size: 1.4rem;
-      font-weight: 700;
-      margin-bottom: 0.25rem;
-    }
+    #countdownDisplay { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.25rem; }
+    #questionText { font-weight: 600; margin-bottom: 0.4rem; }
+    #choicesContainer { display: flex; flex-direction: column; gap: 0.3rem; }
 
-    #questionText {
-      font-weight: 600;
-      margin-bottom: 0.4rem;
-    }
-
-    #choicesContainer {
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
-    }
-
-    .choice-btn {
-      width: 100%;
-      text-align: left;
-      background: #eee;
-      color: #333;
-    }
-
-    .choice-btn.selected {
-      background: #1976d2;
-      color: #fff;
-    }
-
-    .choice-btn.correct {
-      background: #2e7d32;
-      color: #fff;
-    }
-
-    .choice-btn.wrong {
-      background: #c62828;
-      color: #fff;
-    }
-
-    #playerList table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-
-    #playerList th,
-    #playerList td {
-      border: 1px solid #ddd;
-      padding: 4px 6px;
-      text-align: center;
-    }
-
-    #playerList th {
-      background: #f0f0f0;
-      font-weight: 700;
-    }
-
-    #playerList td.name-col {
-      text-align: left;
-      font-weight: 600;
-    }
+    .choice-btn { width: 100%; text-align: left; background: #eee; color: #333; }
+    .choice-btn.selected { background: #1976d2; color: #fff; }
+    .choice-btn.correct { background: #2e7d32; color: #fff; }
+    .choice-btn.wrong { background: #c62828; color: #fff; }
 
     #endGameSummary table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.85rem;
     }
-
     #endGameSummary th,
     #endGameSummary td {
       border: 1px solid #ddd;
       padding: 4px 6px;
       text-align: center;
     }
-
-    #endGameSummary th {
-      background: #f0f0f0;
-      font-weight: 700;
-    }
-
-    #endGameSummary td.name-col {
-      text-align: left;
-      font-weight: 600;
-    }
-
+    #endGameSummary th { background: #f0f0f0; font-weight: 700; }
+    #endGameSummary td.name-col { text-align: left; font-weight: 600; }
   </style>
-  <link rel="stylesheet" href="ui.css" />
 </head>
+
 <body>
   <header class="app-header">
     <div class="header-inner">
@@ -467,100 +284,100 @@
 
   <div class="container">
     <div class="section-title">LIBRARY RESOURCES</div>
-  
+
     <div class="grid-2">
       <!-- Host -->
       <div class="card">
         <h2>สร้างห้อง (Host)</h2>
-      
-        <label>ชื่อของคุณ (Host)</label>
+
+        <label for="hostNameInput">ชื่อของคุณ (Host)</label>
         <input id="hostNameInput" placeholder="เช่น ครูเอ, Teacher A" />
-      
-        <button id="createRoomBtn" class="btn-primary">ถัดไป: ตั้งค่าเกม</button>
-      
+
+        <button id="createRoomBtn" class="btn-primary" type="button">ถัดไป: ตั้งค่าเกม</button>
+
         <div id="hostGameOptions" class="mt-14" style="display:none;">
           <div class="section-title">GAME SETTINGS</div>
-      
+
           <div class="card-split">
             <div class="split-col">
-              <label>ชุดคำถามที่ใช้ในเกม</label>
+              <label for="questionSetSelect">ชุดคำถามที่ใช้ในเกม</label>
               <select id="questionSetSelect">
                 <option value="general">ชุดคำถามทั่วไป</option>
                 <option value="setA">ชุดคำถามตัวอย่าง A</option>
                 <option value="setB">ชุดคำถามตัวอย่าง B</option>
               </select>
-      
-              <label>จำนวนรอบสูงสุดของเกม</label>
+
+              <label for="maxRoundsInput">จำนวนรอบสูงสุดของเกม</label>
               <input id="maxRoundsInput" type="number" min="1" value="10" />
             </div>
-      
+
             <div class="split-col">
-              <label>จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อมีผู้เข้าเส้นชัยครบ)</label>
+              <label for="maxWinnersInput">จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อมีผู้เข้าเส้นชัยครบ)</label>
               <input id="maxWinnersInput" type="number" min="1" value="5" />
-      
-              <label>จำนวนช่องที่ได้เดินเพิ่มเมื่อตอบถูก</label>
+
+              <label for="rewardCorrectInput">จำนวนช่องที่ได้เดินเพิ่มเมื่อตอบถูก</label>
               <input id="rewardCorrectInput" type="number" value="1" />
-      
-              <label>จำนวนช่องที่ต้องเดินถอยเมื่อตอบผิด / ตอบไม่ทัน</label>
+
+              <label for="penaltyWrongInput">จำนวนช่องที่ต้องเดินถอยเมื่อตอบผิด / ตอบไม่ทัน</label>
               <input id="penaltyWrongInput" type="number" value="-1" />
             </div>
           </div>
-      
-          <button id="confirmCreateRoomBtn" class="btn-primary mt-14">
+
+          <button id="confirmCreateRoomBtn" class="btn-primary mt-14" type="button">
             ยืนยันสร้างห้อง
           </button>
         </div>
       </div>
-  
+
       <!-- Player -->
       <div class="card">
         <h2>เข้าห้อง (Player)</h2>
-      
-        <label>Room Code</label>
+
+        <label for="roomCodeInput">Room Code</label>
         <input id="roomCodeInput" placeholder="เช่น ABC123" />
-      
-        <label>ชื่อนักเรียน</label>
+
+        <label for="playerNameInput">ชื่อนักเรียน</label>
         <input id="playerNameInput" placeholder="เช่น นร.01, นร.ภูมิ, ฯลฯ" />
-      
-        <button id="joinRoomBtn" class="btn-primary">Join ห้อง</button>
+
+        <button id="joinRoomBtn" class="btn-primary" type="button">Join ห้อง</button>
       </div>
     </div>
-  
+
     <!-- Lobby -->
     <div id="lobby" style="display:none;">
       <div class="section-title mt-14">LOBBY</div>
       <div class="card">
         <div id="roomInfo"></div>
         <div id="roleInfo" class="muted"></div>
-    
+
         <p><strong>รายชื่อผู้เล่นในห้อง:</strong></p>
         <ul id="playerList"></ul>
-    
+
         <div id="hostRoundControls" class="mt-10">
-          <button id="startRoundBtn" class="btn-primary">เริ่มรอบใหม่ (Host)</button>
-          <button id="startQuestionBtn" class="btn-ghost">เริ่มคำถาม (Host)</button>
-          <button id="revealAnswerBtn" class="btn-ghost">เฉลยคำถาม & ขยับตัว (Host)</button>
+          <button id="startRoundBtn" class="btn-primary" type="button">เริ่มรอบใหม่ (Host)</button>
+          <button id="startQuestionBtn" class="btn-ghost" type="button">เริ่มคำถาม (Host)</button>
+          <button id="revealAnswerBtn" class="btn-ghost" type="button">เฉลยคำถาม & ขยับตัว (Host)</button>
         </div>
       </div>
     </div>
-  
+
     <!-- Game Area -->
     <div class="section-title mt-14">GAME BOARD</div>
     <div id="gameArea" class="card">
       <div id="roundInfo"></div>
       <div id="phaseInfo" class="muted"></div>
-  
+
       <div class="game-shell mt-10">
         <div>
           <div id="board"></div>
         </div>
-  
+
         <div>
           <div id="playerControls">
-            <button id="rollDiceBtn" class="btn-primary">ทอยลูกเต๋า</button>
+            <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
             <div id="playerStatus" class="muted mt-10"></div>
           </div>
-  
+
           <div id="questionArea" class="mt-14">
             <div id="countdownDisplay"></div>
             <div id="questionText"></div>
@@ -568,13 +385,15 @@
           </div>
         </div>
       </div>
-  
+
       <div id="endGameArea" style="display:none; margin-top:1rem;">
         <h3>สรุปผลเกม</h3>
         <div id="endGameSummary"></div>
       </div>
     </div>
   </div>
+
+  <noscript>เกมนี้ต้องเปิดใช้งาน JavaScript</noscript>
 
   <!-- main logic -->
   <script type="module" src="app.js"></script>
