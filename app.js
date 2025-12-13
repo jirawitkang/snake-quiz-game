@@ -105,6 +105,9 @@ const choicesContainerEl = document.getElementById("choicesContainer");
 const endGameAreaEl = document.getElementById("endGameArea");
 const endGameSummaryEl = document.getElementById("endGameSummary");
 
+const leaveRoomBtn = document.getElementById("leaveRoomBtn");
+const cancelRoomBtn = document.getElementById("cancelRoomBtn");
+
 // ---------------- State ----------------
 let currentRoomCode = null;
 let currentRole = null; // "host" | "player"
@@ -174,14 +177,19 @@ function setHeaderPills() {
   if (uiRoomPill) uiRoomPill.textContent = `Room: ${currentRoomCode || "-"}`;
   if (uiRolePill) uiRolePill.textContent = `Role: ${currentRole || "-"}`;
 }
-function lockEntryUI(locked) {
-  // กันกดซ้ำ/กันสับ role ระหว่างเล่น
-  hostNameInput.disabled = locked;
-  createRoomBtn.disabled = locked;
-  confirmCreateRoomBtn.disabled = locked;
-  roomCodeInput.disabled = locked;
-  playerNameInput.disabled = locked;
-  joinRoomBtn.disabled = locked;
+function lockEntryUIForRole(role) {
+  const lockHost = role === "host";
+  const lockPlayer = role === "player";
+
+  // Host block
+  hostNameInput.disabled = lockHost;
+  createRoomBtn.disabled = lockHost;
+  confirmCreateRoomBtn.disabled = lockHost;
+
+  // Player block
+  roomCodeInput.disabled = lockPlayer;
+  playerNameInput.disabled = lockPlayer;
+  joinRoomBtn.disabled = lockPlayer;
 }
 
 // ---------------- Lobby View ----------------
@@ -208,14 +216,14 @@ function enterLobbyView() {
 
 // ---------------- Subscribe Room ----------------
 function subscribeRoom(roomCode) {
-  if (roomUnsub) {
-    try { roomUnsub(); } catch {}
-    roomUnsub = null;
-  }
+  if (roomUnsub) { try { roomUnsub(); } catch {} roomUnsub = null; } // ✅ กันซ้อน
 
   const roomRef = ref(db, `rooms/${roomCode}`);
   roomUnsub = onValue(roomRef, (snapshot) => {
-    if (!snapshot.exists()) return;
+    if (!snapshot.exists()) {
+      resetToHome("ห้องนี้ถูกยกเลิก/ปิดแล้ว");
+      return;
+    }
 
     const roomData = snapshot.val();
     const players = roomData.players || {};
@@ -267,11 +275,11 @@ function subscribeRoom(roomCode) {
       currentPlayerId = null;
       enterLobbyView();
       subscribeRoom(currentRoomCode);
-      lockEntryUI(true);
+      lockEntryUIForRole("host");
       return;
     }
-
-    // player restore: if pid exists -> use; else try match by name is not stored (we keep pid only)
+    
+    // player restore
     if (s.role === "player") {
       const roomCode = String(s.room).toUpperCase();
       const pid = s.pid;
@@ -281,9 +289,11 @@ function subscribeRoom(roomCode) {
         currentPlayerId = pid;
         enterLobbyView();
         subscribeRoom(currentRoomCode);
-        lockEntryUI(true);
+        lockEntryUIForRole("player");
         return;
       }
+    }
+
     }
   } catch (e) {
     console.warn("restore session failed:", e);
@@ -367,7 +377,7 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
     if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
     enterLobbyView();
     subscribeRoom(roomCode);
-    lockEntryUI(true);
+    lockEntryUIForRole("host");
     saveSession();
 
     alert(`สร้างห้องสำเร็จ!\nRoom Code: ${roomCode}\nแชร์รหัสนี้ให้นักเรียนใช้ Join ได้เลย`);
@@ -378,6 +388,30 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
     createRoomBtn.disabled = false;
   }
 });
+
+// ---------------- Leave Room ----------------
+leaveRoomBtn?.addEventListener("click", () => {
+  resetToHome("ออกจากห้องเรียบร้อย");
+});
+
+// ---------------- ยกเลิกห้อง (Host)” ลบ room ใน DB ----------------
+cancelRoomBtn?.addEventListener("click", async () => {
+  if (currentRole !== "host" || !currentRoomCode) return;
+
+  const ok = confirm("ต้องการยกเลิกห้องนี้ใช่ไหม? ผู้เล่นทุกคนจะถูกเตะออก");
+  if (!ok) return;
+
+  try {
+    await set(ref(db, `rooms/${currentRoomCode}`), null); // ✅ ลบทั้งห้อง
+  } catch (e) {
+    console.error(e);
+    alert("ยกเลิกห้องไม่สำเร็จ (ดู Console)");
+    return;
+  }
+
+  resetToHome("ยกเลิกห้องเรียบร้อย");
+});
+
 
 // ---------------- Player: Join Room ----------------
 joinRoomBtn.addEventListener("click", async () => {
@@ -450,7 +484,7 @@ joinRoomBtn.addEventListener("click", async () => {
 
     enterLobbyView();
     subscribeRoom(roomCode);
-    lockEntryUI(true);
+    lockEntryUIForRole("player");
     saveSession();
 
     alert(`เข้าห้องสำเร็จ! คุณอยู่ในห้อง ${roomCode}`);
@@ -1432,7 +1466,51 @@ function initUiIfReady() {
   if (currentRoomCode && currentRole) {
     enterLobbyView();
     subscribeRoom(currentRoomCode);
-    lockEntryUI(true);
+    lockEntryUIForRole(currentRole); // ✅ แทน lockEntryUI(true)
   }
 }
 initUiIfReady();
+
+// ---------------- เพิ่ม “Reset UI” กลับหน้าแรก + leave room ----------------
+function resetToHome(message) {
+  clearTimer();
+
+  // stop listener
+  if (roomUnsub) { try { roomUnsub(); } catch {} roomUnsub = null; }
+
+  // clear state
+  currentRoomCode = null;
+  currentRole = null;
+  currentPlayerId = null;
+
+  // clear session
+  clearSession();
+
+  // reset UI
+  if (lobbyEl) lobbyEl.style.display = "none";
+  if (gameAreaEl) gameAreaEl.style.display = "none";
+  if (endGameAreaEl) endGameAreaEl.style.display = "none";
+  if (playerListEl) playerListEl.innerHTML = "";
+  if (boardEl) boardEl.innerHTML = "";
+  if (roomInfoEl) roomInfoEl.textContent = "";
+  if (roleInfoEl) roleInfoEl.textContent = "";
+
+  if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
+
+  // unlock inputs
+  hostNameInput.disabled = false;
+  createRoomBtn.disabled = false;
+  confirmCreateRoomBtn.disabled = false;
+
+  roomCodeInput.disabled = false;
+  playerNameInput.disabled = false;
+  joinRoomBtn.disabled = false;
+
+  // pills
+  const uiRoomPill = document.getElementById("uiRoomPill");
+  const uiRolePill = document.getElementById("uiRolePill");
+  if (uiRoomPill) uiRoomPill.textContent = "Room: -";
+  if (uiRolePill) uiRolePill.textContent = "Role: -";
+
+  if (message) alert(message);
+}
