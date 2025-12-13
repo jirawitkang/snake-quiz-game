@@ -31,6 +31,7 @@ const db = getDatabase(app);
 // ---------------- Constants ----------------
 const BOARD_SIZE = 30;
 const STORAGE_KEY = "SQ_SESSION_V1";
+const STORAGE = sessionStorage; // ✅ แยกต่อแท็บ (แนะนำที่สุดสำหรับ Host/Player ในเครื่องเดียวกัน)
 
 // ---------------- Question Sets ----------------
 const QUESTION_SETS = {
@@ -166,10 +167,10 @@ function getPathCells(from, to) {
 }
 function saveSession() {
   const payload = { room: currentRoomCode, role: currentRole, pid: currentPlayerId };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  STORAGE.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 function clearSession() {
-  localStorage.removeItem(STORAGE_KEY);
+  STORAGE.removeItem(STORAGE_KEY);
 }
 function setHeaderPills() {
   const uiRoomPill = document.getElementById("uiRoomPill");
@@ -257,20 +258,21 @@ function subscribeRoom(roomCode) {
 // ---------------- Restore Session ----------------
 (async function attemptRestoreSession() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = STORAGE.getItem(STORAGE_KEY);
     if (!raw) return;
 
     const s = JSON.parse(raw);
     if (!s?.room || !s?.role) return;
 
-    const snap = await get(ref(db, `rooms/${String(s.room).toUpperCase()}`));
+    const roomCode = String(s.room).toUpperCase();
+    const snap = await get(ref(db, `rooms/${roomCode}`));
     if (!snap.exists()) return;
 
     const roomData = snap.val();
 
-    // host restore (simple)
+    // host restore
     if (s.role === "host") {
-      currentRoomCode = String(s.room).toUpperCase();
+      currentRoomCode = roomCode;
       currentRole = "host";
       currentPlayerId = null;
       enterLobbyView();
@@ -278,10 +280,9 @@ function subscribeRoom(roomCode) {
       lockEntryUIForRole("host");
       return;
     }
-    
+
     // player restore
     if (s.role === "player") {
-      const roomCode = String(s.room).toUpperCase();
       const pid = s.pid;
       if (pid && roomData.players?.[pid]) {
         currentRoomCode = roomCode;
