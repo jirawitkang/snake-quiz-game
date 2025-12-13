@@ -90,6 +90,7 @@ const entrySectionEl = document.getElementById("entrySection");
 const lobbyBadgesEl = document.getElementById("lobbyBadges");
 const cancelRoomBtn = document.getElementById("cancelRoomBtn");
 const leaveRoomBtn = document.getElementById("leaveRoomBtn");
+const cancelRoomBtn = document.getElementById("cancelRoomBtn");
 
 const hostRoundControlsEl = document.getElementById("hostRoundControls");
 const startRoundBtn = document.getElementById("startRoundBtn");
@@ -111,9 +112,6 @@ const choicesContainerEl = document.getElementById("choicesContainer");
 
 const endGameAreaEl = document.getElementById("endGameArea");
 const endGameSummaryEl = document.getElementById("endGameSummary");
-
-const leaveRoomBtn = document.getElementById("leaveRoomBtn");
-const cancelRoomBtn = document.getElementById("cancelRoomBtn");
 
 // ---------------- State ----------------
 let currentRoomCode = null;
@@ -368,15 +366,6 @@ function subscribeRoom(roomCode) {
 // ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
 createRoomBtn.addEventListener("click", () => {
   const hostName = (hostNameInput?.value || "").trim();
-
-  console.log("[NEXT] click", {
-  hostName: hostNameInput?.value,
-  hostGameOptionsEl: !!hostGameOptionsEl,
-  hostGameOptionsDisplay: hostGameOptionsEl ? getComputedStyle(hostGameOptionsEl).display : "N/A",
-  entrySectionDisplay: document.getElementById("entrySection")
-    ? getComputedStyle(document.getElementById("entrySection")).display
-    : "NO_ENTRY_SECTION",
-});
 
   if (!hostName) {
     alert("กรุณากรอกชื่อของ Host ก่อน");
