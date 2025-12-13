@@ -120,6 +120,8 @@ let timerInterval = null;
 let timerPhase = null;
 let timerRound = 0;
 
+let countdownAutoTimeout = null;
+
 // ---------------- Utils ----------------
 function escapeHtml(str) {
   return String(str ?? "")
@@ -148,11 +150,18 @@ function randomColor() {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 function clearTimer() {
-  if (timerInterval) clearInterval(timerInterval);
-  timerInterval = null;
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  if (countdownAutoTimeout) {
+    clearTimeout(countdownAutoTimeout);
+    countdownAutoTimeout = null;
+  }
   timerPhase = null;
   timerRound = 0;
 }
+
 function getPathCells(from, to) {
   const cells = [];
   if (from === to) return cells;
@@ -1173,25 +1182,24 @@ function ensureTimer(roomData, targetPhase) {
   timerRound = round;
 
   if (phase === "questionCountdown") {
-    const start = roomData.questionCountdownStartAt;
+    const start = roomData.questionCountdownStartAt || Date.now();
     const duration = roomData.questionCountdownSeconds || 3;
-
-    if (!Number.isFinite(start)) {
-      countdownDisplayEl.textContent = "รอครูเริ่มนับถอยหลัง…";
-      return;
-    }
-
-    timerInterval = setInterval(async () => {
+  
+    timerInterval = setInterval(() => {
       const now = Date.now();
       let remaining = Math.ceil((start + duration * 1000 - now) / 1000);
       if (remaining < 0) remaining = 0;
+  
       countdownDisplayEl.textContent = `เริ่มตอบใน ${remaining} วินาที`;
-
+  
       if (remaining <= 0) {
         clearTimer();
-        // Host จะเป็นคนเปลี่ยน phase โดยอัตโนมัติ
+  
+        // ✅ กันค้าง: ถ้าครูอยู่หน้านี้ ให้บังคับเปลี่ยนเป็น answering
         if (currentRole === "host" && currentRoomCode) {
-          await moveToAnsweringTx(round);
+          moveToAnswering().catch((e) =>
+            console.error("moveToAnswering failed:", e)
+          );
         }
       }
     }, 250);
@@ -1228,21 +1236,20 @@ function ensureTimer(roomData, targetPhase) {
 }
 
 // host: questionCountdown -> answering (Transaction)
-async function moveToAnsweringTx(expectedRound) {
+async function moveToAnswering() {
   if (currentRole !== "host" || !currentRoomCode) return;
 
-  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+  const snap = await get(ref(db, `rooms/${currentRoomCode}`));
+  if (!snap.exists()) return;
+
+  const roomData = snap.val();
+  if (roomData.phase !== "questionCountdown") return;
+
   const now = Date.now();
-
-  await runTransaction(roomRef, (room) => {
-    if (!room) return room;
-    if (room.phase !== "questionCountdown") return;
-    if ((room.currentRound || 0) !== expectedRound) return;
-
-    room.phase = "answering";
-    room.answerStartAt = now;
-    room.answerDeadlineExpired = false;
-    return room;
+  await update(ref(db), {
+    [`rooms/${currentRoomCode}/phase`]: "answering",
+    [`rooms/${currentRoomCode}/answerStartAt`]: now,
+    [`rooms/${currentRoomCode}/answerDeadlineExpired`]: false,
   });
 }
 
