@@ -462,22 +462,32 @@ button:disabled{
   border-bottom-right-radius: var(--radius-sm);
 }
 
-/* ===== Lobby card: host controls at top-right without changing card height ===== */
-.lobby-card{
-  position: relative;
-  padding-top: 56px; /* กันพื้นที่ด้านบนไว้เท่ากันทั้ง Host และ Player */
+/* ===== Lobby card head: role text + host controls in one line ===== */
+.lobby-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin-bottom: 8px; /* เว้นจาก "รายชื่อผู้เล่น" */
 }
 
+/* ข้อความซ้าย: ให้อยู่บรรทัดเดียว + ตัด ... ถ้ายาว */
+.role-line{
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ปุ่มขวา: เป็นชุดเล็กแบบชิป */
 .lobby-top-controls{
-  position: absolute;
-  right: 14px;
-  top: 14px;
-  display: flex;
+  display:flex;
+  align-items:center;
   gap: 8px;
-  align-items: center;
+  flex: 0 0 auto;
 }
 
-/* ให้ปุ่มชุดนี้เล็กลง (สูงเท่าชิป badge) */
 .lobby-top-controls button{
   height: var(--lobby-chip-h, 28px);
   padding: 0 10px;
@@ -486,4 +496,10 @@ button:disabled{
   font-weight: 900;
   line-height: 1;
   box-shadow: none;
+}
+
+/* มือถือจอแคบมาก: ยอมให้ขึ้นบรรทัดใหม่เฉพาะปุ่ม (กันล้น) */
+@media (max-width: 520px){
+  .lobby-card-head{ flex-wrap: wrap; }
+  .role-line{ flex: 1 1 100%; }
 }
