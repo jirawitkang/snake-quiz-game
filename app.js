@@ -122,6 +122,9 @@ let timerRound = 0;
 
 let countdownAutoTimeout = null;
 
+let rollPending = false; // ✅ กันกดทอยซ้ำระหว่างรอ DB sync
+let answerPending = false;
+
 // ---------------- Utils ----------------
 function escapeHtml(str) {
   return String(str ?? "")
@@ -679,12 +682,51 @@ startRoundBtn.addEventListener("click", async () => {
 rollDiceBtn.addEventListener("click", async () => {
   if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
 
-  rollDiceBtn.disabled = true;
+  if (rollPending) return;             // ✅ กันกดซ้ำ
+  rollPending = true;                 // ✅ ล็อกทันที
+  rollDiceBtn.disabled = true;         // ✅ ปิดปุ่มทันที
+
   try {
-    await animateDiceAndCommitRoll();
-  } finally {
-    // ปล่อยให้ onValue คุมสถานะปุ่มต่อ (ถ้าพังจะกลับมา enabled)
-    setTimeout(() => { rollDiceBtn.disabled = false; }, 400);
+    const roomRef = ref(db, `rooms/${currentRoomCode}`);
+    const snap = await get(roomRef);
+    if (!snap.exists()) { rollPending = false; return; }
+
+    const roomData = snap.val();
+    if (roomData.phase !== "rolling") {
+      rollPending = false;
+      alert("ตอนนี้ยังไม่ใช่ช่วงทอยลูกเต๋า (รอครูเริ่มรอบ)");
+      return;
+    }
+
+    const players = roomData.players || {};
+    const me = players[currentPlayerId];
+    if (!me) {
+      rollPending = false;
+      alert("ไม่พบข้อมูลผู้เล่นของคุณในห้อง");
+      return;
+    }
+
+    const pos = me.position || 1;
+    if (me.finished || pos >= BOARD_SIZE) {
+      rollPending = false;
+      alert("คุณเข้าเส้นชัยแล้ว ไม่ต้องทอยลูกเต๋า");
+      return;
+    }
+
+    if (me.hasRolled) {
+      rollPending = false;
+      // ✅ กันข้อความเด้งซ้ำ: แค่โชว์สถานะตามที่ต้องการ
+      playerStatusEl.textContent = `ตำแหน่งของคุณ: ${pos} | ทอยล่าสุด: ${me.lastRoll ?? "-"} | คุณทอยแล้ว รอคนอื่น`;
+      return;
+    }
+
+    const basePos = pos;
+    await animateDiceAndCommitRoll(basePos);
+
+    // ❗ ไม่ปลด rollPending ที่นี่ ให้รอ DB sync มาตั้ง hasRolled=true ก่อน
+  } catch (e) {
+    console.error(e);
+    rollPending = false;
   }
 });
 
@@ -1028,12 +1070,19 @@ function updateRoleControls(roomData, players) {
 
   if (currentRole === "player") {
     const me = (players && currentPlayerId && players[currentPlayerId]) || {};
-    const pos = clampPos(me.position);
+    const pos = me.position || 1;
     const finished = !!me.finished || pos >= BOARD_SIZE;
     const rolled = !!me.hasRolled;
-
-    const canRoll = phase === "rolling" && !rolled && !finished;
-    rollDiceBtn.style.display = phase === "ended" ? "none" : "inline-block";
+    
+    // ✅ ปลด pending เมื่อ DB บอกว่า hasRolled แล้ว หรือ phase ไม่ใช่ rolling
+    if (rollPending && (rolled || roomData.phase !== "rolling" || finished)) {
+      rollPending = false;
+    }
+    
+    const rolledOrPending = rolled || rollPending; // ✅ ถือว่า "ทอยแล้ว" ระหว่างรอ sync
+    const canRoll = roomData.phase === "rolling" && !rolledOrPending && !finished;
+    
+    rollDiceBtn.style.display = "inline-block";
     rollDiceBtn.disabled = !canRoll;
 
     const lastRollText = me.lastRoll != null ? me.lastRoll : "-";
@@ -1045,7 +1094,7 @@ function updateRoleControls(roomData, players) {
     } else if (phase === "idle" || round === 0) {
       playerStatusEl.textContent += " | รอ Host เริ่มรอบใหม่";
     } else if (phase === "rolling" && rolled) {
-      playerStatusEl.textContent += " | คุณทอยแล้ว รอคนอื่น";
+      playerStatusEl.textContent += " | คุณทอยแล้ว โปรดรอ";
     } else if (phase === "answering") {
       playerStatusEl.textContent += " | กำลังตอบคำถาม";
     } else if (phase === "ended") {
@@ -1284,45 +1333,114 @@ async function moveCountdownToAnsweringTx() {
 // ---------------- Player: Submit Answer (Transaction-safe) ----------------
 async function submitAnswerTx(optionKey) {
   if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
+  if (answerPending) return;                 // ✅ กันกดรัว ๆ ระหว่างรอ transaction
+  answerPending = true;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  const now = Date.now();
 
-  const tx = await runTransaction(roomRef, (room) => {
-    if (!room) return room;
-    if (room.phase !== "answering") return;
+  try {
+    const tx = await runTransaction(roomRef, (room) => {
+      if (!room) return;                     // abort
+      if (room.phase !== "answering") return; // abort
 
-    const startAt = room.answerStartAt;
-    const duration = room.answerTimeSeconds;
+      const startAt = room.answerStartAt;
+      const duration = room.answerTimeSeconds;
 
-    const computedExpired =
-      Number.isFinite(startAt) && Number.isFinite(duration)
-        ? now > (startAt + duration * 1000)
-        : false;
+      // ถ้ายังไม่เริ่มจับเวลา -> ไม่ให้ตอบ (กันค้าง/ค่าไม่ครบ)
+      if (!Number.isFinite(startAt) || !Number.isFinite(duration)) {
+        return; // abort
+      }
 
-    if (room.answerDeadlineExpired === true || computedExpired) {
-      room.answerDeadlineExpired = true;
-      return room;
+      const now = Date.now();
+      const expired = now > (startAt + duration * 1000);
+
+      // หมดเวลา -> ปัก flag แล้ว commit (ให้ทุกคนเห็นหมดเวลา)
+      if (room.answerDeadlineExpired === true || expired) {
+        room.answerDeadlineExpired = true;
+        return room; // commit เฉพาะ flag
+      }
+
+      const players = room.players || {};
+      const me = players[currentPlayerId];
+      if (!me) return;                       // abort
+
+      const pos = clampPos(me.position);
+      if (me.finished || pos >= BOARD_SIZE) return; // abort
+      if (me.answered) return;               // abort (ตอบไปแล้ว)
+
+      me.answer = optionKey;
+      me.answered = true;
+      players[currentPlayerId] = me;
+      room.players = players;
+
+      return room; // commit
+    });
+
+    // ---- วิเคราะห์ผล หลัง transaction ----
+    if (!tx.committed) {
+      // ไม่ได้ commit = ส่วนใหญ่คือ abort (phase ไม่ใช่ answering / ตอบไปแล้ว / ยังไม่เริ่มเวลา ฯลฯ)
+      // ใช้ get เพิ่มเพื่อบอกเหตุแบบตรง ๆ (ไม่แพงมากและช่วย UX)
+      const snap = await get(roomRef);
+      if (!snap.exists()) {
+        alert("ส่งคำตอบไม่สำเร็จ (ไม่พบห้องแล้ว)");
+        return;
+      }
+
+      const room = snap.val();
+      if (room.phase !== "answering") {
+        alert("ส่งคำตอบไม่สำเร็จ (ยังไม่ใช่ช่วงตอบคำถาม)");
+        return;
+      }
+
+      const me = room.players?.[currentPlayerId];
+      if (!me) {
+        alert("ส่งคำตอบไม่สำเร็จ (ไม่พบข้อมูลผู้เล่น)");
+        return;
+      }
+
+      if (room.answerDeadlineExpired === true) {
+        alert("ส่งคำตอบไม่สำเร็จ (หมดเวลาแล้ว)");
+        return;
+      }
+
+      const startAt = room.answerStartAt;
+      const duration = room.answerTimeSeconds;
+      if (!Number.isFinite(startAt) || !Number.isFinite(duration)) {
+        alert("ส่งคำตอบไม่สำเร็จ (ระบบยังไม่เริ่มจับเวลา)");
+        return;
+      }
+
+      if (me.answered) {
+        // ไม่ต้อง alert ก็ได้ แต่ถ้าต้องการให้ชัด
+        // alert("คุณตอบไปแล้ว");
+        return;
+      }
+
+      alert("ส่งคำตอบไม่สำเร็จ (ลองใหม่)");
+      return;
     }
 
-    const players = room.players || {};
-    const me = players[currentPlayerId];
-    if (!me) return;
+    // tx.committed อาจเป็นการ commit แค่ flag หมดเวลา (ไม่ได้บันทึกคำตอบเรา)
+    const after = tx.snapshot?.val?.() || null;
+    const meAfter = after?.players?.[currentPlayerId] || null;
 
-    const pos = clampPos(me.position);
-    if (me.finished || pos >= BOARD_SIZE) return;
-    if (me.answered) return;
+    if (after?.answerDeadlineExpired === true) {
+      alert("ส่งคำตอบไม่สำเร็จ (หมดเวลาแล้ว)");
+      return;
+    }
 
-    me.answer = optionKey;
-    me.answered = true;
-    players[currentPlayerId] = me;
-    room.players = players;
+    if (!meAfter || meAfter.answered !== true || meAfter.answer !== optionKey) {
+      // commit เกิดขึ้น แต่ไม่ใช่การบันทึกคำตอบเรา (เช่น commit flag อื่น)
+      alert("ส่งคำตอบไม่สำเร็จ (ลองใหม่)");
+      return;
+    }
 
-    return room;
-  });
-
-  if (!tx.committed) {
-    alert("ส่งคำตอบไม่สำเร็จ (อาจหมดเวลาแล้ว)");
+    // ✅ สำเร็จจริง: ไม่ต้อง alert (ปล่อยให้ UI update เลือกคำตอบ/disable เอง)
+  } catch (e) {
+    console.error("submitAnswerTx failed:", e);
+    alert("ส่งคำตอบไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
+  } finally {
+    answerPending = false;
   }
 }
 
