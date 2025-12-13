@@ -385,6 +385,7 @@ button:disabled{
   display:flex;
   align-items:center;
   gap: 10px;
+  margin-bottom: 2px;
 }
 
 .lobby-badges{
@@ -431,10 +432,6 @@ button:disabled{
   background: var(--p-100);
   border: 1px solid rgba(75,60,140,.20);
   color: var(--p-800);
-}
-
-.lobby-bar{
-  margin-bottom: 12px;
 }
 
 /* ===== Round table corners (player list + end summary) ===== */
