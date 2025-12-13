@@ -672,6 +672,7 @@ function renderPlayerList(roomData, playersObj) {
       <table>
         <thead>
           <tr>
+            <th>อันดับ</th>
             <th class="name-col">ผู้เล่น</th>
             <th>ตำแหน่ง</th>
             <th>ทอยเต๋า</th>
@@ -682,9 +683,12 @@ function renderPlayerList(roomData, playersObj) {
         <tbody>
   `;
 
-  for (const p of statsArray) {
+  statsArray.forEach((p, idx) => {
+    const rank = idx + 1;
+  
     html += `
       <tr>
+        <td>${rank}</td>
         <td class="name-col">${escapeHtml(p.name)}</td>
         <td>${p.position}</td>
         <td>${escapeHtml(p.rolls.join(" ") || "-")}</td>
@@ -692,7 +696,7 @@ function renderPlayerList(roomData, playersObj) {
         <td>${escapeHtml(getStatusText(p))}</td>
       </tr>
     `;
-  }
+  });
 
   html += `</tbody></table></div>`;
   playerListEl.innerHTML = html;
