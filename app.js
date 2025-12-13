@@ -293,8 +293,6 @@ function subscribeRoom(roomCode) {
         return;
       }
     }
-
-    }
   } catch (e) {
     console.warn("restore session failed:", e);
   }
