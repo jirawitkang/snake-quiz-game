@@ -1,13 +1,12 @@
 /* ui.css — Purple Library Theme (global UI) */
 
 :root{
-  /* ===== Purple palette (สำคัญ) ===== */
   --p-900:#2f2a66;
   --p-800:#3a3178;
   --p-700:#463a86;
-  --p-600:#4B3C8C;   /* primary */
+  --p-600:#4B3C8C;
   --p-500:#5a4bb0;
-  --p-100:#EDE9F7;   /* soft */
+  --p-100:#EDE9F7;
   --p-050:#F6F4FB;
 
   --bg:#f6f6fb;
@@ -31,7 +30,10 @@ body{
   color: var(--text);
 }
 
-/* ===== Header (เหมือนภาพ) ===== */
+/* ให้ input/button/select ใช้ฟอนต์เดียวกันเสมอ (กันเพี้ยนข้าม browser) */
+button, input, select, textarea { font: inherit; }
+
+/* ===== Header ===== */
 .app-header{
   background: linear-gradient(90deg, var(--p-600), var(--p-800));
   color:#fff;
@@ -97,7 +99,7 @@ body{
   padding: 0 14px;
 }
 
-/* ===== Section title like "LIBRARY RESOURCES" ===== */
+/* ===== Section title ===== */
 .section-title{
   display:flex;
   align-items:center;
@@ -123,7 +125,6 @@ body{
   box-shadow: var(--shadow);
   padding: 14px;
 }
-
 .card h2, .card h3{
   margin: 0 0 10px;
   color: var(--p-800);
@@ -150,6 +151,12 @@ input, select{
 input:focus, select:focus{
   border-color: rgba(75,60,140,.65);
   box-shadow: 0 0 0 4px rgba(75,60,140,.12);
+}
+
+/* โฟกัสด้วยคีย์บอร์ดให้ชัด (ใช้งานห้องเรียน/โปรเจคเตอร์ดีขึ้น) */
+button:focus-visible, input:focus-visible, select:focus-visible{
+  outline: 3px solid rgba(75,60,140,.28);
+  outline-offset: 2px;
 }
 
 /* ===== Buttons ===== */
@@ -179,7 +186,7 @@ button:disabled{
   box-shadow:none;
 }
 
-/* ===== Grid layout for top area ===== */
+/* ===== Grid layout ===== */
 .grid-2{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -189,7 +196,7 @@ button:disabled{
   .grid-2{ grid-template-columns: 1fr; }
 }
 
-/* ===== “Dotted separators” vibe (เหมือนภาพ) ===== */
+/* ===== Dotted separators vibe ===== */
 .card-split{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -198,9 +205,7 @@ button:disabled{
 @media (max-width: 900px){
   .card-split{ grid-template-columns: 1fr; }
 }
-.split-col{
-  padding: 4px 2px;
-}
+.split-col{ padding: 4px 2px; }
 .split-col + .split-col{
   border-left: 2px dotted rgba(75,60,140,.25);
   padding-left: 14px;
@@ -214,7 +219,33 @@ button:disabled{
   }
 }
 
-/* ===== Lobby table — ทำให้เข้าธีมม่วง ===== */
+/* ===== Lobby: รองรับทั้ง UL (ตอนนี้ใช้จริง) และ Table (เผื่ออนาคต) ===== */
+#playerList{
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#playerList li{
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 16px rgba(31,35,48,.06);
+}
+.player-name{
+  font-weight: 900;
+  color: var(--p-800);
+}
+.player-meta{
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Table theme (ใช้กับ endGameSummary แน่นอน / playerList เผื่ออนาคต) */
 #playerList table,
 #endGameSummary table{
   width:100%;
@@ -240,9 +271,7 @@ button:disabled{
 }
 
 /* ===== Game area wrapper ===== */
-#gameArea{
-  margin-top: 14px;
-}
+#gameArea{ margin-top: 14px; }
 .game-shell{
   display:grid;
   grid-template-columns: 1.2fr .8fr;
@@ -260,11 +289,9 @@ button:disabled{
   border-radius: var(--radius);
   padding: 12px;
 }
-#countdownDisplay{
-  color: var(--p-800);
-}
+#countdownDisplay{ color: var(--p-800); }
 
-/* Choice buttons (เข้าธีมม่วง) */
+/* Choice buttons */
 .choice-btn{
   border-radius: 12px;
   border: 1px solid var(--line);
