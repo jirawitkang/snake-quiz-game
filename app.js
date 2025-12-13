@@ -369,6 +369,15 @@ function subscribeRoom(roomCode) {
 createRoomBtn.addEventListener("click", () => {
   const hostName = (hostNameInput?.value || "").trim();
 
+  console.log("[NEXT] click", {
+  hostName: hostNameInput?.value,
+  hostGameOptionsEl: !!hostGameOptionsEl,
+  hostGameOptionsDisplay: hostGameOptionsEl ? getComputedStyle(hostGameOptionsEl).display : "N/A",
+  entrySectionDisplay: document.getElementById("entrySection")
+    ? getComputedStyle(document.getElementById("entrySection")).display
+    : "NO_ENTRY_SECTION",
+});
+
   if (!hostName) {
     alert("กรุณากรอกชื่อของ Host ก่อน");
     return;
