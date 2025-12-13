@@ -84,6 +84,7 @@ const lobbyEl = document.getElementById("lobby");
 const roomInfoEl = document.getElementById("roomInfo");
 const roleInfoEl = document.getElementById("roleInfo");
 const playerListEl = document.getElementById("playerList");
+const entrySectionEl = document.getElementById("entrySection");
 
 const hostRoundControlsEl = document.getElementById("hostRoundControls");
 const startRoundBtn = document.getElementById("startRoundBtn");
@@ -133,6 +134,10 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+function setEntryVisible(visible) {
+  if (!entrySectionEl) return;
+  entrySectionEl.style.display = visible ? "" : "none";
 }
 function clampPos(pos) {
   const p = Number(pos ?? 1);
@@ -208,6 +213,8 @@ function lockEntryUIForRole(role) {
 // ---------------- Lobby View ----------------
 function enterLobbyView() {
   if (lobbyEl) lobbyEl.style.display = "block";
+
+  setEntryVisible(false); // ✅ ซ่อนหน้าแรก (LIBRARY RESOURCES + การ์ด Host/Player)
 
   if (roomInfoEl) {
     roomInfoEl.textContent = currentRoomCode ? `Room Code: ${currentRoomCode}` : "";
@@ -1822,6 +1829,8 @@ function resetToHome(message) {
   if (roleInfoEl) roleInfoEl.textContent = "";
 
   if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
+
+  setEntryVisible(true); // ✅ กลับมาโชว์การ์ด Host/Player + LIBRARY RESOURCES
 
   // unlock inputs
   hostNameInput.disabled = false;
