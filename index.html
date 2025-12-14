@@ -106,14 +106,20 @@
       <div class="card lobby-card">
         <div class="lobby-card-head">
           <div id="roleInfo" class="muted role-line"></div>
-          <div class="lobby-top-controls">
-            <button id="startGameBtn" class="btn-primary" style="display:none;">เริ่มเล่น</button>
+          <!-- ✅ ตรงนี้ไม่ต้องมีปุ่มเริ่มเล่นแล้ว -->
+        </div>
+        
+        <!-- ✅ แถวหัวรายการ + ปุ่มเริ่มเล่น (อยู่บรรทัดเดียวกัน) -->
+        <div class="lobby-list-head">
+          <div class="lobby-list-title"><strong>รายชื่อผู้เล่นในห้อง:</strong></div>
+        
+          <div class="lobby-list-actions">
+            <button id="startGameBtn" class="btn-primary" type="button" style="display:none;">
+              เริ่มเล่น
+            </button>
           </div>
         </div>
-      
-        <div id="roomInfo" style="display:none;"></div>
-      
-        <p><strong>รายชื่อผู้เล่นในห้อง:</strong></p>
+        
         <ul id="playerList"></ul>
       </div>
     </div>
