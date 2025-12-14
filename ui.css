@@ -380,70 +380,151 @@ button:disabled{
 .mt-10{ margin-top:10px; }
 .mt-14{ margin-top:14px; }
 
-/* ===== Lobby header bar ===== */
+/* ================================
+   LOBBY BAR (single source of truth)
+   ================================ */
+
+:root{
+  --lobby-chip-h: 28px; /* ความสูง badge/ปุ่ม */
+}
+
 .lobby-bar{
   display:flex;
   align-items:center;
   gap: 10px;
   margin-bottom: 4px;
+  flex-wrap: nowrap;   /* ✅ ห้ามขึ้นบรรทัดใหม่ */
 }
 
+/* section-title ในแถบ LOBBY */
+.lobby-bar .section-title{
+  margin: 0 !important;   /* กัน inline style/เดิม */
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* badges: ไม่ wrap ลงบรรทัดใหม่ ให้ scroll-x แทน */
 .lobby-badges{
+  flex: 1 1 auto;
+  min-width: 0;
   display:flex;
   align-items:center;
   gap: 8px;
-  flex: 1;
-  flex-wrap: wrap;
-  justify-content:flex-start;
+  flex-wrap: nowrap;      /* ✅ สำคัญ */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
+.lobby-badges::-webkit-scrollbar{ display:none; }
 
-/* ===== Lobby badges + actions: equal height across TH/EN ===== */
-:root{
-  --lobby-chip-h: 28px; /* ปรับได้ เช่น 26/28/30 */
-}
-
-.lobby-badge,
-.lobby-actions button{
+/* badge appearance + equal height */
+.lobby-badge{
   height: var(--lobby-chip-h);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
-  padding: 0 10px;        /* แนวนอนเท่านั้น */
-  line-height: 1;         /* กันไทยดันสูง */
+  padding: 0 10px;
+  line-height: 1;
   font-size: 12px;
   font-weight: 900;
-
   border-radius: 999px;
   white-space: nowrap;
-}
 
-/* badge appearance */
-.lobby-badge{
   background: #fff;
   border: 1px solid var(--line);
   color: var(--p-800);
   box-shadow: 0 6px 14px rgba(31,35,48,.08);
 }
 
-/* actions appearance (ใช้ธีมเดียวกับ ghost) */
-.lobby-actions button{ box-shadow: none; }
-.lobby-actions .btn-ghost{
-  background: var(--p-100);
-  border: 1px solid rgba(75,60,140,.20);
-  color: var(--p-800);
+/* actions: ปุ่มขวาอยู่บรรทัดเดียวเสมอ */
+.lobby-actions{
+  flex: 0 0 auto;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
-/* ===== Round table corners (player list + end summary) ===== */
+/* actions buttons = chip height */
+.lobby-actions button{
+  height: var(--lobby-chip-h);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: none;
+}
+
+/* ================================
+   LOBBY CARD HEAD (role line + controls)
+   ================================ */
+
+.lobby-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.role-line{
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lobby-top-controls{
+  flex: 0 0 auto;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.lobby-top-controls button{
+  height: var(--lobby-chip-h);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: none;
+}
+
+@media (max-width: 520px){
+  .lobby-card-head{ flex-wrap: wrap; }
+  .role-line{ flex: 1 1 100%; }
+}
+
+/* ================================
+   TABLE rounded corners + spacing inside lobby card
+   ================================ */
+
+#playerList{
+  padding: 0 !important;
+  margin: 0 !important;
+  list-style: none;
+}
+
 #playerList table,
 #endGameSummary table{
+  width: 100%;
+  margin: 0 !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
-/* ทำให้มุม header/แถวสุดท้ายมนจริง */
 #playerList thead tr th:first-child,
 #endGameSummary thead tr th:first-child{
   border-top-left-radius: var(--radius-sm);
@@ -452,7 +533,6 @@ button:disabled{
 #endGameSummary thead tr th:last-child{
   border-top-right-radius: var(--radius-sm);
 }
-
 #playerList tbody tr:last-child td:first-child,
 #endGameSummary tbody tr:last-child td:first-child{
   border-bottom-left-radius: var(--radius-sm);
@@ -462,95 +542,10 @@ button:disabled{
   border-bottom-right-radius: var(--radius-sm);
 }
 
-/* ===== Lobby card head: role text + host controls in one line ===== */
-.lobby-card-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 10px;
-  margin-bottom: 8px; /* เว้นจาก "รายชื่อผู้เล่น" */
-}
+/* ================================
+   GAME BOARD HEAD (round text + host controls)
+   ================================ */
 
-/* ข้อความซ้าย: ให้อยู่บรรทัดเดียว + ตัด ... ถ้ายาว */
-.role-line{
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ปุ่มขวา: เป็นชุดเล็กแบบชิป */
-.lobby-top-controls{
-  display:flex;
-  align-items:center;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-.lobby-top-controls button{
-  height: var(--lobby-chip-h, 28px);
-  padding: 0 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: none;
-}
-
-/* มือถือจอแคบมาก: ยอมให้ขึ้นบรรทัดใหม่เฉพาะปุ่ม (กันล้น) */
-@media (max-width: 520px){
-  .lobby-card-head{ flex-wrap: wrap; }
-  .role-line{ flex: 1 1 100%; }
-}
-
-/* ===== Fix spacing inside Lobby card (ul#playerList contains a table) ===== */
-#playerList{
-  padding: 0 !important;
-  margin: 0 !important;
-  list-style: none;
-}
-
-/* ให้ table ชิดตาม padding ของการ์ดเท่ากันซ้าย-ขวา และไม่มี margin ล่างแปลก ๆ */
-#playerList table{
-  margin: 0 !important;
-  width: 100%;
-}
-
-#playerList th:first-child,
-#playerList td:first-child{
-  width: 54px;
-  text-align: center;
-  font-weight: 900;
-}
-
-/* ===== Game board header: round text + host buttons on one line ===== */
-.game-head-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 10px;
-}
-
-.game-host-controls{
-  display:flex;
-  align-items:center;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-/* ปุ่มในหัว GAME BOARD ให้เป็นชิปสูงเท่ากัน */
-.game-host-controls button{
-  height: var(--lobby-chip-h, 28px);
-  padding: 0 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: none;
-}
-
-/* ===== Fix alignment for GAME BOARD header ===== */
 .game-head-row{
   width: 100%;
   display:flex;
@@ -571,38 +566,18 @@ button:disabled{
   display:flex;
   align-items:center;
   gap: 8px;
-}
-
-.lobby-bar{
-  display:flex;
-  align-items:center;
-  gap: 10px;
-}
-
-/* section-title ใน lobby อย่าให้กินสูงเกิน */
-.lobby-bar .section-title{
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-/* badges: ไม่ wrap ลงบรรทัดใหม่ ให้เลื่อนแนวนอนแทน */
-.lobby-badges{
-  flex: 1 1 auto;
-  display:flex;
-  align-items:center;
-  gap: 8px;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
 }
-.lobby-badges::-webkit-scrollbar{ display:none; }
 
-/* actions: ปุ่มขวาอยู่บรรทัดเดียว */
-.lobby-actions{
-  flex: 0 0 auto;
-  display:flex;
+.game-host-controls button{
+  height: var(--lobby-chip-h);
+  display:inline-flex;
   align-items:center;
-  gap: 8px;
-  flex-wrap: nowrap;
+  justify-content:center;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: none;
 }
