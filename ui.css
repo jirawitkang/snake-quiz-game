@@ -523,3 +523,29 @@ button:disabled{
   text-align: center;
   font-weight: 900;
 }
+
+/* ===== Game board header: round text + host buttons on one line ===== */
+.game-head-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+}
+
+.game-host-controls{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+/* ปุ่มในหัว GAME BOARD ให้เป็นชิปสูงเท่ากัน */
+.game-host-controls button{
+  height: var(--lobby-chip-h, 28px);
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: none;
+}
