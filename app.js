@@ -91,6 +91,9 @@ const lobbyBadgesEl = document.getElementById("lobbyBadges");
 const cancelRoomBtn = document.getElementById("cancelRoomBtn");
 const leaveRoomBtn = document.getElementById("leaveRoomBtn");
 
+const startGameBtn = document.getElementById("startGameBtn");
+const hostGameControlsEl = document.getElementById("hostGameControls");
+
 const hostRoundControlsEl = document.getElementById("hostRoundControls");
 const startRoundBtn = document.getElementById("startRoundBtn");
 const startQuestionBtn = document.getElementById("startQuestionBtn");
@@ -258,24 +261,18 @@ function enterLobbyView() {
   }
 
   if (currentRole === "host") {
-    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็น Host: ใช้ปุ่มควบคุมรอบและคำถาม";
-  
-    if (hostRoundControlsEl) {
-      hostRoundControlsEl.style.display = "flex";
-      hostRoundControlsEl.style.visibility = "visible";
-      hostRoundControlsEl.style.pointerEvents = "auto";
-    }
-  
-  } else if (currentRole === "player") {
-    if (roleInfoEl) roleInfoEl.textContent = "คุณเป็นผู้เล่น: รอครูเริ่มรอบ → ทอยเต๋า → ตอบคำถาม";
-  
-    if (hostRoundControlsEl) {
-      hostRoundControlsEl.style.display = "flex";      // ✅ จองพื้นที่ไว้
-      hostRoundControlsEl.style.visibility = "hidden"; // ✅ ไม่ให้เห็น
-      hostRoundControlsEl.style.pointerEvents = "none";
-    }
-  
-  } else {
+  if (hostRoundControlsEl) {
+    hostRoundControlsEl.style.display = "flex";
+    hostRoundControlsEl.style.visibility = "visible";
+    hostRoundControlsEl.style.pointerEvents = "auto";
+  }
+} else if (currentRole === "player") {
+  if (hostRoundControlsEl) {
+    hostRoundControlsEl.style.display = "flex";       // จองพื้นที่ไว้ให้เท่ากัน
+    hostRoundControlsEl.style.visibility = "hidden";  // แต่ไม่ให้เห็น
+    hostRoundControlsEl.style.pointerEvents = "none";
+  }
+} else {
     if (roleInfoEl) roleInfoEl.textContent = "";
     if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
   }
@@ -702,6 +699,37 @@ function renderPlayerList(roomData, playersObj) {
   playerListEl.innerHTML = html;
 }
 
+// ---------------- Host: Start Game (ไปโฟกัส GAME BOARD) ----------------
+startGameBtn?.addEventListener("click", async () => {
+  if (currentRole !== "host" || !currentRoomCode) return;
+
+  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+  const snap = await get(roomRef);
+  if (!snap.exists()) return;
+
+  const roomData = snap.val();
+  const players = roomData.players || {};
+  const totalPlayers = Object.keys(players).length;
+
+  if (roomData.status !== "lobby") {
+    alert("ห้องนี้เริ่มเกมแล้ว");
+    return;
+  }
+  if (totalPlayers <= 0) {
+    alert("ยังไม่มีผู้เล่นเข้าห้อง");
+    return;
+  }
+
+  await update(ref(db), {
+    [`rooms/${currentRoomCode}/status`]: "inGame",
+    [`rooms/${currentRoomCode}/phase`]: "idle",
+    [`rooms/${currentRoomCode}/gameStartedAt`]: Date.now(),
+  });
+
+  // เลื่อนไป GAME BOARD ให้โฟกัสตามที่ต้องการ
+  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
 // ---------------- Host: Start New Round (Transaction) ----------------
 startRoundBtn.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
@@ -1121,8 +1149,20 @@ function updateGameView(roomData, players) {
   const round = roomData.currentRound || 0;
   const phase = roomData.phase || "idle";
 
-  if (gameAreaEl) gameAreaEl.style.display = round > 0 ? "block" : "none";
-  if (roundInfoEl) roundInfoEl.textContent = round > 0 ? `รอบที่: ${round}` : "ยังไม่ได้เริ่มรอบ";
+  const status = roomData.status || "lobby";
+
+  // ✅ แสดง GAME BOARD ตั้งแต่กด "เริ่มเล่น" (status = inGame) แม้ round ยังเป็น 0
+  if (gameAreaEl) {
+    const shouldShow = (round > 0) || (status === "inGame") || (status === "finished");
+    gameAreaEl.style.display = shouldShow ? "block" : "none";
+  }
+  
+  // ✅ ข้อความรอบ: ถ้ายังไม่เริ่มรอบ แต่เริ่มเล่นแล้ว ให้แสดง "รอบที่: -"
+  if (roundInfoEl) {
+    if (round > 0) roundInfoEl.textContent = `รอบที่: ${round}`;
+    else if (status === "inGame") roundInfoEl.textContent = "รอบที่: -";
+    else roundInfoEl.textContent = "ยังไม่ได้เริ่มรอบ";
+  }
 
   let phaseText = "";
   switch (phase) {
@@ -1152,6 +1192,11 @@ function updateGameView(roomData, players) {
 function updateRoleControls(roomData, players) {
   const phase = roomData.phase || "idle";
   const round = roomData.currentRound || 0;
+
+  // ✅ โชว์/ซ่อนแถบปุ่ม Host ที่อยู่บน GAME BOARD
+  if (hostGameControlsEl) {
+    hostGameControlsEl.style.display = (currentRole === "host") ? "flex" : "none";
+  }
 
   if (currentRole === "player") {
     const me = (players && currentPlayerId && players[currentPlayerId]) || {};
