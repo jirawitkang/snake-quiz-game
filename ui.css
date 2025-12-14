@@ -572,3 +572,37 @@ button:disabled{
   align-items:center;
   gap: 8px;
 }
+
+.lobby-bar{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+/* section-title ใน lobby อย่าให้กินสูงเกิน */
+.lobby-bar .section-title{
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* badges: ไม่ wrap ลงบรรทัดใหม่ ให้เลื่อนแนวนอนแทน */
+.lobby-badges{
+  flex: 1 1 auto;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.lobby-badges::-webkit-scrollbar{ display:none; }
+
+/* actions: ปุ่มขวาอยู่บรรทัดเดียว */
+.lobby-actions{
+  flex: 0 0 auto;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
