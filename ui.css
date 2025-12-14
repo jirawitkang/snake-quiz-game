@@ -477,7 +477,7 @@ button:disabled{
   align-items:center;
   justify-content:space-between;
   gap: 10px;
-  margin: 6px 0 8px;    /* คุมระยะให้สวย ไม่ห่างจากขอบบนเกิน */
+  margin: 2px 0 8px;    /* คุมระยะให้สวย ไม่ห่างจากขอบบนเกิน */
 }
 
 .lobby-list-title{
@@ -626,16 +626,4 @@ button:disabled{
 .lobby-card{
   padding-top: 10px !important;   /* ลดจากเดิม 14px */
   padding-bottom: 12px !important;
-}
-
-.lobby-card-head{
-  margin-bottom: 4px !important;  /* ลดช่องว่างใต้ roleInfo */
-}
-
-.lobby-list-head{
-  margin: 2px 0 8px !important;   /* ให้หัวรายการขึ้นมาใกล้ขอบบน */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
 }
