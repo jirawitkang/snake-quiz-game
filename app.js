@@ -281,6 +281,20 @@ function enterLobbyView() {
   if (cancelRoomBtn) cancelRoomBtn.style.display = (currentRole === "host") ? "inline-block" : "none";
   if (leaveRoomBtn)  leaveRoomBtn.style.display  = (currentRole === "player") ? "inline-block" : "none";
 
+  const cancelBtn = document.getElementById("cancelRoomBtn");
+  const leaveBtn  = document.getElementById("leaveRoomBtn");
+  
+  if (currentRole === "host") {
+    if (cancelBtn) cancelBtn.style.display = "inline-flex";
+    if (leaveBtn)  leaveBtn.style.display = "none";
+  } else if (currentRole === "player") {
+    if (cancelBtn) cancelBtn.style.display = "none";
+    if (leaveBtn)  leaveBtn.style.display = "inline-flex";
+  } else {
+    if (cancelBtn) cancelBtn.style.display = "none";
+    if (leaveBtn)  leaveBtn.style.display = "none";
+  }
+
   setHeaderPills();
 }
 
