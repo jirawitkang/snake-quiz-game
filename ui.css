@@ -468,7 +468,33 @@ button:disabled{
   align-items:center;
   justify-content:space-between;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+/* แถว "รายชื่อผู้เล่น" + ปุ่มเริ่มเล่น */
+.lobby-list-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin: 6px 0 8px;    /* คุมระยะให้สวย ไม่ห่างจากขอบบนเกิน */
+}
+
+.lobby-list-title{
+  color: var(--p-800);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* ปุ่มเริ่มเล่นให้เป็นชิปสูงเท่ากับ badge */
+.lobby-list-actions button{
+  height: var(--lobby-chip-h, 28px);
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: none;
 }
 
 .role-line{
