@@ -607,3 +607,17 @@ button:disabled{
   line-height: 1;
   box-shadow: none;
 }
+
+/* === FIX: StartGame button center text === */
+.lobby-list-actions #startGameBtn{
+  height: var(--lobby-chip-h, 28px) !important;
+  padding: 0 12px !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  line-height: 1 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
