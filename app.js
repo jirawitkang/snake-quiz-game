@@ -1193,6 +1193,19 @@ function updateRoleControls(roomData, players) {
   const phase = roomData.phase || "idle";
   const round = roomData.currentRound || 0;
 
+  // ✅ ทำให้หัว GAME BOARD สูงเท่ากัน: Host เห็นปุ่ม / Player จองพื้นที่แต่ซ่อน
+  if (hostGameControlsEl) {
+    hostGameControlsEl.style.display = "flex"; // จองพื้นที่ไว้ทั้งสองฝั่ง
+  
+    if (currentRole === "host") {
+      hostGameControlsEl.style.visibility = "visible";
+      hostGameControlsEl.style.pointerEvents = "auto";
+    } else {
+      hostGameControlsEl.style.visibility = "hidden";
+      hostGameControlsEl.style.pointerEvents = "none";
+    }
+  }
+  
   // ✅ โชว์/ซ่อนแถบปุ่ม Host ที่อยู่บน GAME BOARD
   if (hostGameControlsEl) {
     hostGameControlsEl.style.display = (currentRole === "host") ? "flex" : "none";
