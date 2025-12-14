@@ -92,6 +92,7 @@ const cancelRoomBtn = document.getElementById("cancelRoomBtn");
 const leaveRoomBtn = document.getElementById("leaveRoomBtn");
 
 const startGameBtn = document.getElementById("startGameBtn");
+if (!startGameBtn) console.warn("[UI] startGameBtn not found");
 const hostGameControlsEl = document.getElementById("hostGameControls");
 
 const hostRoundControlsEl = document.getElementById("hostRoundControls");
@@ -339,7 +340,24 @@ function subscribeRoom(roomCode) {
 
     renderPlayerList(roomData, players);
     updateGameView(roomData, players);
+    updateStartGameButton(roomData, players);
   });
+}
+
+function updateStartGameButton(roomData, players) {
+  if (!startGameBtn) return;
+
+  const totalPlayers = Object.keys(players || {}).length;
+
+  // โชว์เฉพาะ Host และเฉพาะตอนอยู่ lobby และมีผู้เล่นอย่างน้อย 1 คน
+  const shouldShow =
+    currentRole === "host" &&
+    currentRoomCode &&
+    roomData?.status === "lobby" &&
+    totalPlayers > 0;
+
+  startGameBtn.style.display = shouldShow ? "inline-flex" : "none";
+  startGameBtn.disabled = !shouldShow;
 }
 
 // ---------------- Restore Session ----------------
@@ -734,11 +752,12 @@ startGameBtn?.addEventListener("click", async () => {
     return;
   }
 
-  await update(ref(db), {
-    [`rooms/${currentRoomCode}/status`]: "inGame",
-    [`rooms/${currentRoomCode}/phase`]: "idle",
-    [`rooms/${currentRoomCode}/gameStartedAt`]: Date.now(),
+  await update(roomRef, {
+    status: "inGame",
+    phase: "idle",
+    gameStartedAt: Date.now(),
   });
+
 
   // เลื่อนไป GAME BOARD ให้โฟกัสตามที่ต้องการ
   document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
