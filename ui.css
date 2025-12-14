@@ -621,3 +621,21 @@ button:disabled{
   border-radius: 999px !important;
   box-shadow: none !important;
 }
+
+/* === FIX: Lobby card spacing tighter === */
+.lobby-card{
+  padding-top: 10px !important;   /* ลดจากเดิม 14px */
+  padding-bottom: 12px !important;
+}
+
+.lobby-card-head{
+  margin-bottom: 4px !important;  /* ลดช่องว่างใต้ roleInfo */
+}
+
+.lobby-list-head{
+  margin: 2px 0 8px !important;   /* ให้หัวรายการขึ้นมาใกล้ขอบบน */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
