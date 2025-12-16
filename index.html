@@ -141,36 +141,37 @@
       </div>
     </div>
 
-    <!-- Game Area -->
-    <div id="gameArea" class="card" style="display:none;">
-      <div class="section-title mt-14">GAME BOARD</div>
-
-      <div class="game-head-row">
-        <div class="round-phase">
-          <div id="roundInfo" aria-live="polite"></div>
-          <div id="phaseInfo" class="muted" aria-live="polite"></div>
-        </div>
-
-        <div id="hostGameControls" class="game-host-controls" style="display:none;">
-          <button id="startRoundBtn" class="btn-primary" type="button">เริ่มรอบใหม่</button>
-          <button id="startQuestionBtn" class="btn-ghost" type="button">เริ่มคำถาม</button>
-          <button id="revealAnswerBtn" class="btn-ghost" type="button">เฉลยคำถาม</button>
-        </div>
+    <!-- Game header bar (เหมือน LOBBY) -->
+    <div id="gameBar" class="lobby-bar mt-14" style="display:none;">
+      <div class="section-title">GAME BOARD</div>
+    
+      <div class="round-phase">
+        <div id="roundInfo"></div>
+        <div id="phaseInfo" class="muted"></div>
       </div>
-
+    
+      <div id="hostGameControls" class="game-host-controls" style="display:none;">
+        <button id="startRoundBtn" class="btn-primary">เริ่มรอบใหม่</button>
+        <button id="startQuestionBtn" class="btn-ghost">เริ่มคำถาม</button>
+        <button id="revealAnswerBtn" class="btn-ghost">เฉลยคำถาม</button>
+      </div>
+    </div>
+    
+    <!-- Game card -->
+    <div id="gameArea" class="card" style="display:none;">
       <div class="game-shell mt-10">
         <div>
-          <div id="board" aria-label="กระดานเกม"></div>
+          <div id="board"></div>
         </div>
-
+    
         <div>
           <div id="playerControls">
             <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
-            <div id="playerStatus" class="muted mt-10" aria-live="polite"></div>
+            <div id="playerStatus" class="muted mt-10"></div>
           </div>
         </div>
       </div>
-
+    
       <div id="endGameArea" style="display:none; margin-top:1rem;">
         <h3>สรุปผลเกม</h3>
         <div id="endGameSummary"></div>
