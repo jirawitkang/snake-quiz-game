@@ -518,12 +518,12 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
 
 // ---------------- Leave Room ----------------
 leaveRoomBtn?.addEventListener("click", async () => {
-  try {
-    if (currentRole === "player" && currentRoomCode && currentPlayerId) {
+  if (currentRoomCode && currentPlayerId) {
+    try {
       await remove(ref(db, `rooms/${currentRoomCode}/players/${currentPlayerId}`));
+    } catch (e) {
+      console.warn("remove player failed:", e);
     }
-  } catch (e) {
-    console.warn("leave room cleanup failed:", e);
   }
   resetToHome("ออกจากห้องเรียบร้อย");
 });
@@ -2014,9 +2014,14 @@ function resetToHome(message) {
   currentPlayerId = null;
 
   // ---------- UI: hide in-room sections ----------
+  const gameBarEl = document.getElementById("gameBar");
+  if (gameBarEl) gameBarEl.style.display = "none";
+  
   if (lobbyEl) lobbyEl.style.display = "none";
   if (gameAreaEl) gameAreaEl.style.display = "none";
   if (endGameAreaEl) endGameAreaEl.style.display = "none";
+  if (questionAreaEl) questionAreaEl.style.display = "none";
+  if (countdownDisplayEl) countdownDisplayEl.textContent = "";
 
   // clear dynamic areas
   if (playerListEl) playerListEl.innerHTML = "";
