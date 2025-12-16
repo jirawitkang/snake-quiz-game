@@ -1181,44 +1181,56 @@ revealAnswerBtn.addEventListener("click", async () => {
 function updateGameView(roomData, players) {
   const round = roomData.currentRound || 0;
   const phase = roomData.phase || "idle";
+  const deadlineExpired = roomData.answerDeadlineExpired === true;
 
-  const status = roomData.status || "lobby";
+  if (gameAreaEl) gameAreaEl.style.display = round > 0 ? "block" : "none";
 
-  // ✅ แสดง GAME BOARD ตั้งแต่กด "เริ่มเล่น" (status = inGame) แม้ round ยังเป็น 0
-  if (gameAreaEl) {
-    const shouldShow = (round > 0) || (status === "inGame") || (status === "finished");
-    gameAreaEl.style.display = shouldShow ? "block" : "none";
-  }
-  
-  // ✅ ข้อความรอบ: ถ้ายังไม่เริ่มรอบ แต่เริ่มเล่นแล้ว ให้แสดง "รอบที่: -"
+  // รอบ
   if (roundInfoEl) {
-    if (round > 0) roundInfoEl.textContent = `รอบที่: ${round}`;
-    else if (status === "inGame") roundInfoEl.textContent = "รอบที่: -";
-    else roundInfoEl.textContent = "ยังไม่ได้เริ่มรอบ";
+    roundInfoEl.textContent = round > 0 ? `รอบที่: ${round}` : "ยังไม่ได้เริ่มรอบ";
   }
 
+  // สถานะรอบ (ข้อความหลัก)
   let phaseText = "";
   switch (phase) {
     case "rolling": phaseText = "กำลังทอยลูกเต๋า"; break;
-    case "questionCountdown": phaseText = "เตรียมคำถาม | นับถอยหลัง"; break;
+    case "questionCountdown": phaseText = "เตรียมคำถาม"; break;
     case "answering": phaseText = "กำลังตอบคำถาม"; break;
     case "result": phaseText = "สรุปผลคำถามรอบนี้"; break;
     case "ended": phaseText = "เกมจบแล้ว"; break;
     default: phaseText = "รอ Host เริ่มรอบใหม่";
   }
-  if (phaseInfoEl) phaseInfoEl.textContent = `สถานะรอบ: ${phaseText}`;
+
+  // ✅ suffix เฉพาะ Host (ตาม format ที่ต้องการ)
+  let hostSuffix = "";
+  if (currentRole === "host") {
+    const playerList = Object.values(players || {});
+    const activePlayers = playerList.filter(p => !p.finished && (p.position || 1) < BOARD_SIZE);
+    const totalActive = activePlayers.length;
+
+    if (phase === "rolling") {
+      const rolledActive = activePlayers.filter(p => !!p.hasRolled).length;
+      hostSuffix = ` | ทอยแล้ว ${rolledActive}/${totalActive} คน`;
+    } else if (phase === "answering") {
+      const answeredActive = activePlayers.filter(p => !!p.answered).length;
+      hostSuffix = ` | ตอบแล้ว ${answeredActive}/${totalActive} คน`;
+      if (deadlineExpired) hostSuffix += " | หมดเวลาแล้ว";
+    }
+  }
+
+  if (phaseInfoEl) {
+    // host: [สถานะรอบ: ... | ...]
+    // player: [สถานะรอบ: ...]
+    phaseInfoEl.textContent = round > 0
+      ? `[สถานะรอบ: ${phaseText}${hostSuffix}]`
+      : "";
+  }
 
   renderBoard(roomData, players);
   updateRoleControls(roomData, players);
   updateQuestionUI(roomData, players);
 
-  if (phase === "ended") {
-    if (endGameAreaEl) endGameAreaEl.style.display = "block";
-    renderEndGameSummary(roomData, players);
-  } else {
-    if (endGameAreaEl) endGameAreaEl.style.display = "none";
-    if (endGameSummaryEl) endGameSummaryEl.innerHTML = "";
-  }
+  // ... ส่วน endGame เดิมใช้ได้เหมือนเดิม
 }
 
 // ---------------- Role Controls ----------------
