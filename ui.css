@@ -315,9 +315,9 @@ button:disabled{
 /* 1..30 cells */
 .board-track .cell-card:not(.start-cell):not(.finish-cell),
 .board-label-row .cell-card:not(.start-cell):not(.finish-cell){
-  width: 16px !important;
-  height: 16px !important;
-  flex: 0 0 16px !important;
+  width: 20px !important;
+  height: 20px !important;
+  flex: 0 0 20px !important;
   padding: 0 !important;
   line-height: 1 !important;
   box-sizing: border-box;
@@ -336,10 +336,20 @@ button:disabled{
 .cell-card.play-cell.cell-past{ background:#9e9e9e !important; }
 
 /* Start/Finish */
-.start-cell,
+.start-cell{
+  min-width: 120px !important;
+  height: 20px !important;
+  border-radius: 4px !important;
+  background:#fff;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.18);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+}
 .finish-cell{
   min-width: 56px !important;
-  height: 16px !important;
+  height: 20px !important;
   border-radius: 4px !important;
   background:#fff;
   box-shadow: 0 3px 6px rgba(0,0,0,0.18);
