@@ -1183,11 +1183,15 @@ function updateGameView(roomData, players) {
   const phase = roomData.phase || "idle";
   const deadlineExpired = roomData.answerDeadlineExpired === true;
 
-  if (gameAreaEl) gameAreaEl.style.display = round > 0 ? "block" : "none";
-
-  // รอบ
+  const status = roomData.status || "lobby";
+  const showGameArea = (status === "inGame") || (round > 0) || (phase === "ended");
+  
+  if (gameAreaEl) gameAreaEl.style.display = showGameArea ? "block" : "none";
+  
   if (roundInfoEl) {
-    roundInfoEl.textContent = round > 0 ? `รอบที่: ${round}` : "ยังไม่ได้เริ่มรอบ";
+    if (round > 0) roundInfoEl.textContent = `รอบที่: ${round}`;
+    else if (status === "inGame") roundInfoEl.textContent = `รอบที่: -`; // ยังไม่เริ่มรอบ
+    else roundInfoEl.textContent = "ยังไม่ได้เริ่มรอบ";
   }
 
   // สถานะรอบ (ข้อความหลัก)
