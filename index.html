@@ -4,43 +4,52 @@
   <meta charset="UTF-8" />
   <title>Snake Quiz – Multiplayer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
   <link rel="stylesheet" href="ui.css" />
 </head>
 
 <body>
   <header class="app-header">
     <div class="header-inner">
-      <div class="brand">
-        <div class="brand-badge">SQ</div>
+      <div class="brand" aria-label="Snake Quiz – Multiplayer">
+        <div class="brand-badge" aria-hidden="true">SQ</div>
         <div class="brand-title">
           <strong>Snake Quiz – Multiplayer</strong>
           <span>Library Purple Theme</span>
         </div>
       </div>
-      <div class="header-meta">
+      <div class="header-meta" aria-label="สถานะห้องและบทบาท">
         <div class="pill" id="uiRoomPill">Room: -</div>
         <div class="pill" id="uiRolePill">Role: -</div>
       </div>
     </div>
   </header>
 
-  <div class="container">
+  <main class="container">
     <div id="entrySection">
       <div class="section-title">LIBRARY RESOURCES</div>
-  
+
       <div class="grid-2">
         <!-- Host -->
         <div class="card">
           <h2>สร้างห้อง (Host)</h2>
-  
+
           <label for="hostNameInput">ชื่อของคุณ (Host)</label>
-          <input id="hostNameInput" placeholder="เช่น ครูเอ, Teacher A" />
-  
-          <button id="createRoomBtn" class="btn-primary" type="button">ถัดไป: ตั้งค่าเกม</button>
-  
+          <input
+            id="hostNameInput"
+            placeholder="เช่น ครูเอ, Teacher A"
+            maxlength="40"
+            autocomplete="name"
+            spellcheck="false"
+          />
+
+          <button id="createRoomBtn" class="btn-primary" type="button">
+            ถัดไป: ตั้งค่าเกม
+          </button>
+
           <div id="hostGameOptions" class="mt-14" style="display:none;">
             <div class="section-title">GAME SETTINGS</div>
-  
+
             <div class="card-split">
               <div class="split-col">
                 <label for="questionSetSelect">ชุดคำถามที่ใช้ในเกม</label>
@@ -49,39 +58,52 @@
                   <option value="setA">ชุดคำถามตัวอย่าง A</option>
                   <option value="setB">ชุดคำถามตัวอย่าง B</option>
                 </select>
-  
+
                 <label for="maxRoundsInput">จำนวนรอบสูงสุดของเกม</label>
-                <input id="maxRoundsInput" type="number" min="1" value="10" />
+                <input id="maxRoundsInput" type="number" min="1" step="1" value="10" inputmode="numeric" />
               </div>
-  
+
               <div class="split-col">
                 <label for="maxWinnersInput">จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อมีผู้เข้าเส้นชัยครบ)</label>
-                <input id="maxWinnersInput" type="number" min="1" value="5" />
-  
+                <input id="maxWinnersInput" type="number" min="1" step="1" value="5" inputmode="numeric" />
+
                 <label for="rewardCorrectInput">จำนวนช่องที่ได้เดินเพิ่มเมื่อตอบถูก</label>
-                <input id="rewardCorrectInput" type="number" value="1" />
-  
+                <input id="rewardCorrectInput" type="number" step="1" value="1" inputmode="numeric" />
+
                 <label for="penaltyWrongInput">จำนวนช่องที่ต้องเดินถอยเมื่อตอบผิด / ตอบไม่ทัน</label>
-                <input id="penaltyWrongInput" type="number" value="-1" />
+                <input id="penaltyWrongInput" type="number" step="1" value="-1" inputmode="numeric" />
               </div>
             </div>
-  
+
             <button id="confirmCreateRoomBtn" class="btn-primary mt-14" type="button">
               ยืนยันสร้างห้อง
             </button>
           </div>
         </div>
-  
+
         <!-- Player -->
         <div class="card">
           <h2>เข้าห้อง (Player)</h2>
-  
+
           <label for="roomCodeInput">Room Code</label>
-          <input id="roomCodeInput" placeholder="เช่น ABC123" />
-  
+          <input
+            id="roomCodeInput"
+            placeholder="เช่น ABC123"
+            maxlength="12"
+            autocapitalize="characters"
+            autocomplete="off"
+            spellcheck="false"
+          />
+
           <label for="playerNameInput">ชื่อนักเรียน</label>
-          <input id="playerNameInput" placeholder="เช่น นร.01, นร.ภูมิ, ฯลฯ" />
-  
+          <input
+            id="playerNameInput"
+            placeholder="เช่น นร.01, นร.ภูมิ, ฯลฯ"
+            maxlength="40"
+            autocomplete="name"
+            spellcheck="false"
+          />
+
           <button id="joinRoomBtn" class="btn-primary" type="button">Join ห้อง</button>
         </div>
       </div>
@@ -89,66 +111,62 @@
 
     <!-- Lobby -->
     <div id="lobby" style="display:none;">
-      <!-- Lobby header bar -->
       <div class="lobby-bar mt-14">
         <div class="section-title">LOBBY</div>
-    
-        <!-- status mini-cards -->
-        <div id="lobbyBadges" class="lobby-badges"></div>
-    
-        <!-- actions (rightmost) -->
+
+        <div id="lobbyBadges" class="lobby-badges" aria-label="สถานะห้อง"></div>
+
         <div class="lobby-actions">
-          <button id="cancelRoomBtn" class="btn-ghost" style="display:none;">ยกเลิกห้อง</button>
-          <button id="leaveRoomBtn" class="btn-ghost" style="display:none;">ออกจากห้อง</button>
+          <button id="cancelRoomBtn" class="btn-ghost" type="button" style="display:none;">ยกเลิกห้อง</button>
+          <button id="leaveRoomBtn" class="btn-ghost" type="button" style="display:none;">ออกจากห้อง</button>
         </div>
       </div>
-    
+
       <div class="card lobby-card">
         <div class="lobby-card-head">
-          <div id="roleInfo" class="muted role-line"></div>
-          <!-- ✅ ตรงนี้ไม่ต้องมีปุ่มเริ่มเล่นแล้ว -->
+          <div id="roleInfo" class="muted role-line" aria-live="polite"></div>
         </div>
-        
-        <!-- ✅ แถวหัวรายการ + ปุ่มเริ่มเล่น (อยู่บรรทัดเดียวกัน) -->
+
         <div class="lobby-list-head">
           <div class="lobby-list-title"><strong>รายชื่อผู้เล่นในห้อง:</strong></div>
-        
+
           <div class="lobby-list-actions">
             <button id="startGameBtn" class="btn-primary" type="button" style="display:none;">
               เริ่มเล่น
             </button>
           </div>
         </div>
-        
-        <ul id="playerList"></ul>
+
+        <ul id="playerList" aria-label="รายชื่อผู้เล่น"></ul>
       </div>
     </div>
 
     <!-- Game Area -->
-    <div class="section-title mt-14">GAME BOARD</div>
     <div id="gameArea" class="card" style="display:none;">
+      <div class="section-title mt-14">GAME BOARD</div>
+
       <div class="game-head-row">
         <div class="round-phase">
-          <div id="roundInfo"></div>
-          <div id="phaseInfo" class="muted"></div>
+          <div id="roundInfo" aria-live="polite"></div>
+          <div id="phaseInfo" class="muted" aria-live="polite"></div>
         </div>
-      
+
         <div id="hostGameControls" class="game-host-controls" style="display:none;">
-          <button id="startRoundBtn" class="btn-primary">เริ่มรอบใหม่</button>
-          <button id="startQuestionBtn" class="btn-ghost">เริ่มคำถาม</button>
-          <button id="revealAnswerBtn" class="btn-ghost">เฉลยคำถาม</button>
+          <button id="startRoundBtn" class="btn-primary" type="button">เริ่มรอบใหม่</button>
+          <button id="startQuestionBtn" class="btn-ghost" type="button">เริ่มคำถาม</button>
+          <button id="revealAnswerBtn" class="btn-ghost" type="button">เฉลยคำถาม</button>
         </div>
       </div>
 
       <div class="game-shell mt-10">
         <div>
-          <div id="board"></div>
+          <div id="board" aria-label="กระดานเกม"></div>
         </div>
 
         <div>
           <div id="playerControls">
             <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
-            <div id="playerStatus" class="muted mt-10"></div>
+            <div id="playerStatus" class="muted mt-10" aria-live="polite"></div>
           </div>
         </div>
       </div>
@@ -159,14 +177,13 @@
       </div>
     </div>
 
-    <!-- Question Card (แยกออกมาอยู่ใต้ GAME BOARD) -->
+    <!-- Question Card -->
     <div id="questionArea" class="card mt-14" style="display:none;">
-      <div id="countdownDisplay"></div>
+      <div id="countdownDisplay" aria-live="assertive"></div>
       <div id="questionText"></div>
       <div id="choicesContainer"></div>
     </div>
-
-  </div>
+  </main>
 
   <noscript>เกมนี้ต้องเปิดใช้งาน JavaScript</noscript>
   <script type="module" src="app.js"></script>
