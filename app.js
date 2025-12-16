@@ -511,7 +511,14 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
 });
 
 // ---------------- Leave Room ----------------
-leaveRoomBtn?.addEventListener("click", () => {
+leaveRoomBtn?.addEventListener("click", async () => {
+  try {
+    if (currentRole === "player" && currentRoomCode && currentPlayerId) {
+      await remove(ref(db, `rooms/${currentRoomCode}/players/${currentPlayerId}`));
+    }
+  } catch (e) {
+    console.warn("leave room cleanup failed:", e);
+  }
   resetToHome("ออกจากห้องเรียบร้อย");
 });
 
@@ -718,7 +725,7 @@ function renderPlayerList(roomData, playersObj) {
     html += `
       <tr>
         <td>${rank}</td>
-        <td class="name-col">${escapeHtml(p.name)}</td>
+        <td class="name-col">${escapeHtml(s.name)}</td>
         <td>${p.position}</td>
         <td>${escapeHtml(p.rolls.join(" ") || "-")}</td>
         <td>${escapeHtml(p.answerSymbols.join(" ") || "-")}</td>
@@ -774,10 +781,16 @@ startRoundBtn.addEventListener("click", async () => {
 
     const phase = room.phase || "idle";
     if (phase === "ended") return; // abort
-
+    
     // ✅ ไม่ให้ข้ามตอนกำลัง countdown/answering
     if (phase === "questionCountdown" || phase === "answering") return;
-
+    
+    // ✅ (แนะนำ) เริ่มรอบใหม่ได้เฉพาะตอน idle หรือ result เท่านั้น
+    if (phase !== "idle" && phase !== "result") return;
+    
+    // ✅ (แนะนำ) ต้องอยู่สถานะ inGame ก่อนถึงเริ่มรอบได้
+    if (room.status !== "inGame") return;
+    
     const gs = room.gameSettings || {};
     const maxRounds = Math.max(1, gs.maxRounds ?? 10);
     const currentRound = room.currentRound || 0;
@@ -828,18 +841,23 @@ startRoundBtn.addEventListener("click", async () => {
 rollDiceBtn.addEventListener("click", async () => {
   if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
 
-  if (rollPending) return;             // ✅ กันกดซ้ำ
-  rollPending = true;                 // ✅ ล็อกทันที
-  rollDiceBtn.disabled = true;         // ✅ ปิดปุ่มทันที
+  if (rollPending) return;
+  rollPending = true;
+  rollDiceBtn.disabled = true;
 
   try {
     const roomRef = ref(db, `rooms/${currentRoomCode}`);
     const snap = await get(roomRef);
-    if (!snap.exists()) { rollPending = false; return; }
+    if (!snap.exists()) {
+      rollPending = false;
+      rollDiceBtn.disabled = false;
+      return;
+    }
 
     const roomData = snap.val();
     if (roomData.phase !== "rolling") {
       rollPending = false;
+      rollDiceBtn.disabled = false;
       alert("ตอนนี้ยังไม่ใช่ช่วงทอยลูกเต๋า (รอครูเริ่มรอบ)");
       return;
     }
@@ -848,6 +866,7 @@ rollDiceBtn.addEventListener("click", async () => {
     const me = players[currentPlayerId];
     if (!me) {
       rollPending = false;
+      rollDiceBtn.disabled = false;
       alert("ไม่พบข้อมูลผู้เล่นของคุณในห้อง");
       return;
     }
@@ -855,24 +874,30 @@ rollDiceBtn.addEventListener("click", async () => {
     const pos = me.position || 1;
     if (me.finished || pos >= BOARD_SIZE) {
       rollPending = false;
+      rollDiceBtn.disabled = false;
       alert("คุณเข้าเส้นชัยแล้ว ไม่ต้องทอยลูกเต๋า");
       return;
     }
 
     if (me.hasRolled) {
       rollPending = false;
-      // ✅ กันข้อความเด้งซ้ำ: แค่โชว์สถานะตามที่ต้องการ
+      rollDiceBtn.disabled = false;
       playerStatusEl.textContent = `ตำแหน่งของคุณ: ${pos} | ทอยล่าสุด: ${me.lastRoll ?? "-"} | คุณทอยแล้ว รอคนอื่น`;
       return;
     }
 
-    const basePos = pos;
-    await animateDiceAndCommitRoll(basePos);
-
-    // ❗ ไม่ปลด rollPending ที่นี่ ให้รอ DB sync มาตั้ง hasRolled=true ก่อน
+    const ok = await animateDiceAndCommitRoll();
+    // ✅ ถ้าทอยไม่สำเร็จ (tx abort/เน็ตหลุด) ให้ปลดล็อก ไม่ค้าง
+    if (!ok) {
+      rollPending = false;
+      rollDiceBtn.disabled = false;
+    }
+    // ถ้า ok = true จะปล่อยให้ DB sync มาปลด rollPending เองใน updateRoleControls()
   } catch (e) {
     console.error(e);
     rollPending = false;
+    rollDiceBtn.disabled = false;
+    alert("ทอยเต๋าไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
   }
 });
 
@@ -887,12 +912,16 @@ async function animateDiceAndCommitRoll() {
       if (elapsed >= totalDuration) {
         const finalRoll = displayRoll;
         try {
-          await finalizeRollTransaction(finalRoll);
+          const ok = await finalizeRollTransaction(finalRoll);
+          if (!ok) {
+            alert("ทอยเต๋าไม่สำเร็จ (สถานะเกมเปลี่ยน/ลองใหม่)");
+          }
+          resolve(ok);
         } catch (e) {
           console.error(e);
           alert("ทอยเต๋าไม่สำเร็จ (ลองใหม่)");
+          resolve(false);
         }
-        resolve();
         return;
       }
 
@@ -906,40 +935,36 @@ async function animateDiceAndCommitRoll() {
 
 async function finalizeRollTransaction(roll) {
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
-
   const now = Date.now();
 
   const tx = await runTransaction(roomRef, (room) => {
     if (!room) return room;
 
-    if (room.phase !== "rolling") return; // abort
-    if ((room.currentRound || 0) <= 0) return; // abort
+    if (room.phase !== "rolling") return;          // abort
+    if ((room.currentRound || 0) <= 0) return;     // abort
 
     const players = room.players || {};
     const me = players[currentPlayerId];
-    if (!me) return;
+    if (!me) return;                               // abort
 
     const pos = clampPos(me.position);
     const finished = !!me.finished || pos >= BOARD_SIZE;
-    if (finished) return;
-
-    if (me.hasRolled) return;
+    if (finished) return;                          // abort
+    if (me.hasRolled) return;                       // abort
 
     const startPos = pos;
-    let newPos = clampPos(startPos + roll);
+    const newPos = clampPos(startPos + roll);
 
     me.lastRoll = roll;
     me.position = newPos;
     me.hasRolled = true;
 
-    // finished by dice
     if (newPos >= BOARD_SIZE) {
       me.finished = true;
       me.finishedRound = room.currentRound || 0;
       me.finishedBy = "dice";
     }
 
-    // log dice move
     const r = room.currentRound || 0;
     room.history = room.history || {};
     const roundKey = `round_${r}`;
@@ -955,7 +980,6 @@ async function finalizeRollTransaction(roll) {
       timestamp: now,
     };
 
-    // winners update
     room.winners = Array.isArray(room.winners) ? room.winners : [];
     const winnerIds = new Set(room.winners.map((w) => w.playerId));
     if (newPos >= BOARD_SIZE && !winnerIds.has(currentPlayerId)) {
@@ -967,7 +991,6 @@ async function finalizeRollTransaction(roll) {
       });
     }
 
-    // end condition (by winners or all finished)
     const gs = room.gameSettings || {};
     const maxWinners = Math.max(1, gs.maxWinners ?? 5);
     const totalPlayers = Object.keys(players).length;
@@ -991,9 +1014,7 @@ async function finalizeRollTransaction(roll) {
     return room;
   });
 
-  if (!tx.committed) {
-    throw new Error("Roll transaction aborted");
-  }
+  return !!tx.committed;
 }
 
 // ---------------- Host: Start Question (Transaction) ----------------
@@ -1234,7 +1255,12 @@ function updateGameView(roomData, players) {
   updateRoleControls(roomData, players);
   updateQuestionUI(roomData, players);
 
-  // ... ส่วน endGame เดิมใช้ได้เหมือนเดิม
+  // ✅ End game summary
+  const ended = (phase === "ended") || (status === "finished");
+  if (endGameAreaEl) endGameAreaEl.style.display = ended ? "block" : "none";
+  if (ended) {
+    renderEndGameSummary(roomData, players);
+  }
 }
 
 // ---------------- Role Controls ----------------
@@ -1253,11 +1279,6 @@ function updateRoleControls(roomData, players) {
       hostGameControlsEl.style.visibility = "hidden";
       hostGameControlsEl.style.pointerEvents = "none";
     }
-  }
-  
-  // ✅ โชว์/ซ่อนแถบปุ่ม Host ที่อยู่บน GAME BOARD
-  if (hostGameControlsEl) {
-    hostGameControlsEl.style.display = (currentRole === "host") ? "flex" : "none";
   }
 
   if (currentRole === "player") {
@@ -1916,7 +1937,7 @@ function renderEndGameSummary(roomData, players) {
       .slice()
       .sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999))
       .forEach((w) => {
-        html += `<li>อันดับเข้าเส้นชัย ${w.rank ?? "-"}: ${w.playerName} (รอบ ${w.finishedRound ?? "-"})</li>`;
+        html += `<li>อันดับเข้าเส้นชัย ${w.rank ?? "-"}: ${escapeHtml(w.playerName)} (รอบ ${w.finishedRound ?? "-"})</li>`;
       });
     html += `</ul>`;
   }
