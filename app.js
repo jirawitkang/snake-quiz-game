@@ -338,9 +338,14 @@ function subscribeRoom(roomCode) {
         `| ตอบผิด/ไม่ทัน: ${penaltyText} ช่อง`;
     }
 
-    renderPlayerList(roomData, players);
-    updateGameView(roomData, players);
-    updateStartGameButton(roomData, players);
+    try { renderPlayerList(roomData, players); }
+    catch (e) { console.error("renderPlayerList failed:", e); }
+    
+    try { updateGameView(roomData, players); }
+    catch (e) { console.error("updateGameView failed:", e); }
+    
+    try { updateStartGameButton(roomData, players); }
+    catch (e) { console.error("updateStartGameButton failed:", e); }
   });
 }
 
@@ -720,12 +725,12 @@ function renderPlayerList(roomData, playersObj) {
   `;
 
   statsArray.forEach((p, idx) => {
-    const rank = idx + 1;
+    const rank = idx + 1;  
   
     html += `
       <tr>
         <td>${rank}</td>
-        <td class="name-col">${escapeHtml(s.name)}</td>
+        <td class="name-col">${escapeHtml(p.name)}</td>
         <td>${p.position}</td>
         <td>${escapeHtml(p.rolls.join(" ") || "-")}</td>
         <td>${escapeHtml(p.answerSymbols.join(" ") || "-")}</td>
