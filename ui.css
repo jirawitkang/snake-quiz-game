@@ -337,7 +337,7 @@ button:disabled{
 
 /* Start/Finish */
 .start-cell{
-  min-width: 120px !important;
+  min-width: 140px !important;
   height: 20px !important;
   border-radius: 4px !important;
   background:#fff;
@@ -348,7 +348,7 @@ button:disabled{
   box-sizing:border-box;
 }
 .finish-cell{
-  min-width: 56px !important;
+  min-width: 88px !important;
   height: 20px !important;
   border-radius: 4px !important;
   background:#fff;
@@ -783,3 +783,33 @@ button:disabled{
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* ===== Board track: fill remaining width (Start + 30 cells + Finish) ===== */
+:root{
+  --track-gap: 4px;     /* ระยะห่างระหว่างช่อง (ให้ตรงกับที่คุณใช้) */
+  --start-w: 140px;     /* ความกว้างช่อง Start */
+  --finish-w: 88px;     /* ความกว้างช่อง Finish */
+  --cell-h: 20px;       /* ความสูงช่อง 1-30 */
+}
+
+/* เปลี่ยนจาก flex -> grid เพื่อให้ 1-30 แบ่งพื้นที่ที่เหลือเท่ากัน */
+.board-track{
+  display: grid !important;
+  grid-template-columns: var(--start-w) repeat(30, minmax(30px, 1fr)) var(--finish-w);
+  column-gap: var(--track-gap);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+/* ช่อง 1-30: เอาค่า fixed width/flex เดิมออก ให้สูงคงที่ แต่กว้างตาม 1fr */
+.board-track .cell-card:not(.start-cell):not(.finish-cell),
+.board-label-row .cell-card:not(.start-cell):not(.finish-cell){
+  width: auto !important;
+  flex: none !important;
+  height: var(--cell-h) !important;
+}
+
+/* Start/Finish: ให้กว้างคงที่ตามตัวแปร */
+.start-cell{ width: var(--start-w) !important; height: var(--cell-h) !important; }
+.finish-cell{ width: var(--finish-w) !important; height: var(--cell-h) !important; }
