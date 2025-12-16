@@ -243,14 +243,20 @@ button:disabled{
   .game-shell{ grid-template-columns: 1fr; }
 }
 
-/* ===== Question area ===== */
-#questionArea{
-  border: 1px solid var(--line);
+/* Question Card under Game Board */
+#questionArea.card{
   background: var(--p-050);
-  border-radius: var(--radius);
-  padding: 12px;
 }
-#countdownDisplay{ color: var(--p-800); }
+#countdownDisplay{
+  font-weight: 900;
+  color: var(--p-800);
+  margin-bottom: 6px;
+}
+#questionText{
+  font-weight: 900;
+  color: var(--p-800);
+  margin-bottom: 10px;
+}
 
 /* Choice buttons */
 .choice-btn{
