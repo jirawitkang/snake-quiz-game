@@ -1658,34 +1658,30 @@ function renderBoard(roomData, players) {
 
   boardEl.innerHTML = "";
 
-  // label row
+  // label row (ให้ layout เหมือนแถวผู้เล่น: ไม่มี spacer ซ้าย)
   const labelRow = document.createElement("div");
   labelRow.className = "board-label-row";
-
-  const spacer = document.createElement("div");
-  spacer.className = "player-row-name";
-  labelRow.appendChild(spacer);
-
+  
   const labelTrack = document.createElement("div");
   labelTrack.className = "board-track";
-
+  
   const startLabelCell = document.createElement("div");
   startLabelCell.className = "cell-card start-cell";
   startLabelCell.innerHTML = `<span class="cell-label">Start</span>`;
   labelTrack.appendChild(startLabelCell);
-
+  
   for (let i = 1; i <= BOARD_SIZE; i++) {
     const c = document.createElement("div");
     c.className = "cell-card play-cell";
     c.innerHTML = `<span class="cell-label">${i}</span>`;
     labelTrack.appendChild(c);
   }
-
+  
   const finishLabelCell = document.createElement("div");
   finishLabelCell.className = "cell-card finish-cell";
   finishLabelCell.innerHTML = `<span class="cell-label">Finish</span>`;
   labelTrack.appendChild(finishLabelCell);
-
+  
   labelRow.appendChild(labelTrack);
   boardEl.appendChild(labelRow);
 
