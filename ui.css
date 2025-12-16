@@ -698,3 +698,52 @@ button:disabled{
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Board full width patch ===== */
+
+/* ให้ #board กว้างเต็มการ์ด */
+#board{
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* แต่ละแถวให้กินเต็ม */
+.board-label-row,
+.player-row{
+  width: 100%;
+}
+
+/* ชื่อผู้เล่น: ลดการกินพื้นที่แบบคงที่ ให้ยืดหดได้ */
+.player-row-name{
+  flex: 0 0 92px;      /* จาก 120px -> 92px (ปรับได้) */
+  max-width: 92px;
+}
+
+/* track ให้ยืดเต็มพื้นที่ที่เหลือ */
+.board-track{
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;        /* สำคัญมากสำหรับ flex ไม่ให้ล้นแล้วดัน */
+}
+
+/* ถ้าพื้นที่ไม่พอ ให้เลื่อนแนวนอนแทน */
+.player-row .board-track,
+.board-label-row .board-track{
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.player-row .board-track::-webkit-scrollbar,
+.board-label-row .board-track::-webkit-scrollbar{
+  display:none;
+}
+
+/* มือถือ: ลดชื่อผู้เล่นให้สั้นลงอีก เพื่อให้ track ได้พื้นที่มากขึ้น */
+@media (max-width: 520px){
+  .player-row-name{
+    flex: 0 0 72px;
+    max-width: 72px;
+    font-size: 0.8rem;
+  }
+}
