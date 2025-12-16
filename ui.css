@@ -234,7 +234,10 @@ button:disabled{
 }
 
 /* ===== Game shell ===== */
-#gameArea{ margin-top: 14px; }
+/* GameBar อยู่แล้ว ไม่ต้องมี margin-top ซ้ำที่การ์ด */
+#gameArea{
+  margin-top: 0 !important;
+}
 .game-shell{
   display:grid;
   grid-template-columns: 1.2fr .8fr;
@@ -787,8 +790,8 @@ button:disabled{
 /* ===== Board track: fill remaining width (Start + 30 cells + Finish) ===== */
 :root{
   --track-gap: 4px;     /* ระยะห่างระหว่างช่อง (ให้ตรงกับที่คุณใช้) */
-  --start-w: 120px;     /* ความกว้างช่อง Start */
-  --finish-w: 88px;     /* ความกว้างช่อง Finish */
+  --start-w: 100px;     /* ความกว้างช่อง Start */
+  --finish-w: 80px;     /* ความกว้างช่อง Finish */
   --cell-h: 20px;       /* ความสูงช่อง 1-30 */
 }
 
