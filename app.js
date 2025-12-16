@@ -1734,16 +1734,13 @@ function renderBoard(roomData, players) {
     const row = document.createElement("div");
     row.className = "player-row";
 
-    const nameDiv = document.createElement("div");
-    nameDiv.className = "player-row-name";
-    nameDiv.textContent = p.name || pid;
-    row.appendChild(nameDiv);
-
     const track = document.createElement("div");
     track.className = "board-track";
 
+    // ✅ start cell แสดงชื่อผู้เล่น
     const startCell = document.createElement("div");
     startCell.className = "cell-card start-cell";
+    startCell.textContent = p.name || pid;   // หรือใส่เป็น HTML span ก็ได้
     track.appendChild(startCell);
 
     const cellState = buildCellStateForPlayer(pid, p);
@@ -1777,7 +1774,7 @@ function renderBoard(roomData, players) {
     const finishCell = document.createElement("div");
     finishCell.className = "cell-card finish-cell";
     track.appendChild(finishCell);
-
+  
     row.appendChild(track);
     boardEl.appendChild(row);
   }
