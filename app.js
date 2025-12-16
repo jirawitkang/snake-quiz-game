@@ -1340,8 +1340,6 @@ function updateRoleControls(roomData, players) {
     startQuestionBtn.disabled = !(phase === "rolling" && (totalActive === 0 || rolledActive === totalActive));
     revealAnswerBtn.disabled = (phase !== "answering");
 
-    if (phase === "rolling") phaseInfoEl.textContent += ` | ทอยแล้ว ${rolledActive}/${totalActive} คน`;
-    if (phase === "answering") phaseInfoEl.textContent += ` | ตอบแล้ว ${answeredActive}/${totalActive} คน`;
   } else {
     startRoundBtn.disabled = true;
     startQuestionBtn.style.display = "none";
