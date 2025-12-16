@@ -360,7 +360,23 @@ button:disabled{
 }
 .start-cell{ border-right: 3px solid var(--p-600) !important; }
 .finish-cell{ border-left: 3px solid #43a047 !important; }
-.cell-label{ font-size: 10px; color:#444; }
+.cell-label{
+  font-size: 12px;      /* ขนาดตัวเลข/Start/Finish */
+  color: var(--p-800);  /* สีข้อความ */
+  font-weight: 900;     /* ถ้าต้องการให้เข้ม */
+}
+
+/* ===== Player name inside Start cell ===== */
+.player-row .start-cell{
+  font-size: 12px;
+  color: var(--p-800);
+  font-weight: 900;
+  justify-content: flex-start !important;
+  padding: 0 10px !important;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
 /* Token (droplet) */
 .token{
