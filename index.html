@@ -150,26 +150,23 @@
         <div class="lobby-badge" id="phaseInfo">[สถานะรอบ: -]</div>
       </div>
     
+      <!-- Host controls -->
       <div id="hostGameControls" class="lobby-actions" style="display:none;">
         <button id="startRoundBtn" class="btn-primary" type="button">เริ่มรอบใหม่</button>
         <button id="startQuestionBtn" class="btn-ghost" type="button">เริ่มคำถาม</button>
         <button id="revealAnswerBtn" class="btn-ghost" type="button">เฉลยคำถาม</button>
+      </div>
+    
+      <!-- Player controls (ตำแหน่งเดียวกับ host controls) -->
+      <div id="playerGameControls" class="lobby-actions" style="display:none;">
+        <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
       </div>
     </div>
     
     <!-- Game card -->
     <div id="gameArea" class="card" style="display:none;">
       <div class="game-shell mt-10">
-        <div>
           <div id="board"></div>
-        </div>
-    
-        <div>
-          <div id="playerControls">
-            <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
-            <div id="playerStatus" class="muted mt-10"></div>
-          </div>
-        </div>
       </div>
     
       <div id="endGameArea" style="display:none; margin-top:1rem;">
