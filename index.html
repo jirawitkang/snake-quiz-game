@@ -145,15 +145,15 @@
     <div id="gameBar" class="lobby-bar mt-14" style="display:none;">
       <div class="section-title">GAME BOARD</div>
     
-      <div class="round-phase">
-        <div id="roundInfo"></div>
-        <div id="phaseInfo" class="muted"></div>
+      <div class="lobby-badges">
+        <div class="lobby-badge" id="roundInfo">รอบที่: -</div>
+        <div class="lobby-badge" id="phaseInfo">[สถานะรอบ: -]</div>
       </div>
     
-      <div id="hostGameControls" class="game-host-controls" style="display:none;">
-        <button id="startRoundBtn" class="btn-primary">เริ่มรอบใหม่</button>
-        <button id="startQuestionBtn" class="btn-ghost">เริ่มคำถาม</button>
-        <button id="revealAnswerBtn" class="btn-ghost">เฉลยคำถาม</button>
+      <div id="hostGameControls" class="lobby-actions" style="display:none;">
+        <button id="startRoundBtn" class="btn-primary" type="button">เริ่มรอบใหม่</button>
+        <button id="startQuestionBtn" class="btn-ghost" type="button">เริ่มคำถาม</button>
+        <button id="revealAnswerBtn" class="btn-ghost" type="button">เฉลยคำถาม</button>
       </div>
     </div>
     
