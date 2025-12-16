@@ -340,7 +340,6 @@ button:disabled{
 
 /* Start/Finish */
 .start-cell{
-  min-width: 140px !important;
   height: 20px !important;
   border-radius: 4px !important;
   background:#fff;
@@ -351,7 +350,6 @@ button:disabled{
   box-sizing:border-box;
 }
 .finish-cell{
-  min-width: 88px !important;
   height: 20px !important;
   border-radius: 4px !important;
   background:#fff;
@@ -787,15 +785,17 @@ button:disabled{
   text-overflow: ellipsis;
 }
 
-/* ===== Board track: fill remaining width (Start + 30 cells + Finish) ===== */
+/* ===== Board track: single source of truth ===== */
 :root{
-  --track-gap: 4px;     /* ระยะห่างระหว่างช่อง (ให้ตรงกับที่คุณใช้) */
-  --start-w: 100px;     /* ความกว้างช่อง Start */
-  --finish-w: 80px;     /* ความกว้างช่อง Finish */
-  --cell-h: 20px;       /* ความสูงช่อง 1-30 */
+  --track-gap: 4px;
+  --cell-h: 20px;
+
+  /* ตั้งค่าความกว้างที่ต้องการจริง ๆ ที่นี่ที่เดียว */
+  --start-w: 140px;
+  --finish-w: 88px;
 }
 
-/* เปลี่ยนจาก flex -> grid เพื่อให้ 1-30 แบ่งพื้นที่ที่เหลือเท่ากัน */
+/* grid track */
 .board-track{
   display: grid !important;
   grid-template-columns: var(--start-w) repeat(30, minmax(20px, 1fr)) var(--finish-w);
@@ -805,7 +805,7 @@ button:disabled{
   min-width: 0;
 }
 
-/* ช่อง 1-30: เอาค่า fixed width/flex เดิมออก ให้สูงคงที่ แต่กว้างตาม 1fr */
+/* cells 1-30 */
 .board-track .cell-card:not(.start-cell):not(.finish-cell),
 .board-label-row .cell-card:not(.start-cell):not(.finish-cell){
   width: auto !important;
@@ -813,6 +813,15 @@ button:disabled{
   height: var(--cell-h) !important;
 }
 
-/* Start/Finish: ให้กว้างคงที่ตามตัวแปร */
-.start-cell{ width: var(--start-w) !important; height: var(--cell-h) !important; }
-.finish-cell{ width: var(--finish-w) !important; height: var(--cell-h) !important; }
+/* Start/Finish (ห้ามมี min-width ตัวเลขชนกับ width) */
+.start-cell{
+  width: var(--start-w) !important;
+  min-width: 0 !important;
+  height: var(--cell-h) !important;
+}
+
+.finish-cell{
+  width: var(--finish-w) !important;
+  min-width: 0 !important;
+  height: var(--cell-h) !important;
+}
