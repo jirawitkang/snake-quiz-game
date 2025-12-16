@@ -1214,6 +1214,9 @@ function updateGameView(roomData, players) {
   
   if (gameAreaEl) gameAreaEl.style.display = showGameArea ? "block" : "none";
   
+  const gameBarEl = document.getElementById("gameBar");
+  if (gameBarEl) gameBarEl.style.display = showGameArea ? "flex" : "none";
+  
   if (roundInfoEl) {
     if (round > 0) roundInfoEl.textContent = `รอบที่: ${round}`;
     else if (status === "inGame") roundInfoEl.textContent = `รอบที่: -`; // ยังไม่เริ่มรอบ
