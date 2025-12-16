@@ -127,19 +127,17 @@
     <!-- Game Area -->
     <div class="section-title mt-14">GAME BOARD</div>
     <div id="gameArea" class="card" style="display:none;">
-      <div class="game-head">
-        <div class="game-head-row">
+      <div class="game-head-row">
+        <div class="round-phase">
           <div id="roundInfo"></div>
-      
-          <!-- ย้ายปุ่มควบคุมเกมมาไว้ที่นี่ -->
-          <div id="hostGameControls" class="game-host-controls" style="display:none;">
-            <button id="startRoundBtn" class="btn-primary">เริ่มรอบใหม่</button>
-            <button id="startQuestionBtn" class="btn-ghost">เริ่มคำถาม</button>
-            <button id="revealAnswerBtn" class="btn-ghost">เฉลยคำถาม</button>
-          </div>
+          <div id="phaseInfo" class="muted"></div>
         </div>
       
-        <div id="phaseInfo" class="muted"></div>
+        <div id="hostGameControls" class="game-host-controls" style="display:none;">
+          <button id="startRoundBtn" class="btn-primary">เริ่มรอบใหม่</button>
+          <button id="startQuestionBtn" class="btn-ghost">เริ่มคำถาม</button>
+          <button id="revealAnswerBtn" class="btn-ghost">เฉลยคำถาม</button>
+        </div>
       </div>
 
       <div class="game-shell mt-10">
