@@ -757,3 +757,13 @@ button:disabled{
     font-size: 0.8rem;
   }
 }
+
+.start-cell{
+  font-weight: 900;
+  color: var(--p-800);
+  padding: 0 10px !important;
+  justify-content: flex-start !important; /* ชิดซ้ายในช่อง */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
