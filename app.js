@@ -94,6 +94,7 @@ const leaveRoomBtn = document.getElementById("leaveRoomBtn");
 const startGameBtn = document.getElementById("startGameBtn");
 if (!startGameBtn) console.warn("[UI] startGameBtn not found");
 const hostGameControlsEl = document.getElementById("hostGameControls");
+const playerGameControlsEl = document.getElementById("playerGameControls");
 
 const hostRoundControlsEl = document.getElementById("hostRoundControls");
 const startRoundBtn = document.getElementById("startRoundBtn");
@@ -931,7 +932,7 @@ async function animateDiceAndCommitRoll() {
       }
 
       displayRoll = Math.floor(Math.random() * 6) + 1;
-      if (playerStatusEl) playerStatusEl.textContent = `กำลังทอยลูกเต๋า... ได้ ${displayRoll}`;
+      if (rollDiceBtn) rollDiceBtn.textContent = `กำลังทอย... ${displayRoll}`;
       setTimeout(step, 90);
     };
     step();
@@ -1274,62 +1275,52 @@ function updateGameView(roomData, players) {
 // ---------------- Role Controls ----------------
 function updateRoleControls(roomData, players) {
   const phase = roomData.phase || "idle";
-  const round = roomData.currentRound || 0;
 
-  // ✅ Host controls: แสดงเฉพาะ Host
+  // 1) ปุ่มบนแถบ GAME BAR: แยก Host / Player ชัดเจน
   if (hostGameControlsEl) {
     hostGameControlsEl.style.display = (currentRole === "host") ? "flex" : "none";
     hostGameControlsEl.style.visibility = "visible";
     hostGameControlsEl.style.pointerEvents = (currentRole === "host") ? "auto" : "none";
   }
 
+  if (playerGameControlsEl) {
+    playerGameControlsEl.style.display = (currentRole === "player") ? "flex" : "none";
+    playerGameControlsEl.style.visibility = "visible";
+    playerGameControlsEl.style.pointerEvents = (currentRole === "player") ? "auto" : "none";
+  }
 
+  // 2) Player: คุมปุ่มทอยอย่างเดียว (ไม่มีข้อความสถานะใน card แล้ว)
   if (currentRole === "player") {
     const me = (players && currentPlayerId && players[currentPlayerId]) || {};
     const pos = me.position || 1;
     const finished = !!me.finished || pos >= BOARD_SIZE;
     const rolled = !!me.hasRolled;
-    
+
     // ✅ ปลด pending เมื่อ DB บอกว่า hasRolled แล้ว หรือ phase ไม่ใช่ rolling
     if (rollPending && (rolled || roomData.phase !== "rolling" || finished)) {
       rollPending = false;
+      if (rollDiceBtn) rollDiceBtn.textContent = "ทอยลูกเต๋า";
     }
-    
-    const rolledOrPending = rolled || rollPending; // ✅ ถือว่า "ทอยแล้ว" ระหว่างรอ sync
+
+    const rolledOrPending = rolled || rollPending;
     const canRoll = roomData.phase === "rolling" && !rolledOrPending && !finished;
-    
-    rollDiceBtn.style.display = "inline-block";
-    rollDiceBtn.disabled = !canRoll;
 
-    const lastRollText = me.lastRoll != null ? me.lastRoll : "-";
-    playerStatusEl.textContent = `ตำแหน่งของคุณ: ${pos} | ทอยล่าสุด: ${lastRollText}`;
-
-    if (finished) {
-      playerStatusEl.textContent += " | คุณเข้าเส้นชัยแล้ว";
-      rollDiceBtn.disabled = true;
-    } else if (phase === "idle" || round === 0) {
-      playerStatusEl.textContent += " | รอ Host เริ่มรอบใหม่";
-    } else if (phase === "rolling" && rolled) {
-      playerStatusEl.textContent += " | คุณทอยแล้ว โปรดรอ";
-    } else if (phase === "answering") {
-      playerStatusEl.textContent += " | กำลังตอบคำถาม";
-    } else if (phase === "ended") {
-      playerStatusEl.textContent += " | เกมจบแล้ว ดูสรุปผลด้านล่าง";
+    if (rollDiceBtn) {
+      rollDiceBtn.disabled = !canRoll;
+      rollDiceBtn.style.display = "inline-flex";
     }
-  } else if (currentRole === "host") {
-    rollDiceBtn.style.display = "none";
-    playerStatusEl.textContent = "คุณเป็น Host: ใช้ปุ่มด้านบนควบคุมรอบและคำถาม";
+
   } else {
-    rollDiceBtn.style.display = "none";
-    playerStatusEl.textContent = "";
+    // ไม่ใช่ player ก็ไม่ต้องเห็นปุ่มทอย
+    if (rollDiceBtn) rollDiceBtn.style.display = "none";
   }
 
+  // 3) Host: enable/disable ปุ่มควบคุม (ไม่มีข้อความ "คุณเป็น Host..." แล้ว)
   if (currentRole === "host") {
     const list = Object.values(players || {});
     const activePlayers = list.filter((p) => !p.finished && clampPos(p.position) < BOARD_SIZE);
     const totalActive = activePlayers.length;
     const rolledActive = activePlayers.filter((p) => p.hasRolled).length;
-    const answeredActive = activePlayers.filter((p) => p.answered).length;
 
     startRoundBtn.disabled = (phase === "ended");
     startQuestionBtn.style.display = (phase === "ended") ? "none" : "inline-block";
@@ -1337,8 +1328,8 @@ function updateRoleControls(roomData, players) {
 
     startQuestionBtn.disabled = !(phase === "rolling" && (totalActive === 0 || rolledActive === totalActive));
     revealAnswerBtn.disabled = (phase !== "answering");
-
   } else {
+    // ไม่ใช่ host ก็ซ่อนปุ่ม host
     startRoundBtn.disabled = true;
     startQuestionBtn.style.display = "none";
     revealAnswerBtn.style.display = "none";
