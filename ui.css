@@ -586,13 +586,6 @@ button:disabled{
   gap: 10px;
 }
 
-#roundInfo{
-  margin: 0;
-  white-space: nowrap;
-  font-weight: 900;
-  min-width: 0;
-}
-
 .game-host-controls{
   flex: 0 0 auto;
   display:flex;
@@ -632,4 +625,22 @@ button:disabled{
 .lobby-card{
   padding-top: 10px !important;   /* ลดจากเดิม 14px */
   padding-bottom: 12px !important;
+}
+
+.round-phase{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#roundInfo{
+  white-space: nowrap;
+  font-weight: 900;
+}
+
+#phaseInfo{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
