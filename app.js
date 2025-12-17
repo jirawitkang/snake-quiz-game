@@ -890,17 +890,16 @@ function sleep(ms) {
 }
 
 function rotationForTopFace(face){
-  // สมมติว่าคุณจัด face แบบมาตรฐาน:
-  // face-1 = front, face-2 = right, face-3 = back, face-4 = left, face-5 = top, face-6 = bottom
+  // จาก CSS เรากำหนด: TOP=3, BOTTOM=4, FRONT=1, RIGHT=2, LEFT=5, BACK=6
   const map = {
-    1: { x: 90,  y: 0,   z: 0   },   // front -> top
+    3: { x: 0,   y: 0,   z: 0   },   // top อยู่แล้ว
+    4: { x: 180, y: 0,   z: 0   },   // bottom -> top
+    1: { x: -90, y: 0,   z: 0   },   // front -> top
+    6: { x: 90,  y: 0,   z: 0   },   // back -> top
     2: { x: 0,   y: 0,   z: -90 },   // right -> top
-    3: { x: -90, y: 0,   z: 0   },   // back -> top
-    4: { x: 0,   y: 0,   z: 90  },   // left -> top
-    5: { x: 0,   y: 0,   z: 0   },   // top -> top
-    6: { x: 180, y: 0,   z: 0   },   // bottom -> top
+    5: { x: 0,   y: 0,   z: 90  },   // left -> top
   };
-  return map[face] || map[1];
+  return map[face] || map[3];
 }
 
 const rollDiceWithOverlay = async (durationMs = 5000) => {
