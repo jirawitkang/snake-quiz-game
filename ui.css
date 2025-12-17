@@ -307,6 +307,12 @@ button:disabled{
   white-space: nowrap;
 }
 
+.board-track{
+  display:flex; gap: 4px;
+  align-items:center;
+  min-height: 28px;
+}
+
 /* base */
 .cell-card{
   position: relative;
