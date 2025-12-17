@@ -954,6 +954,7 @@ rollDiceBtn.addEventListener("click", async () => {
 
     // commit ด้วย transaction
     await finalizeRollTransaction(roll);
+    rollDiceBtn.textContent = "ทอยลูกเต๋า";
 
     // ✅ success: ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls()
     // (ไม่ต้องปลดที่นี่)
