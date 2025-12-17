@@ -109,6 +109,10 @@ const boardEl = document.getElementById("board");
 const rollDiceBtn = document.getElementById("rollDiceBtn");
 const playerStatusEl = document.getElementById("playerStatus");
 
+const diceOverlayEl = document.getElementById("diceOverlay");
+const dice3dEl = document.getElementById("dice3d");
+const diceHintEl = document.getElementById("diceHint");
+
 const questionAreaEl = document.getElementById("questionArea");
 const countdownDisplayEl = document.getElementById("countdownDisplay");
 const questionTextEl = document.getElementById("questionText");
@@ -688,6 +692,60 @@ function renderPlayerList(roomData, playersObj) {
     }
   }
 
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  // mapping ให้ “เลขที่ต้องการ” หันมาด้านหน้า
+  function rotationForFace(n){
+    // based on CSS face placement above
+    switch (n) {
+      case 1: return { x: 0,   y: 0   };
+      case 2: return { x: 0,   y: -90 };
+      case 3: return { x: -90, y: 0   };
+      case 4: return { x: 90,  y: 0   };
+      case 5: return { x: 0,   y: 90  };
+      case 6: return { x: 0,   y: 180 };
+      default: return { x: 0,  y: 0   };
+    }
+  }
+  
+  async function rollDiceWithOverlay(durationMs = 5000){
+    const finalRoll = Math.floor(Math.random() * 6) + 1;
+  
+    // fallback ถ้า element ไม่ครบ
+    if (!diceOverlayEl || !dice3dEl) return finalRoll;
+  
+    diceOverlayEl.style.display = "flex";
+    if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
+  
+    // ตั้งท่าเริ่มแบบสุ่ม
+    dice3dEl.style.transition = "none";
+    const startX = Math.floor(Math.random() * 360);
+    const startY = Math.floor(Math.random() * 360);
+    const startZ = Math.floor(Math.random() * 360);
+    dice3dEl.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg) rotateZ(${startZ}deg)`;
+  
+    // force reflow
+    void dice3dEl.offsetWidth;
+  
+    // ตั้งท่าจบให้ตรงกับหน้า finalRoll + เพิ่มรอบหมุนเยอะ ๆ แล้วค่อย ease-out จนหยุด
+    const end = rotationForFace(finalRoll);
+    const extraX = 360 * (Math.floor(Math.random() * 4) + 6); // 6-9 รอบ
+    const extraY = 360 * (Math.floor(Math.random() * 4) + 6);
+    const extraZ = 360 * (Math.floor(Math.random() * 3) + 4);
+  
+    dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
+    dice3dEl.style.transform =
+      `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${extraZ}deg)`;
+  
+    await sleep(durationMs);
+  
+    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll}`;
+    await sleep(450);
+  
+    diceOverlayEl.style.display = "none";
+    return finalRoll;
+  }
+
   function getStatusText(p) {
     if (p.finished) return "เข้าเส้นชัยแล้ว (ช่อง 30)";
     if (phase === "rolling") return p.hasRolled ? `ทอยแล้ว (${p.lastRoll ?? "-"} แต้ม)` : "ยังไม่ทอยลูกเต๋า";
@@ -851,8 +909,9 @@ rollDiceBtn.addEventListener("click", async () => {
   rollPending = true;
   rollDiceBtn.disabled = true;
 
+  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+
   try {
-    const roomRef = ref(db, `rooms/${currentRoomCode}`);
     const snap = await get(roomRef);
     if (!snap.exists()) {
       rollPending = false;
@@ -868,8 +927,7 @@ rollDiceBtn.addEventListener("click", async () => {
       return;
     }
 
-    const players = roomData.players || {};
-    const me = players[currentPlayerId];
+    const me = roomData.players?.[currentPlayerId];
     if (!me) {
       rollPending = false;
       rollDiceBtn.disabled = false;
@@ -888,56 +946,29 @@ rollDiceBtn.addEventListener("click", async () => {
     if (me.hasRolled) {
       rollPending = false;
       rollDiceBtn.disabled = false;
-      playerStatusEl.textContent = `ตำแหน่งของคุณ: ${pos} | ทอยล่าสุด: ${me.lastRoll ?? "-"} | คุณทอยแล้ว รอคนอื่น`;
       return;
     }
 
-    const ok = await animateDiceAndCommitRoll();
-    // ✅ ถ้าทอยไม่สำเร็จ (tx abort/เน็ตหลุด) ให้ปลดล็อก ไม่ค้าง
-    if (!ok) {
-      rollPending = false;
-      rollDiceBtn.disabled = false;
-    }
-    // ถ้า ok = true จะปล่อยให้ DB sync มาปลด rollPending เองใน updateRoleControls()
+    // ✅ เรียก overlay 5 วิ แล้วค่อย commit
+    const roll = await rollDiceWithOverlay(5000);
+
+    // commit ด้วย transaction
+    await finalizeRollTransaction(roll);
+
+    // ✅ success: ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls()
+    // (ไม่ต้องปลดที่นี่)
+
   } catch (e) {
     console.error(e);
+
+    // ถ้า fail ต้องปิด overlay ด้วย (กันค้าง)
+    if (diceOverlayEl) diceOverlayEl.style.display = "none";
+
     rollPending = false;
     rollDiceBtn.disabled = false;
     alert("ทอยเต๋าไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
   }
 });
-
-async function animateDiceAndCommitRoll() {
-  const totalDuration = 1500;
-  const start = Date.now();
-  let displayRoll = 1;
-
-  return new Promise((resolve) => {
-    const step = async () => {
-      const elapsed = Date.now() - start;
-      if (elapsed >= totalDuration) {
-        const finalRoll = displayRoll;
-        try {
-          const ok = await finalizeRollTransaction(finalRoll);
-          if (!ok) {
-            alert("ทอยเต๋าไม่สำเร็จ (สถานะเกมเปลี่ยน/ลองใหม่)");
-          }
-          resolve(ok);
-        } catch (e) {
-          console.error(e);
-          alert("ทอยเต๋าไม่สำเร็จ (ลองใหม่)");
-          resolve(false);
-        }
-        return;
-      }
-
-      displayRoll = Math.floor(Math.random() * 6) + 1;
-      if (rollDiceBtn) rollDiceBtn.textContent = `กำลังทอย... ${displayRoll}`;
-      setTimeout(step, 90);
-    };
-    step();
-  });
-}
 
 async function finalizeRollTransaction(roll) {
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
