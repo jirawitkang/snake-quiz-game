@@ -825,3 +825,81 @@ button:disabled{
   min-width: 0 !important;
   height: var(--cell-h) !important;
 }
+
+/* ===== Dice Overlay ===== */
+.overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(20, 18, 40, .42);
+  backdrop-filter: blur(6px);
+}
+.overlay-card{
+  width: min(520px, 92vw);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow2);
+  padding: 18px;
+  text-align: center;
+}
+.overlay-title{
+  font-weight: 900;
+  color: var(--p-800);
+  margin-bottom: 12px;
+}
+.overlay-hint{
+  margin-top: 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+/* ===== 3D Dice ===== */
+.dice-scene{
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
+  perspective: 900px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.dice{
+  width: 80px;
+  height: 80px;
+  position: relative;
+  transform-style: preserve-3d;
+  /* JS จะใส่ transition ให้เป็น 5s + ease-out */
+}
+.face{
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 14px;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,.06);
+  box-shadow: 0 10px 22px rgba(0,0,0,.18);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 28px;
+  font-weight: 1000;
+  color: var(--p-800);
+}
+
+/* วางตำแหน่ง 6 หน้า (ครึ่งหนึ่งของ 80 = 40px) */
+.face-1{ transform: rotateY(0deg)   translateZ(40px); }   /* front */
+.face-6{ transform: rotateY(180deg) translateZ(40px); }   /* back */
+.face-2{ transform: rotateY(90deg)  translateZ(40px); }   /* right */
+.face-5{ transform: rotateY(-90deg) translateZ(40px); }   /* left */
+.face-3{ transform: rotateX(90deg)  translateZ(40px); }   /* top */
+.face-4{ transform: rotateX(-90deg) translateZ(40px); }   /* bottom */
+
+/* เคารพคนที่ตั้ง reduce motion */
+@media (prefers-reduced-motion: reduce){
+  .overlay{ backdrop-filter: none; }
+}
