@@ -901,6 +901,45 @@ startRoundBtn.addEventListener("click", async () => {
   }
 });
 
+const rollDiceWithOverlay = async (durationMs = 5000) => {
+  const finalRoll = Math.floor(Math.random() * 6) + 1;
+
+  // ถ้าไม่มี overlay ก็คืนค่าแต้มไปเลย (ไม่พัง)
+  if (!diceOverlayEl || !dice3dEl) return finalRoll;
+
+  diceOverlayEl.style.display = "flex";
+  if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
+
+  dice3dEl.style.transition = "none";
+  const startX = Math.floor(Math.random() * 360);
+  const startY = Math.floor(Math.random() * 360);
+  const startZ = Math.floor(Math.random() * 360);
+  dice3dEl.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg) rotateZ(${startZ}deg)`;
+
+  void dice3dEl.offsetWidth;
+
+  const end = rotationForFace(finalRoll);
+  const extraX = 360 * (Math.floor(Math.random() * 4) + 6);
+  const extraY = 360 * (Math.floor(Math.random() * 4) + 6);
+  const extraZ = 360 * (Math.floor(Math.random() * 3) + 4);
+
+  dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
+  dice3dEl.style.transform =
+    `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${extraZ}deg)`;
+
+  await sleep(durationMs);
+
+  if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll}`;
+  await sleep(450);
+
+  diceOverlayEl.style.display = "none";
+  return finalRoll;
+};
+
+// debug กันหลอน: เช็คว่า “มีจริง” หลังโหลด
+window.__SQ_rollDiceWithOverlay = rollDiceWithOverlay;
+console.log("rollDiceWithOverlay typeof:", typeof rollDiceWithOverlay);
+
 // ---------------- Player: Roll Dice (Transaction-safe) ----------------
 rollDiceBtn.addEventListener("click", async () => {
   if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
