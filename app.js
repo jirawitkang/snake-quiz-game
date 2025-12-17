@@ -981,7 +981,6 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
 
   await sleep(durationMs);
 
-  dice3dEl.style.transition = "transform 220ms ease-out";
   dice3dEl.style.transform =
     `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
 
