@@ -896,8 +896,9 @@ function rotationForTopFace(face){
     4: { x: 180, y: 0,   z: 0   },   // bottom -> top
     1: { x: -90, y: 0,   z: 0   },   // front -> top
     6: { x: 90,  y: 0,   z: 0   },   // back -> top
-    2: { x: 0,   y: 0,   z: -90 },   // right -> top
-    5: { x: 0,   y: 0,   z: 90  },   // left -> top
+    2: { x: 0,   y: 0,   z: 90  },   // right -> top 
+    5: { x: 0,   y: 0,   z: -90 },   // left -> top 
+
   };
   return map[face] || map[3];
 }
