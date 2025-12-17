@@ -112,6 +112,17 @@ const playerStatusEl = document.getElementById("playerStatus");
 const diceOverlayEl = document.getElementById("diceOverlay");
 const dice3dEl = document.getElementById("dice3d");
 const diceHintEl = document.getElementById("diceHint");
+const closeDiceOverlayBtn = document.getElementById("closeDiceOverlayBtn");
+
+function hideDiceOverlay(){
+  if (diceOverlayEl) diceOverlayEl.style.display = "none";
+  if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
+}
+
+closeDiceOverlayBtn?.addEventListener("click", () => {
+  hideDiceOverlay();
+  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 const questionAreaEl = document.getElementById("questionArea");
 const countdownDisplayEl = document.getElementById("countdownDisplay");
@@ -692,13 +703,14 @@ function renderPlayerList(roomData, playersObj) {
     }
   }
   
-  async function rollDiceWithOverlay(durationMs = 5000){
+  const rollDiceWithOverlay = async (durationMs = 5000) => {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
   
     // fallback ถ้า element ไม่ครบ
     if (!diceOverlayEl || !dice3dEl) return finalRoll;
   
     diceOverlayEl.style.display = "flex";
+    if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
     if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
   
     // ตั้งท่าเริ่มแบบสุ่ม
@@ -708,27 +720,26 @@ function renderPlayerList(roomData, playersObj) {
     const startZ = Math.floor(Math.random() * 360);
     dice3dEl.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg) rotateZ(${startZ}deg)`;
   
-    // force reflow
     void dice3dEl.offsetWidth;
   
-    // ตั้งท่าจบให้ตรงกับหน้า finalRoll + เพิ่มรอบหมุนเยอะ ๆ แล้วค่อย ease-out จนหยุด
+    // ✅ หมุนให้ “ด้านบน” เป็นแต้มที่ทอยได้
     const end = rotationForTopFace(finalRoll);
-    const extraX = 360 * (Math.floor(Math.random() * 4) + 6); // 6-9 รอบ
+  
+    const extraX = 360 * (Math.floor(Math.random() * 4) + 6);
     const extraY = 360 * (Math.floor(Math.random() * 4) + 6);
     const extraZ = 360 * (Math.floor(Math.random() * 3) + 4);
   
     dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
     dice3dEl.style.transform =
-      `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${extraZ}deg)`;
+      `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
   
     await sleep(durationMs);
   
     if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll}`;
-    await sleep(450);
   
-    diceOverlayEl.style.display = "none";
+    // ✅ ไม่ปิด overlay ที่นี่ — ให้ค้างไว้
     return finalRoll;
-  }
+  };
 
   function getStatusText(p) {
     if (p.finished) return "เข้าเส้นชัยแล้ว (ช่อง 30)";
@@ -995,6 +1006,8 @@ rollDiceBtn.addEventListener("click", async () => {
 
     // commit ด้วย transaction
     await finalizeRollTransaction(roll);
+    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${roll} (บันทึกแล้ว)`;
+    if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "inline-flex";
     rollDiceBtn.textContent = "ทอยลูกเต๋า";
 
     // ✅ success: ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls()
@@ -1002,14 +1015,12 @@ rollDiceBtn.addEventListener("click", async () => {
 
   } catch (e) {
     console.error(e);
-
-    // ถ้า fail ต้องปิด overlay ด้วย (กันค้าง)
-    if (diceOverlayEl) diceOverlayEl.style.display = "none";
-
+    hideDiceOverlay(); // ✅ ปิดทันทีเมื่อ fail
     rollPending = false;
     rollDiceBtn.disabled = false;
     alert("ทอยเต๋าไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
   }
+
 });
 
 async function finalizeRollTransaction(roll) {
