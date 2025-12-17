@@ -712,7 +712,7 @@ function renderPlayerList(roomData, playersObj) {
     void dice3dEl.offsetWidth;
   
     // ตั้งท่าจบให้ตรงกับหน้า finalRoll + เพิ่มรอบหมุนเยอะ ๆ แล้วค่อย ease-out จนหยุด
-    const end = rotationForFace(finalRoll);
+    const end = rotationForTopFace(finalRoll);
     const extraX = 360 * (Math.floor(Math.random() * 4) + 6); // 6-9 รอบ
     const extraY = 360 * (Math.floor(Math.random() * 4) + 6);
     const extraZ = 360 * (Math.floor(Math.random() * 3) + 4);
@@ -889,16 +889,16 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// mapping มุมหมุนให้หน้าเต๋า 1-6 โชว์ด้านหน้า
-// (ค่าอาจต้องปรับถ้ารุ่น 3D dice ของคุณวางทิศไม่เหมือนกัน แต่จะทำให้ไม่ error แน่นอน)
-function rotationForFace(face) {
+function rotationForTopFace(face){
+  // สมมติว่าคุณจัด face แบบมาตรฐาน:
+  // face-1 = front, face-2 = right, face-3 = back, face-4 = left, face-5 = top, face-6 = bottom
   const map = {
-    1: { x: 0, y: 0 },
-    2: { x: 0, y: 90 },
-    3: { x: 0, y: 180 },
-    4: { x: 0, y: -90 },
-    5: { x: 90, y: 0 },
-    6: { x: -90, y: 0 },
+    1: { x: 90,  y: 0,   z: 0   },   // front -> top
+    2: { x: 0,   y: 0,   z: -90 },   // right -> top
+    3: { x: -90, y: 0,   z: 0   },   // back -> top
+    4: { x: 0,   y: 0,   z: 90  },   // left -> top
+    5: { x: 0,   y: 0,   z: 0   },   // top -> top
+    6: { x: 180, y: 0,   z: 0   },   // bottom -> top
   };
   return map[face] || map[1];
 }
@@ -920,14 +920,14 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
 
   void dice3dEl.offsetWidth;
 
-  const end = rotationForFace(finalRoll);
+  const end = rotationForTopFace(finalRoll);
   const extraX = 360 * (Math.floor(Math.random() * 4) + 6);
   const extraY = 360 * (Math.floor(Math.random() * 4) + 6);
   const extraZ = 360 * (Math.floor(Math.random() * 3) + 4);
 
   dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
   dice3dEl.style.transform =
-    `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${extraZ}deg)`;
+    `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
 
   await sleep(durationMs);
 
