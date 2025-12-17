@@ -114,12 +114,50 @@ const dice3dEl = document.getElementById("dice3d");
 const diceHintEl = document.getElementById("diceHint");
 const closeDiceOverlayBtn = document.getElementById("closeDiceOverlayBtn");
 
+let diceIsRolling = false;
+let diceCommitDone = false;
+
+function showDiceOverlayRolling(){
+  if (!diceOverlayEl) return;
+  diceIsRolling = true;
+  diceCommitDone = false;
+
+  diceOverlayEl.style.display = "flex";
+
+  if (closeDiceOverlayBtn){
+    closeDiceOverlayBtn.style.display = "none";   // ✅ ห้ามเห็นระหว่างกลิ้ง
+    closeDiceOverlayBtn.disabled = true;          // ✅ กันเผลอ
+  }
+}
+
+function showDiceOverlayWaitingCommit(){
+  diceIsRolling = false; // ✅ หมุนจบแล้ว
+
+  if (closeDiceOverlayBtn){
+    closeDiceOverlayBtn.style.display = "inline-flex"; // ✅ โชว์ได้ แต่ยังห้ามปิด
+    closeDiceOverlayBtn.disabled = true;
+  }
+}
+
+function enableDiceOverlayClose(){
+  diceCommitDone = true;
+  if (closeDiceOverlayBtn){
+    closeDiceOverlayBtn.disabled = false; // ✅ ปิดได้หลัง commit เท่านั้น
+  }
+}
+
 function hideDiceOverlay(){
   if (diceOverlayEl) diceOverlayEl.style.display = "none";
   if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
+  diceIsRolling = false;
+  diceCommitDone = false;
 }
 
 closeDiceOverlayBtn?.addEventListener("click", () => {
+  // ✅ กันกดตอนยังหมุน หรือยังไม่ commit
+  if (diceIsRolling) return;
+  if (!diceCommitDone) return;
+
   hideDiceOverlay();
   document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
@@ -917,20 +955,21 @@ function rotationForTopFace(face){
 const rollDiceWithOverlay = async (durationMs = 5000) => {
   const finalRoll = Math.floor(Math.random() * 6) + 1;
 
-  // ถ้าไม่มี overlay ก็คืนค่าแต้มไปเลย (ไม่พัง)
+  // ไม่มี element ก็คืนแต้มไปเลย (กันพัง)
   if (!diceOverlayEl || !dice3dEl) return finalRoll;
 
-  diceOverlayEl.style.display = "flex";
+  showDiceOverlayRolling();
   if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
 
+  // ท่าเริ่ม
   dice3dEl.style.transition = "none";
   const startX = Math.floor(Math.random() * 360);
   const startY = Math.floor(Math.random() * 360);
   const startZ = Math.floor(Math.random() * 360);
   dice3dEl.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg) rotateZ(${startZ}deg)`;
-
   void dice3dEl.offsetWidth;
 
+  // ท่าจบ (ให้ด้านบนเป็นแต้มที่ทอยได้)
   const end = rotationForTopFace(finalRoll);
   const extraX = 360 * (Math.floor(Math.random() * 4) + 6);
   const extraY = 360 * (Math.floor(Math.random() * 4) + 6);
@@ -942,10 +981,10 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
 
   await sleep(durationMs);
 
-  if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll}`;
-  await sleep(450);
+  // ✅ หมุนจบแล้ว: โชว์ปุ่ม แต่ยังปิดไม่ได้จนกว่าจะ commit
+  if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
+  showDiceOverlayWaitingCommit();
 
-  diceOverlayEl.style.display = "none";
   return finalRoll;
 };
 
@@ -1006,7 +1045,8 @@ rollDiceBtn.addEventListener("click", async () => {
 
     // commit ด้วย transaction
     await finalizeRollTransaction(roll);
-    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${roll} (บันทึกแล้ว)`;
+    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${roll} (บันทึกแล้ว) กด “กลับไปที่ GAME BOARD”`;
+    enableDiceOverlayClose();
     if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "inline-flex";
     rollDiceBtn.textContent = "ทอยลูกเต๋า";
 
@@ -1015,7 +1055,7 @@ rollDiceBtn.addEventListener("click", async () => {
 
   } catch (e) {
     console.error(e);
-    hideDiceOverlay(); // ✅ ปิดทันทีเมื่อ fail
+    hideDiceOverlay();
     rollPending = false;
     rollDiceBtn.disabled = false;
     alert("ทอยเต๋าไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
