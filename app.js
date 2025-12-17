@@ -939,17 +939,17 @@ function sleep(ms) {
 }
 
 function rotationForTopFace(face){
-  // จาก CSS เรากำหนด: TOP=3, BOTTOM=4, FRONT=1, RIGHT=2, LEFT=5, BACK=6
+  // จาก CSS ตอนนี้:
+  // FRONT=1, RIGHT=2, BACK=6, LEFT=5, TOP=4, BOTTOM=3  (เพราะ Y ใน CSS ชี้ลง)
   const map = {
-    3: { x: 0,   y: 0,   z: 0   },   // top อยู่แล้ว
-    4: { x: 180, y: 0,   z: 0   },   // bottom -> top
-    1: { x: -90, y: 0,   z: 0   },   // front -> top
-    6: { x: 90,  y: 0,   z: 0   },   // back -> top
-    2: { x: 0,   y: 0,   z: 90  },   // right -> top 
-    5: { x: 0,   y: 0,   z: -90 },   // left -> top 
-
+    4: { x: 0,   y: 0, z: 0   },   // top อยู่แล้ว (face-4)
+    3: { x: 180, y: 0, z: 0   },   // bottom -> top
+    1: { x: -90, y: 0, z: 0   },   // front -> top
+    6: { x: 90,  y: 0, z: 0   },   // back -> top
+    2: { x: 0,   y: 0, z: -90 },   // right -> top
+    5: { x: 0,   y: 0, z: 90  },   // left -> top
   };
-  return map[face] || map[3];
+  return map[face] || map[4];
 }
 
 const rollDiceWithOverlay = async (durationMs = 5000) => {
@@ -980,6 +980,11 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
     `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
 
   await sleep(durationMs);
+
+  dice3dEl.style.transition = "transform 220ms ease-out";
+  dice3dEl.style.transform =
+    `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
+
 
   // ✅ หมุนจบแล้ว: โชว์ปุ่ม แต่ยังปิดไม่ได้จนกว่าจะ commit
   if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
