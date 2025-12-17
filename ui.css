@@ -940,3 +940,8 @@ button:disabled{
 #dice3d .pip.bl{ left: 22%; bottom: 22%; }
 #dice3d .pip.br{ right: 22%; bottom: 22%; }
 #dice3d .pip.c{ left: 50%; top: 50%; transform: translate(-50%,-50%); }
+
+#closeDiceOverlayBtn{
+  width: 100%;
+  justify-content: center;
+}
