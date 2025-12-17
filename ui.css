@@ -903,3 +903,42 @@ button:disabled{
 @media (prefers-reduced-motion: reduce){
   .overlay{ backdrop-filter: none; }
 }
+
+/* --- Dice overlay: perspective stage --- */
+#diceOverlay.overlay{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+}
+
+#diceOverlay .overlay-card{
+  width: min(420px, 92vw);
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 16px 44px rgba(0,0,0,.25);
+}
+
+/* ✅ ตัวนี้คือ stage ใส่ perspective */
+.dice-scene{
+  perspective: 900px;
+  perspective-origin: 50% 40%;
+  display: grid;
+  place-items: center;
+  margin: 14px 0 10px;
+}
+
+/* ✅ ลูกเต๋า 3D */
+#dice3d.dice{
+  width: 110px;
+  height: 110px;
+  position: relative;
+  transform-style: preserve-3d;
+  /* มุมกล้องพื้นฐานให้ดูเป็น 3D (คุณปรับได้) */
+  transform: rotateX(55deg) rotateZ(45deg);
+}
