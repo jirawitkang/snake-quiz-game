@@ -980,10 +980,14 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
     `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
 
   await sleep(durationMs);
-
+  
+  // ✅ snap ให้เป็นค่ามาตรฐาน โดยไม่ให้ animate อีกรอบ
+  dice3dEl.style.transition = "none";
   dice3dEl.style.transform =
     `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
-
+  
+  // optional: force reflow กันบาง browser ดื้อ
+  void dice3dEl.offsetWidth;
 
   // ✅ หมุนจบแล้ว: โชว์ปุ่ม แต่ยังปิดไม่ได้จนกว่าจะ commit
   if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
