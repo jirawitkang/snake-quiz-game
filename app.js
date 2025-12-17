@@ -691,22 +691,6 @@ function renderPlayerList(roomData, playersObj) {
       else perPlayer[pid].answerSymbols.push("❌");
     }
   }
-
-  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-
-  // mapping ให้ “เลขที่ต้องการ” หันมาด้านหน้า
-  function rotationForFace(n){
-    // based on CSS face placement above
-    switch (n) {
-      case 1: return { x: 0,   y: 0   };
-      case 2: return { x: 0,   y: -90 };
-      case 3: return { x: -90, y: 0   };
-      case 4: return { x: 90,  y: 0   };
-      case 5: return { x: 0,   y: 90  };
-      case 6: return { x: 0,   y: 180 };
-      default: return { x: 0,  y: 0   };
-    }
-  }
   
   async function rollDiceWithOverlay(durationMs = 5000){
     const finalRoll = Math.floor(Math.random() * 6) + 1;
@@ -900,6 +884,24 @@ startRoundBtn.addEventListener("click", async () => {
     clearTimer();
   }
 });
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// mapping มุมหมุนให้หน้าเต๋า 1-6 โชว์ด้านหน้า
+// (ค่าอาจต้องปรับถ้ารุ่น 3D dice ของคุณวางทิศไม่เหมือนกัน แต่จะทำให้ไม่ error แน่นอน)
+function rotationForFace(face) {
+  const map = {
+    1: { x: 0, y: 0 },
+    2: { x: 0, y: 90 },
+    3: { x: 0, y: 180 },
+    4: { x: 0, y: -90 },
+    5: { x: 90, y: 0 },
+    6: { x: -90, y: 0 },
+  };
+  return map[face] || map[1];
+}
 
 const rollDiceWithOverlay = async (durationMs = 5000) => {
   const finalRoll = Math.floor(Math.random() * 6) + 1;
