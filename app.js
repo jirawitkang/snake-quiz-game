@@ -939,17 +939,17 @@ function sleep(ms) {
 }
 
 function rotationForTopFace(face){
-  // จาก CSS ตอนนี้:
-  // FRONT=1, RIGHT=2, BACK=6, LEFT=5, TOP=4, BOTTOM=3  (เพราะ Y ใน CSS ชี้ลง)
+  // เราล็อกฐานไว้แล้วว่า:
+  // TOP=1, FRONT=5, RIGHT=4, LEFT=3, BACK=2, BOTTOM=6
   const map = {
-    4: { x: 0,   y: 0, z: 0   },   // top อยู่แล้ว (face-4)
-    3: { x: 180, y: 0, z: 0   },   // bottom -> top
-    1: { x: -90, y: 0, z: 0   },   // front -> top
-    6: { x: 90,  y: 0, z: 0   },   // back -> top
-    2: { x: 0,   y: 0, z: -90 },   // right -> top
-    5: { x: 0,   y: 0, z: 90  },   // left -> top
+    1: { x: 0,   y: 0,   z: 0   },   // top อยู่แล้ว
+    2: { x: 90,  y: 0,   z: 0   },   // back -> top
+    3: { x: 90,  y: 270, z: 0   },   // left -> top (คง orientation ให้สวย/นิ่ง)
+    4: { x: 270, y: 270, z: 0   },   // right -> top (และให้ front/right ตรงตามที่คุณยกตัวอย่าง)
+    5: { x: 90,  y: 180, z: 0   },   // front -> top (ตัวอย่าง: top=5 แล้ว front=1 right=3)
+    6: { x: 180, y: 0,   z: 0   },   // bottom -> top
   };
-  return map[face] || map[4];
+  return map[face] || map[1];
 }
 
 const rollDiceWithOverlay = async (durationMs = 5000) => {
@@ -969,12 +969,12 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   dice3dEl.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg) rotateZ(${startZ}deg)`;
   void dice3dEl.offsetWidth;
 
-  // ท่าจบ (ให้ด้านบนเป็นแต้มที่ทอยได้)
   const end = rotationForTopFace(finalRoll);
+
   const extraX = 360 * (Math.floor(Math.random() * 4) + 6);
   const extraY = 360 * (Math.floor(Math.random() * 4) + 6);
-  const extraZ = 360 * (Math.floor(Math.random() * 3) + 4);
-
+  const extraZ = 360 * (Math.floor(Math.random() * 3) + 4); // ✅ ต้องเป็น 360 เท่านั้น
+  
   dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
   dice3dEl.style.transform =
     `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
