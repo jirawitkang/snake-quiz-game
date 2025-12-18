@@ -752,65 +752,64 @@ function renderPlayerList(roomData, playersObj) {
 
   const DICE_BASE = { x: 0, y: 0, z: 0 }; // ✅ ไม่กลับหัว
 
+  const raf = () => new Promise(requestAnimationFrame);
+  const rand360 = () => Math.floor(Math.random() * 360);
+  const randInt = (a,b) => Math.floor(Math.random() * (b - a + 1)) + a;
+  
   const rollDiceWithOverlay = async (durationMs = 5000) => {
-    const raf = () => new Promise(requestAnimationFrame);
-    const rand360 = () => Math.floor(Math.random() * 360);
-    const randInt = (a,b) => Math.floor(Math.random() * (b - a + 1)) + a;
-    
-    const rollDiceWithOverlay = async (durationMs = 5000) => {
-      const finalRoll = Math.floor(Math.random() * 6) + 1;
-    
-      diceIsRolling = true;
-      diceCommitDone = false;
-    
-      // fallback ถ้า element ไม่ครบ
-      if (!diceOverlayEl || !dice3dEl) return finalRoll;
-    
-      diceOverlayEl.style.display = "flex";
-    
-      // ระหว่างหมุน: ซ่อนปุ่ม + กันกด
-      if (closeDiceOverlayBtn) {
-        closeDiceOverlayBtn.style.display = "none";
-        closeDiceOverlayBtn.disabled = true;
-      }
-    
-      if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
-    
-      // ตั้งท่าเริ่มแบบสุ่ม (ไม่มี transition)
-      dice3dEl.style.transition = "none";
-      dice3dEl.style.transform =
-        `rotateZ(${rand360()}deg) rotateY(${rand360()}deg) rotateX(${rand360()}deg)`;
-    
-      await raf();
-    
-      // ✅ ท่าจบ: ให้ “ด้านบน” เป็นแต้มที่ทอยได้
-      const end = rotationForTopFace(finalRoll);
-    
-      // extra ต้องเป็น “ทวีคูณ 360” เพื่อไม่ทำให้หน้าเปลี่ยน
-      const extraX = 360 * randInt(6, 9);
-      const extraY = 360 * randInt(6, 9);
-      const extraZ = 360 * randInt(4, 6);
-    
-      dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
-      dice3dEl.style.transform =
-        `rotateZ(${end.z + extraZ}deg) rotateY(${end.y + extraY}deg) rotateX(${end.x + extraX}deg)`;
-    
-      await sleep(durationMs);
-    
-      // ✅ SNAP เข้าค่ามาตรฐาน “แบบไม่ animate” (ไม่ใช่ทอย 2 ครั้ง)
-      dice3dEl.style.transition = "none";
-      dice3dEl.style.transform =
-        `rotateZ(${end.z}deg) rotateY(${end.y}deg) rotateX(${end.x}deg)`;
-    
-      await raf();
-    
-      diceIsRolling = false;
-    
-      // ยังไม่ให้ปิด: รอ commit เสร็จก่อน
-      if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
-    
-      return finalRoll;
-    };
+    const finalRoll = Math.floor(Math.random() * 6) + 1;
+  
+    diceIsRolling = true;
+    diceCommitDone = false;
+  
+    // fallback ถ้า element ไม่ครบ
+    if (!diceOverlayEl || !dice3dEl) return finalRoll;
+  
+    diceOverlayEl.style.display = "flex";
+  
+    // ระหว่างหมุน: ซ่อนปุ่ม + กันกด
+    if (closeDiceOverlayBtn) {
+      closeDiceOverlayBtn.style.display = "none";
+      closeDiceOverlayBtn.disabled = true;
+    }
+  
+    if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
+  
+    // ตั้งท่าเริ่มแบบสุ่ม (ไม่มี transition)
+    dice3dEl.style.transition = "none";
+    dice3dEl.style.transform =
+      `rotateZ(${rand360()}deg) rotateY(${rand360()}deg) rotateX(${rand360()}deg)`;
+  
+    await raf();
+  
+    // ✅ ท่าจบ: ให้ “ด้านบน” เป็นแต้มที่ทอยได้
+    const end = rotationForTopFace(finalRoll);
+  
+    // extra ต้องเป็น “ทวีคูณ 360” เพื่อไม่ทำให้หน้าเปลี่ยน
+    const extraX = 360 * randInt(6, 9);
+    const extraY = 360 * randInt(6, 9);
+    const extraZ = 360 * randInt(4, 6);
+  
+    dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
+    dice3dEl.style.transform =
+      `rotateZ(${end.z + extraZ}deg) rotateY(${end.y + extraY}deg) rotateX(${end.x + extraX}deg)`;
+  
+    await sleep(durationMs);
+  
+    // ✅ SNAP เข้าค่ามาตรฐาน “แบบไม่ animate” (ไม่ใช่ทอย 2 ครั้ง)
+    dice3dEl.style.transition = "none";
+    dice3dEl.style.transform =
+      `rotateZ(${end.z}deg) rotateY(${end.y}deg) rotateX(${end.x}deg)`;
+  
+    await raf();
+  
+    diceIsRolling = false;
+  
+    // ยังไม่ให้ปิด: รอ commit เสร็จก่อน
+    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
+  
+    return finalRoll;
+  };
 
 // ---------------- Host: Start Game (ไปโฟกัส GAME BOARD) ----------------
 startGameBtn?.addEventListener("click", async () => {
