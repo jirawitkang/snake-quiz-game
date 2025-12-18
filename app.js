@@ -964,14 +964,14 @@ function sleep(ms) {
 }
 
 function rotationForTopFace(face){
-  // TOP=3, BOTTOM=4, FRONT=1, RIGHT=2, LEFT=5, BACK=6
+  // หลังแก้ CSS: TOP=3, BOTTOM=4, FRONT=1, RIGHT=2, LEFT=5, BACK=6
   const map = {
-    3: { x: 0,   y: 0, z: 0    }, // top
-    4: { x: 180, y: 0, z: 0    }, // bottom -> top
-    1: { x: -90, y: 0, z: 0    }, // front -> top
-    6: { x: 90,  y: 0, z: 0    }, // back -> top
-    2: { x: 0,   y: 0, z: 90   }, // right -> top
-    5: { x: 0,   y: 0, z: -90  }, // left -> top
+    3: { x: 0,   y: 0,   z: 0   },   // top อยู่แล้ว
+    4: { x: 180, y: 0,   z: 0   },   // bottom -> top
+    1: { x: 90,  y: 0,   z: 0   },   // ✅ front -> top (กลับจากเดิม)
+    6: { x: -90, y: 0,   z: 0   },   // ✅ back  -> top (กลับจากเดิม)
+    2: { x: 0,   y: 0,   z: -90 },   // right -> top (คงเดิมได้)
+    5: { x: 0,   y: 0,   z: 90  },   // left  -> top (คงเดิมได้)
   };
   return map[face] || map[3];
 }
