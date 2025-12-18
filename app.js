@@ -938,18 +938,17 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function rotationForTopFace(face){
-  // เราล็อกฐานไว้แล้วว่า:
-  // TOP=1, FRONT=5, RIGHT=4, LEFT=3, BACK=2, BOTTOM=6
+function rotationForTopFace(roll){
+  // ทำให้ TOP = แต้มที่ทอยได้ (และมุมข้างตรงมาตรฐาน)
   const map = {
-    1: { x: 0,   y: 0,   z: 0   },   // top อยู่แล้ว
-    2: { x: 90,  y: 0,   z: 0   },   // back -> top
-    3: { x: 90,  y: 270, z: 0   },   // left -> top (คง orientation ให้สวย/นิ่ง)
-    4: { x: 270, y: 270, z: 0   },   // right -> top (และให้ front/right ตรงตามที่คุณยกตัวอย่าง)
-    5: { x: 90,  y: 180, z: 0   },   // front -> top (ตัวอย่าง: top=5 แล้ว front=1 right=3)
-    6: { x: 180, y: 0,   z: 0   },   // bottom -> top
+    1: { x: 0,   y: 90,  z: 90  }, // TOP=1, front=5, right=4
+    2: { x: 0,   y: 0,   z: 90  },
+    3: { x: 0,   y: 0,   z: 0   },
+    4: { x: 180, y: 0,   z: 0   }, // TOP=4, front=6, right=2
+    5: { x: 0,   y: 0,   z: 270 }, // TOP=5, front=1, right=3
+    6: { x: 0,   y: 270, z: 90  },
   };
-  return map[face] || map[1];
+  return map[roll] || map[3];
 }
 
 const rollDiceWithOverlay = async (durationMs = 5000) => {
