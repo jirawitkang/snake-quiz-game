@@ -749,7 +749,7 @@ function renderPlayerList(roomData, playersObj) {
     return x;
   }
 
-  const DICE_BASE = { x: 180, y: 0, z: 0 }; // ✅ พลิกลูกเต๋ากลับหัวให้ตั้งตรงก่อน
+  const DICE_BASE = { x: 0, y: 0, z: 0 }; // ✅ ไม่กลับหัว
 
   const rollDiceWithOverlay = async (durationMs = 5000) => {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
