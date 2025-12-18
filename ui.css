@@ -919,8 +919,8 @@ button:disabled{
 #dice3d .face-2{ transform: rotateY(90deg)  translateZ(var(--dice-half)); }   /* right */
 #dice3d .face-6{ transform: rotateY(180deg) translateZ(var(--dice-half)); }   /* back */
 #dice3d .face-5{ transform: rotateY(-90deg) translateZ(var(--dice-half)); }  /* left */
-#dice3d .face-3{ transform: rotateX(-90deg) translateZ(var(--dice-half)); }  /* top ✅ */
-#dice3d .face-4{ transform: rotateX(90deg)  translateZ(var(--dice-half)); }  /* bottom ✅ */
+#dice3d .face-3{ transform: rotateX(-90deg) translateZ(var(--dice-half)); }   /* ✅ top */
+#dice3d .face-4{ transform: rotateX(90deg) translateZ(var(--dice-half)); }    /* ✅ bottom */
 
 /* จุด (pip) */
 #dice3d .pip{
