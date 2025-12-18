@@ -154,12 +154,9 @@ function hideDiceOverlay(){
 }
 
 closeDiceOverlayBtn?.addEventListener("click", () => {
-  // ✅ กันกดตอนยังหมุน หรือยังไม่ commit
   if (diceIsRolling) return;
   if (!diceCommitDone) return;
-
   hideDiceOverlay();
-  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 const questionAreaEl = document.getElementById("questionArea");
@@ -753,7 +750,10 @@ function renderPlayerList(roomData, playersObj) {
 
   const rollDiceWithOverlay = async (durationMs = 5000) => {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
-  
+
+    diceIsRolling = true;
+    diceCommitDone = false;
+
     if (!diceOverlayEl || !dice3dEl) return finalRoll;
   
     diceOverlayEl.style.display = "flex";
@@ -795,7 +795,9 @@ function renderPlayerList(roomData, playersObj) {
     dice3dEl.style.transform =
       `rotateZ(${end.z + DICE_BASE.z}deg) rotateY(${end.y + DICE_BASE.y}deg) rotateX(${end.x + DICE_BASE.x}deg)`;
     void dice3dEl.offsetWidth;
-  
+
+    diceIsRolling = false;
+
     await raf();
   
     // ✅ หมุนจบแล้ว แต่ยังไม่ให้ปิด (รอไปเปิดปุ่มหลัง commit สำเร็จ)
@@ -985,14 +987,14 @@ function waitTransformEnd(el, timeoutMs = 6500){
 }
 
 function rotationForTopFace(face){
-  // หลังแก้ CSS: TOP=3, BOTTOM=4, FRONT=1, RIGHT=2, LEFT=5, BACK=6
+  // TOP=3, BOTTOM=4, FRONT=1, RIGHT=2, LEFT=5, BACK=6
   const map = {
-    3: { x: 0,   y: 0,   z: 0   },   // top อยู่แล้ว
-    4: { x: 180, y: 0,   z: 0   },   // bottom -> top
-    1: { x: 90,  y: 0,   z: 0   },   // ✅ front -> top (กลับจากเดิม)
-    6: { x: -90, y: 0,   z: 0   },   // ✅ back  -> top (กลับจากเดิม)
-    2: { x: 0,   y: 0,   z: -90 },   // right -> top (คงเดิมได้)
-    5: { x: 0,   y: 0,   z: 90  },   // left  -> top (คงเดิมได้)
+    3: { x:   0, y: 0, z:   0 },   // 3 อยู่บนแล้ว
+    4: { x: 180, y: 0, z:   0 },   // 4 (ล่าง) -> บน
+    1: { x:  90, y: 0, z:   0 },   // 1 (หน้า) -> บน  ✅ แก้เครื่องหมาย
+    6: { x: -90, y: 0, z:   0 },   // 6 (หลัง) -> บน  ✅ แก้เครื่องหมาย
+    2: { x:   0, y: 0, z: -90 },   // 2 (ขวา) -> บน
+    5: { x:   0, y: 0, z:  90 },   // 5 (ซ้าย) -> บน
   };
   return map[face] || map[3];
 }
@@ -1121,12 +1123,11 @@ rollDiceBtn.addEventListener("click", async () => {
     // commit ด้วย transaction
     await finalizeRollTransaction(roll);
 
-    // ✅ commit สำเร็จแล้วค่อยให้ปิด overlay ได้
-    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${roll} (บันทึกแล้ว) กดปุ่มเพื่อกลับไปที่ GAME BOARD`;
+    diceCommitDone = true;           // ✅ เพิ่มบรรทัดนี้
     
     if (closeDiceOverlayBtn) {
       closeDiceOverlayBtn.style.display = "inline-flex";
-      closeDiceOverlayBtn.disabled = false; // ✅ เพิ่มบรรทัดนี้ให้ชัวร์
+      closeDiceOverlayBtn.disabled = false;
     }
 
     // ✅ success: ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls()
