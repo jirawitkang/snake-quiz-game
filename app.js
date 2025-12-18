@@ -740,27 +740,41 @@ function renderPlayerList(roomData, playersObj) {
       else perPlayer[pid].answerSymbols.push("❌");
     }
   }
-  
+
+  const raf = () => new Promise((r) => requestAnimationFrame(r));
+  function normalizeDeg(d){
+    let x = Number(d) || 0;
+    x = x % 360;
+    if (x < 0) x += 360;
+    return x;
+  }
+
   const rollDiceWithOverlay = async (durationMs = 5000) => {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
   
-    // fallback ถ้า element ไม่ครบ
     if (!diceOverlayEl || !dice3dEl) return finalRoll;
   
     diceOverlayEl.style.display = "flex";
-    if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
+  
+    // ✅ ระหว่างหมุน: ซ่อนปุ่ม และกันกด
+    if (closeDiceOverlayBtn) {
+      closeDiceOverlayBtn.style.display = "none";
+      closeDiceOverlayBtn.disabled = true;
+    }
+  
     if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
   
-    // ตั้งท่าเริ่มแบบสุ่ม
+    // ตั้งท่าเริ่มแบบสุ่ม (ไม่มี transition)
     dice3dEl.style.transition = "none";
     const startX = Math.floor(Math.random() * 360);
     const startY = Math.floor(Math.random() * 360);
     const startZ = Math.floor(Math.random() * 360);
     dice3dEl.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg) rotateZ(${startZ}deg)`;
   
-    void dice3dEl.offsetWidth;
+    // ✅ ให้ browser “รับค่าท่าเริ่ม” ก่อนค่อยเริ่มหมุน (ดีกว่า offsetWidth)
+    await raf();
   
-    // ✅ หมุนให้ “ด้านบน” เป็นแต้มที่ทอยได้
+    // หมุนให้ “ด้านบน” เป็นแต้มที่ทอยได้
     const end = rotationForTopFace(finalRoll);
   
     const extraX = 360 * (Math.floor(Math.random() * 4) + 6);
@@ -773,9 +787,18 @@ function renderPlayerList(roomData, playersObj) {
   
     await sleep(durationMs);
   
-    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll}`;
+    // ✅ SNAP เข้าค่ามาตรฐานโดย “ไม่ animate รอบสอง”
+    dice3dEl.style.transition = "none";
+    await raf(); // สำคัญ กันบาง browser ยังจำ transition เก่า
   
-    // ✅ ไม่ปิด overlay ที่นี่ — ให้ค้างไว้
+    dice3dEl.style.transform =
+      `rotateX(${normalizeDeg(end.x)}deg) rotateY(${normalizeDeg(end.y)}deg) rotateZ(${normalizeDeg(end.z)}deg)`;
+  
+    await raf();
+  
+    // ✅ หมุนจบแล้ว แต่ยังไม่ให้ปิด (รอไปเปิดปุ่มหลัง commit สำเร็จ)
+    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
+  
     return finalRoll;
   };
 
@@ -1009,6 +1032,16 @@ rollDiceBtn.addEventListener("click", async () => {
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
 
+  // ✅ เพิ่ม: reset สถานะ overlay ทุกครั้งที่กดทอย
+  diceIsRolling = false;
+  diceCommitDone = false;
+
+  // กันกรณีปุ่มปิดค้างจากรอบก่อน
+  if (closeDiceOverlayBtn) {
+    closeDiceOverlayBtn.style.display = "none";
+    closeDiceOverlayBtn.disabled = true;
+  }
+
   try {
     const snap = await get(roomRef);
     if (!snap.exists()) {
@@ -1047,27 +1080,48 @@ rollDiceBtn.addEventListener("click", async () => {
       return;
     }
 
+    // ✅ เพิ่ม: เริ่ม “ช่วงหมุน”
+    diceIsRolling = true;
+    diceCommitDone = false;
+
     // ✅ เรียก overlay 5 วิ แล้วค่อย commit
     const roll = await rollDiceWithOverlay(5000);
 
+    // ✅ เพิ่ม: หมุนจบแล้ว (แต่ยังห้ามปิด เพราะยังไม่ commit)
+    diceIsRolling = false;
+
     // commit ด้วย transaction
     await finalizeRollTransaction(roll);
-    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${roll} (บันทึกแล้ว) กด “กลับไปที่ GAME BOARD”`;
-    enableDiceOverlayClose();
-    if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "inline-flex";
-    rollDiceBtn.textContent = "ทอยลูกเต๋า";
+
+    // ✅ เพิ่ม: commit สำเร็จแล้ว ถึงให้ปิดได้
+    diceCommitDone = true;
+
+    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${roll} (บันทึกแล้ว) กดปุ่มเพื่อกลับไปที่ GAME BOARD`;
+
+    if (closeDiceOverlayBtn) {
+      closeDiceOverlayBtn.style.display = "inline-flex";
+      closeDiceOverlayBtn.disabled = false;
+    }
 
     // ✅ success: ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls()
-    // (ไม่ต้องปลดที่นี่)
-
   } catch (e) {
     console.error(e);
-    hideDiceOverlay();
+
+    // ✅ เพิ่ม: fail ต้อง reset flag
+    diceIsRolling = false;
+    diceCommitDone = false;
+
+    // ✅ ปิด overlay + รีเซ็ตปุ่ม
+    if (diceOverlayEl) diceOverlayEl.style.display = "none";
+    if (closeDiceOverlayBtn) {
+      closeDiceOverlayBtn.style.display = "none";
+      closeDiceOverlayBtn.disabled = true;
+    }
+
     rollPending = false;
     rollDiceBtn.disabled = false;
     alert("ทอยเต๋าไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
   }
-
 });
 
 async function finalizeRollTransaction(roll) {
