@@ -743,7 +743,7 @@ function renderPlayerList(roomData, playersObj) {
       else perPlayer[pid].answerSymbols.push("❌");
     }
   }
-
+}
 // ---------------- Host: Start Game (ไปโฟกัส GAME BOARD) ----------------
 startGameBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
@@ -842,10 +842,6 @@ startRoundBtn.addEventListener("click", async () => {
     clearTimer();
   }
 });
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
 
 function waitTransformEnd(el, timeoutMs = 6500){
   return new Promise((resolve) => {
