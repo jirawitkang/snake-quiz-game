@@ -749,6 +749,8 @@ function renderPlayerList(roomData, playersObj) {
     return x;
   }
 
+  const DICE_BASE = { x: 180, y: 0, z: 0 }; // ✅ พลิกลูกเต๋ากลับหัวให้ตั้งตรงก่อน
+
   const rollDiceWithOverlay = async (durationMs = 5000) => {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
   
@@ -769,7 +771,8 @@ function renderPlayerList(roomData, playersObj) {
     const startX = Math.floor(Math.random() * 360);
     const startY = Math.floor(Math.random() * 360);
     const startZ = Math.floor(Math.random() * 360);
-    dice3dEl.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg) rotateZ(${startZ}deg)`;
+    dice3dEl.style.transform =
+  `rotateZ(${startZ + DICE_BASE.z}deg) rotateY(${startY + DICE_BASE.y}deg) rotateX(${startX + DICE_BASE.x}deg)`;
   
     // ✅ ให้ browser “รับค่าท่าเริ่ม” ก่อนค่อยเริ่มหมุน (ดีกว่า offsetWidth)
     await raf();
@@ -783,16 +786,15 @@ function renderPlayerList(roomData, playersObj) {
   
     dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
     dice3dEl.style.transform =
-      `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
+  `rotateZ(${end.z + extraZ + DICE_BASE.z}deg) rotateY(${end.y + extraY + DICE_BASE.y}deg) rotateX(${end.x + extraX + DICE_BASE.x}deg)`;
   
     await sleep(durationMs);
   
     // ✅ SNAP เข้าค่ามาตรฐานโดย “ไม่ animate รอบสอง”
     dice3dEl.style.transition = "none";
-    await raf(); // สำคัญ กันบาง browser ยังจำ transition เก่า
-  
     dice3dEl.style.transform =
-      `rotateX(${normalizeDeg(end.x)}deg) rotateY(${normalizeDeg(end.y)}deg) rotateZ(${normalizeDeg(end.z)}deg)`;
+      `rotateZ(${end.z + DICE_BASE.z}deg) rotateY(${end.y + DICE_BASE.y}deg) rotateX(${end.x + DICE_BASE.x}deg)`;
+    void dice3dEl.offsetWidth;
   
     await raf();
   
@@ -962,17 +964,16 @@ function sleep(ms) {
 }
 
 function rotationForTopFace(face){
-  // ล็อก “มาตรฐาน” ให้แน่นอน (Top + 2 ด้านที่เห็นในมุม perspective)
-  // ใช้ร่วมกับ transform order: rotateZ(z) rotateY(y) rotateX(x)
+  // TOP=3, BOTTOM=4, FRONT=1, RIGHT=2, LEFT=5, BACK=6
   const map = {
-    1: { x: 0,   y: 0,   z: 0   },
-    2: { x: 90,  y: 0,   z: 0   },
-    3: { x: 90,  y: 0,   z: 90  },
-    4: { x: 90,  y: 180, z: 90  },
-    5: { x: 90,  y: 0,   z: 180 },
-    6: { x: 0,   y: 180, z: 180 },
+    3: { x: 0,   y: 0, z: 0    }, // top
+    4: { x: 180, y: 0, z: 0    }, // bottom -> top
+    1: { x: -90, y: 0, z: 0    }, // front -> top
+    6: { x: 90,  y: 0, z: 0    }, // back -> top
+    2: { x: 0,   y: 0, z: 90   }, // right -> top
+    5: { x: 0,   y: 0, z: -90  }, // left -> top
   };
-  return map[face] || map[1];
+  return map[face] || map[3];
 }
 
 const rollDiceWithOverlay = async (durationMs = 5000) => {
