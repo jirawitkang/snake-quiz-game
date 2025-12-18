@@ -113,6 +113,8 @@ const diceOverlayEl = document.getElementById("diceOverlay");
 const dice3dEl = document.getElementById("dice3d");
 const diceHintEl = document.getElementById("diceHint");
 const closeDiceOverlayBtn = document.getElementById("closeDiceOverlayBtn");
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 
 let diceIsRolling = false;
 let diceCommitDone = false;
@@ -879,19 +881,19 @@ function rotationForTopFace(face){
   return map[face] || map[3];
 }
 
-const raf = () => new Promise((r) => requestAnimationFrame(r));
 function normalizeDeg(d){
   let x = Number(d) || 0;
   x = x % 360;
   if (x < 0) x += 360;
   return x;
 }
+  
+const raf = () => new Promise((r) => requestAnimationFrame(r));
+const rand360 = () => Math.floor(Math.random() * 360);
+const randInt = (a,b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
-const DICE_BASE = { x: 0, y: 0, z: 0 }; // ✅ ไม่กลับหัว
-
-  const raf = () => new Promise(requestAnimationFrame);
-  const rand360 = () => Math.floor(Math.random() * 360);
-  const randInt = (a,b) => Math.floor(Math.random() * (b - a + 1)) + a;
+// ถ้ายังไม่ใช้ DICE_BASE จริง ๆ ก็ปล่อยไว้ได้ แต่ห้ามประกาศซ้ำ
+const DICE_BASE = { x: 0, y: 0, z: 0 };
   
   const rollDiceWithOverlay = async (durationMs = 5000) => {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
