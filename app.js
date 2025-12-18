@@ -963,6 +963,27 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function waitTransformEnd(el, timeoutMs = 6500){
+  return new Promise((resolve) => {
+    let done = false;
+
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      el.removeEventListener("transitionend", onEnd);
+      clearTimeout(t);
+      resolve();
+    };
+
+    const onEnd = (e) => {
+      if (e.target === el && e.propertyName === "transform") cleanup();
+    };
+
+    el.addEventListener("transitionend", onEnd, { once: false });
+    const t = setTimeout(cleanup, timeoutMs);
+  });
+}
+
 function rotationForTopFace(face){
   // หลังแก้ CSS: TOP=3, BOTTOM=4, FRONT=1, RIGHT=2, LEFT=5, BACK=6
   const map = {
@@ -979,13 +1000,17 @@ function rotationForTopFace(face){
 const rollDiceWithOverlay = async (durationMs = 5000) => {
   const finalRoll = Math.floor(Math.random() * 6) + 1;
 
-  // ไม่มี element ก็คืนแต้มไปเลย (กันพัง)
   if (!diceOverlayEl || !dice3dEl) return finalRoll;
 
-  showDiceOverlayRolling();
+  // เปิด overlay + ล็อกปุ่มปิดไว้ก่อน (ห้ามกดได้ตอนหมุน)
+  diceOverlayEl.style.display = "flex";
+  if (closeDiceOverlayBtn) {
+    closeDiceOverlayBtn.style.display = "inline-flex";
+    closeDiceOverlayBtn.disabled = true;      // ✅ ล็อกไว้
+  }
   if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
 
-  // ท่าเริ่ม
+  // ท่าเริ่มแบบสุ่ม (ไม่มี transition)
   dice3dEl.style.transition = "none";
   const startX = Math.floor(Math.random() * 360);
   const startY = Math.floor(Math.random() * 360);
@@ -993,37 +1018,30 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   dice3dEl.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg) rotateZ(${startZ}deg)`;
   void dice3dEl.offsetWidth;
 
-  // ✅ หมุนให้ “ด้านบน” เป็นแต้มที่ทอยได้ (ตามมาตรฐาน)
+  // ท่าจบ: ให้ "ด้านบน" เป็นแต้มที่สุ่มได้
   const end = rotationForTopFace(finalRoll);
-  
+
+  // หมุนหลายรอบ (ต้องเป็น 360 เท่านั้น เพื่อไม่เปลี่ยนหน้าเต๋าสุดท้าย)
   const extraX = 360 * (Math.floor(Math.random() * 4) + 6);
   const extraY = 360 * (Math.floor(Math.random() * 4) + 6);
   const extraZ = 360 * (Math.floor(Math.random() * 3) + 4);
-  
-  // ✅ สำคัญ: ใช้ลำดับ rotateZ -> rotateY -> rotateX (เพื่อให้ X ถูก apply ก่อน)
+
+  // เริ่ม transition
   dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
   dice3dEl.style.transform =
-    `rotateZ(${end.z + extraZ}deg) rotateY(${end.y + extraY}deg) rotateX(${end.x + extraX}deg)`;
-  
-  await sleep(durationMs);
-  
-  // ✅ snap ให้เป็นค่ามาตรฐาน โดยไม่ให้ animate อีกรอบ (ไม่ใช่ “ทอยสองครั้ง”)
-  dice3dEl.style.transition = "none";
-  dice3dEl.style.transform =
-    `rotateZ(${end.z}deg) rotateY(${end.y}deg) rotateX(${end.x}deg)`;
-  void dice3dEl.offsetWidth;
-  
-  // ✅ snap ให้เป็นค่ามาตรฐาน โดยไม่ให้ animate อีกรอบ
+    `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
+
+  // ✅ รอ “หมุนจบจริง” จาก transitionend
+  await waitTransformEnd(dice3dEl, durationMs + 1200);
+
+  // ✅ snap เข้ามุมมาตรฐาน (ไม่ animate รอบสอง)
   dice3dEl.style.transition = "none";
   dice3dEl.style.transform =
     `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
-  
-  // optional: force reflow กันบาง browser ดื้อ
   void dice3dEl.offsetWidth;
 
-  // ✅ หมุนจบแล้ว: โชว์ปุ่ม แต่ยังปิดไม่ได้จนกว่าจะ commit
+  // ยังไม่ให้กดปิดจนกว่าจะ commit สำเร็จ (คุณจะเปิดใน handler หลัง commit)
   if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
-  showDiceOverlayWaitingCommit();
 
   return finalRoll;
 };
@@ -1103,14 +1121,12 @@ rollDiceBtn.addEventListener("click", async () => {
     // commit ด้วย transaction
     await finalizeRollTransaction(roll);
 
-    // ✅ เพิ่ม: commit สำเร็จแล้ว ถึงให้ปิดได้
-    diceCommitDone = true;
-
+    // ✅ commit สำเร็จแล้วค่อยให้ปิด overlay ได้
     if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${roll} (บันทึกแล้ว) กดปุ่มเพื่อกลับไปที่ GAME BOARD`;
-
+    
     if (closeDiceOverlayBtn) {
       closeDiceOverlayBtn.style.display = "inline-flex";
-      closeDiceOverlayBtn.disabled = false;
+      closeDiceOverlayBtn.disabled = false; // ✅ เพิ่มบรรทัดนี้ให้ชัวร์
     }
 
     // ✅ success: ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls()
