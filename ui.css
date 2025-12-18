@@ -892,7 +892,7 @@ button:disabled{
 /* กล้อง: ทำให้เห็น 3 ด้าน (บน/หน้า/ข้าง) */
 .dice-cam{
   transform-style: preserve-3d;
-  transform: rotateX(55deg) rotateY(45deg);
+  transform: rotateX(55deg) rotateZ(45deg); /* ✅ ห้ามเป็น -55 และห้ามมี rotateX(180) ซ้อน */
 }
 
 /* ตัวลูกเต๋า (หมุนด้วย JS) */
