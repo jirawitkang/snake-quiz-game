@@ -961,17 +961,18 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function rotationForTopFace(roll){
-  // ทำให้ TOP = แต้มที่ทอยได้ (และมุมข้างตรงมาตรฐาน)
+function rotationForTopFace(face){
+  // ล็อก “มาตรฐาน” ให้แน่นอน (Top + 2 ด้านที่เห็นในมุม perspective)
+  // ใช้ร่วมกับ transform order: rotateZ(z) rotateY(y) rotateX(x)
   const map = {
-    1: { x: 0,   y: 90,  z: 90  }, // TOP=1, front=5, right=4
-    2: { x: 0,   y: 0,   z: 90  },
-    3: { x: 0,   y: 0,   z: 0   },
-    4: { x: 180, y: 0,   z: 0   }, // TOP=4, front=6, right=2
-    5: { x: 0,   y: 0,   z: 270 }, // TOP=5, front=1, right=3
-    6: { x: 0,   y: 270, z: 90  },
+    1: { x: 0,   y: 0,   z: 0   },
+    2: { x: 90,  y: 0,   z: 0   },
+    3: { x: 90,  y: 0,   z: 90  },
+    4: { x: 90,  y: 180, z: 90  },
+    5: { x: 90,  y: 0,   z: 180 },
+    6: { x: 0,   y: 180, z: 180 },
   };
-  return map[roll] || map[3];
+  return map[face] || map[1];
 }
 
 const rollDiceWithOverlay = async (durationMs = 5000) => {
@@ -991,17 +992,25 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   dice3dEl.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg) rotateZ(${startZ}deg)`;
   void dice3dEl.offsetWidth;
 
+  // ✅ หมุนให้ “ด้านบน” เป็นแต้มที่ทอยได้ (ตามมาตรฐาน)
   const end = rotationForTopFace(finalRoll);
-
+  
   const extraX = 360 * (Math.floor(Math.random() * 4) + 6);
   const extraY = 360 * (Math.floor(Math.random() * 4) + 6);
-  const extraZ = 360 * (Math.floor(Math.random() * 3) + 4); // ✅ ต้องเป็น 360 เท่านั้น
+  const extraZ = 360 * (Math.floor(Math.random() * 3) + 4);
   
+  // ✅ สำคัญ: ใช้ลำดับ rotateZ -> rotateY -> rotateX (เพื่อให้ X ถูก apply ก่อน)
   dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
   dice3dEl.style.transform =
-    `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
-
+    `rotateZ(${end.z + extraZ}deg) rotateY(${end.y + extraY}deg) rotateX(${end.x + extraX}deg)`;
+  
   await sleep(durationMs);
+  
+  // ✅ snap ให้เป็นค่ามาตรฐาน โดยไม่ให้ animate อีกรอบ (ไม่ใช่ “ทอยสองครั้ง”)
+  dice3dEl.style.transition = "none";
+  dice3dEl.style.transform =
+    `rotateZ(${end.z}deg) rotateY(${end.y}deg) rotateX(${end.x}deg)`;
+  void dice3dEl.offsetWidth;
   
   // ✅ snap ให้เป็นค่ามาตรฐาน โดยไม่ให้ animate อีกรอบ
   dice3dEl.style.transition = "none";
