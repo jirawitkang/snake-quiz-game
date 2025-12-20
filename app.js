@@ -914,18 +914,29 @@ function waitTransformEnd(el, timeoutMs = 6500){
   });
 }
 
-function rotationForTopFace(face){
-  // TOP=3, BOTTOM=4, FRONT=1, RIGHT=2, LEFT=5, BACK=6
+function rotationForTopFace(faceId){
+  // faceId ตาม DOM: 1..6 คือ .face-1 .. .face-6
+  // TOP=face-3, BOTTOM=face-4, FRONT=face-1, RIGHT=face-2, LEFT=face-5, BACK=face-6
   const map = {
-    3: { x:   0, y: 0, z:   0 },   // 3 อยู่บนแล้ว
-    4: { x: 180, y: 0, z:   0 },   // 4 -> บน
-    1: { x: -90, y: 0, z:   0 },   // ✅ front(1) -> top  (แก้แล้ว)
-    6: { x:  90, y: 0, z:   0 },   // ✅ back(6)  -> top  (แก้แล้ว)
-    2: { x:   0, y: 0, z: -90 },   // right(2) -> top
-    5: { x:   0, y: 0, z:  90 },   // left(5)  -> top
+    3: { x:   0, y: 0, z:   0 },   // face-3 อยู่บน
+    4: { x: 180, y: 0, z:   0 },   // face-4 -> บน
+    1: { x: -90, y: 0, z:   0 },   // face-1(front) -> บน
+    6: { x:  90, y: 0, z:   0 },   // face-6(back)  -> บน
+    2: { x:   0, y: 0, z: -90 },   // face-2(right) -> บน
+    5: { x:   0, y: 0, z:  90 },   // face-5(left)  -> บน
   };
-  return map[face] || map[3];
+  return map[faceId] || map[3];
 }
+
+// pip value -> face id (ตาม HTML: face-1=5, face-2=4, face-3=1, face-4=6, face-5=3, face-6=2)
+const VALUE_TO_FACE_ID = {
+  1: 3,
+  2: 6,
+  3: 5,
+  4: 2,
+  5: 1,
+  6: 4,
+};
 
 function normalizeDeg(d){
   let x = Number(d) || 0;
@@ -968,7 +979,8 @@ const DICE_BASE = { x: 0, y: 0, z: 0 };
     await raf();
   
     // ✅ ท่าจบ: ให้ “ด้านบน” เป็นแต้มที่ทอยได้
-    const end = rotationForTopFace(finalRoll);
+    const faceId = VALUE_TO_FACE_ID[finalRoll] || 3;
+    const end = rotationForTopFace(faceId);
   
     // extra ต้องเป็น “ทวีคูณ 360” เพื่อไม่ทำให้หน้าเปลี่ยน
     const extraX = 360 * randInt(6, 9);
