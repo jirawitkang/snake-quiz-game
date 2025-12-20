@@ -686,56 +686,58 @@ joinRoomBtn.addEventListener("click", async () => {
 
 // ---------------- Render Player List ----------------
 function renderPlayerList(roomData, playersObj) {
-  const entries = Object.entries(playersObj || {});
-  const phase = roomData.phase || "idle";
-  const deadlineExpired = roomData.answerDeadlineExpired === true;
-
-  const gs = roomData.gameSettings || {};
-  const rewardCorrect = Number.isFinite(gs.rewardCorrect) ? gs.rewardCorrect : 1;
-  const penaltyWrong = Number.isFinite(gs.penaltyWrong) ? gs.penaltyWrong : -1;
-
-  const history = roomData.history || {};
-
   if (!playerListEl) return;
+
+  const players = playersObj || {};
+  const entries = Object.entries(players);
+
   if (entries.length === 0) {
     playerListEl.innerHTML = `<div class="muted">ยังไม่มีผู้เล่นเข้าห้อง</div>`;
     return;
   }
 
-  // build per-player stats
+  const history = roomData.history || {};
+
+  // 1) init perPlayer
   const perPlayer = {};
   for (const [pid, p] of entries) {
     perPlayer[pid] = {
       id: pid,
       name: p.name || pid,
       position: clampPos(p.position),
-      lastRoll: p.lastRoll ?? null,
       hasRolled: !!p.hasRolled,
       answered: !!p.answered,
-      lastAnswerCorrect: p.lastAnswerCorrect,
       finished: !!p.finished || clampPos(p.position) >= BOARD_SIZE,
       rolls: [],
       answerSymbols: [],
     };
   }
 
-  // parse history
+  // 2) parse history (ถ้าต้องการเอามาโชว์สถิติ)
   const roundKeys = Object.keys(history)
     .filter((k) => k.startsWith("round_"))
-    .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
+    .sort(
+      (a, b) =>
+        parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10)
+    );
 
   for (const rk of roundKeys) {
     const roundData = history[rk] || {};
     const answers = roundData.answers || {};
+
     for (const [pid, rec] of Object.entries(answers)) {
       if (!perPlayer[pid]) continue;
+
       if (rec.diceRoll != null) perPlayer[pid].rolls.push(rec.diceRoll);
 
-      // neutral (finish by dice) -> don't count Q
+      // neutral: เข้าเส้นชัยด้วยเต๋าและไม่ได้ตอบคำถามรอบนั้น -> ไม่นับผล Q
       const finalPos = rec.finalPosition ?? perPlayer[pid].position;
       const basePos = rec.basePosition ?? finalPos;
       const neutralFinishByDice =
-        rec.correct == null && !rec.answered && basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
+        rec.correct == null &&
+        rec.answered === false &&
+        basePos >= BOARD_SIZE &&
+        finalPos >= BOARD_SIZE;
 
       if (neutralFinishByDice) continue;
 
@@ -743,7 +745,55 @@ function renderPlayerList(roomData, playersObj) {
       else perPlayer[pid].answerSymbols.push("❌");
     }
   }
+
+  // 3) render table
+  const list = Object.values(perPlayer).sort((a, b) =>
+    String(a.name || "").localeCompare(String(b.name || ""))
+  );
+
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th class="name-col">ผู้เล่น</th>
+          <th>ตำแหน่ง</th>
+          <th>ทอยแล้ว</th>
+          <th>ตอบแล้ว</th>
+          <th>สถานะ</th>
+          <th>ทอย (รวม)</th>
+          <th>ผลคำถาม</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  list.forEach((p, index) => {
+    const rollsText = p.rolls.length ? p.rolls.join("") : "-";
+    const ansText = p.answerSymbols.length ? p.answerSymbols.join("") : "-";
+
+    html += `
+      <tr>
+        <td>${index + 1}</td>
+        <td class="name-col">${escapeHtml(p.name)}</td>
+        <td>${p.position}</td>
+        <td>${p.hasRolled ? "🎲" : "-"}</td>
+        <td>${p.answered ? "✍️" : "-"}</td>
+        <td>${p.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
+        <td>${rollsText}</td>
+        <td>${ansText}</td>
+      </tr>
+    `;
+  });
+
+  html += `
+      </tbody>
+    </table>
+  `;
+
+  playerListEl.innerHTML = html;
 }
+
 // ---------------- Host: Start Game (ไปโฟกัส GAME BOARD) ----------------
 startGameBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
