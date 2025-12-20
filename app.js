@@ -974,7 +974,7 @@ const DICE_BASE = { x: 0, y: 0, z: 0 };
     // ตั้งท่าเริ่มแบบสุ่ม (ไม่มี transition)
     dice3dEl.style.transition = "none";
     dice3dEl.style.transform =
-      `rotateZ(${rand360()}deg) rotateY(${rand360()}deg) rotateX(${rand360()}deg)`;
+      `rotateX(${rand360()}deg) rotateY(${rand360()}deg) rotateZ(${rand360()}deg)`;
   
     await raf();
   
@@ -989,15 +989,16 @@ const DICE_BASE = { x: 0, y: 0, z: 0 };
   
     dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
     dice3dEl.style.transform =
-      `rotateZ(${end.z + extraZ}deg) rotateY(${end.y + extraY}deg) rotateX(${end.x + extraX}deg)`;
+      `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
+
   
     await sleep(durationMs);
   
     // ✅ SNAP เข้าค่ามาตรฐาน “แบบไม่ animate” (ไม่ใช่ทอย 2 ครั้ง)
     dice3dEl.style.transition = "none";
     dice3dEl.style.transform =
-      `rotateZ(${end.z}deg) rotateY(${end.y}deg) rotateX(${end.x}deg)`;
-  
+      `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
+
     await raf();
   
     diceIsRolling = false;
