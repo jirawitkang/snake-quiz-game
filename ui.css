@@ -286,7 +286,6 @@ button:disabled{
 .choice-btn.wrong{ background:#c62828; color:#fff; }
 
 /* ===== Board / Tokens (ย้ายจาก inline มาไว้ที่นี่) ===== */
-#board{ margin-top: 10px; }
 .board-label-row,
 .player-row{
   display:flex;
@@ -731,7 +730,7 @@ button:disabled{
   }
 }
 
-/* ===== Board full width patch ===== */
+/* === FINAL BOARD LAYOUT (override legacy flex) === */
 
 /* ให้ #board กว้างเต็มการ์ด */
 #board{
