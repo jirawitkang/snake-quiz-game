@@ -142,6 +142,20 @@ const raf = () => new Promise((r) => requestAnimationFrame(r));
 const rand360 = () => Math.floor(Math.random() * 360);
 const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
+// ---- Mode select DOM (new entry flow) ----
+const modeSelectPageEl = document.getElementById("modeSelectPage");
+const adminEntryPageEl = document.getElementById("adminEntryPage");
+const playerEntryPageEl = document.getElementById("playerEntryPage");
+
+const pickAdminBtn = document.getElementById("pickAdminBtn");
+const pickPlayerBtn = document.getElementById("pickPlayerBtn");
+const modePlayBtn = document.getElementById("modePlayBtn");
+
+const backToModeBtn1 = document.getElementById("backToModeBtn1");
+const backToModeBtn2 = document.getElementById("backToModeBtn2");
+
+let selectedEntryMode = null; // "admin" | "player"
+
 // ---------------- State ----------------
 let currentRoomCode = null;
 let currentRole = null; // "host" | "player"
@@ -321,6 +335,44 @@ closeDiceOverlayBtn?.addEventListener("click", () => {
 });
 
 // ---------------- Lobby View ----------------
+function showModeSelectPage() {
+  selectedEntryMode = null;
+
+  if (modeSelectPageEl) modeSelectPageEl.style.display = "block";
+  if (adminEntryPageEl) adminEntryPageEl.style.display = "none";
+  if (playerEntryPageEl) playerEntryPageEl.style.display = "none";
+
+  if (pickAdminBtn) pickAdminBtn.setAttribute("aria-pressed", "false");
+  if (pickPlayerBtn) pickPlayerBtn.setAttribute("aria-pressed", "false");
+  if (modePlayBtn) modePlayBtn.disabled = true;
+
+  // รีเซ็ต host options panel เผื่อค้าง
+  if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
+
+  // ปลดล็อคช่องกรอกในหน้า entry (ยังไม่เลือก role จริง)
+  if (hostNameInput) hostNameInput.disabled = false;
+  if (createRoomBtn) createRoomBtn.disabled = false;
+  if (confirmCreateRoomBtn) confirmCreateRoomBtn.disabled = false;
+
+  if (roomCodeInput) roomCodeInput.disabled = false;
+  if (playerNameInput) playerNameInput.disabled = false;
+  if (joinRoomBtn) joinRoomBtn.disabled = false;
+}
+
+function showAdminEntryPage() {
+  if (modeSelectPageEl) modeSelectPageEl.style.display = "none";
+  if (adminEntryPageEl) adminEntryPageEl.style.display = "grid";
+  if (playerEntryPageEl) playerEntryPageEl.style.display = "none";
+  adminEntryPageEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showPlayerEntryPage() {
+  if (modeSelectPageEl) modeSelectPageEl.style.display = "none";
+  if (adminEntryPageEl) adminEntryPageEl.style.display = "none";
+  if (playerEntryPageEl) playerEntryPageEl.style.display = "grid";
+  playerEntryPageEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function enterLobbyView() {
   if (lobbyEl) lobbyEl.style.display = "block";
   setEntryVisible(false);
@@ -2107,6 +2159,9 @@ function renderEndGameSummary(roomData, players) {
   html += `</tbody></table>`;
   if (endGameSummaryEl) endGameSummaryEl.innerHTML = html;
 }
+
+// Start entry at mode select (new flow)
+showModeSelectPage();
 
 // ---------------- Init (when role set) ----------------
 function initUiIfReady() {
