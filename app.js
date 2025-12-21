@@ -1000,6 +1000,19 @@ function normDeg(d){
   return x;
 }
 
+function prepDiceForAnimate(el){
+  if (!el) return;
+
+  // เคลียร์ WAAPI เก่า
+  try { el.getAnimations().forEach(a => a.cancel()); } catch {}
+
+  // เคลียร์ transition เก่า (กันกระพริบ)
+  el.style.transition = "none";
+
+  // บังคับให้ browser “รับรู้ layout” ก่อนเริ่ม anim (แก้เคส hard refresh หมุนไม่ออก)
+  el.getBoundingClientRect();
+}
+
 function spinToPickAngles(pick){
   // ทำให้จบที่ pick แต่หมุนเยอะ (เพิ่ม 360*k) เพื่อให้ดู “กลิ้งจริง”
   const kx = 360 * randInt(6, 10);
@@ -1024,59 +1037,68 @@ function shortestDeg(from, to){
 }
 
 async function animateRollToPick(el, pick, rollMs){
-  // ✅ start pose: ไม่ random สุดโต่ง เพื่อให้ดูเหมือน “กลิ้ง” มากกว่า “spin”
+  prepDiceForAnimate(el);
+
+  // start pose: ไม่สุดโต่ง (ดูเป็น rolling มากกว่า spin)
   const s = {
-    x: randInt(-35, 35),
+    x: randInt(-25, 25),
     y: rand360(),
-    z: randInt(-35, 35),
+    z: randInt(-25, 25),
   };
 
-  // ✅ mid pose: เพิ่มรอบแบบพอดี ๆ (ลดความเร็วช่วงต้น/กลาง)
+  // กำหนด "รอบรวม" ต่อแกน (ลดจากเดิมเยอะ เพื่อไม่ให้ต้นเร็วเกิน + กลางไม่เร่ง)
+  const spinX = 360 * randInt(2, 4);
+  const spinY = 360 * randInt(2, 4);
+  const spinZ = 360 * randInt(2, 4);
+
+  // กระจายรอบให้ mid ได้ “เยอะที่สุด” แล้วค่อย ๆ ลดไป pre/end
+  // mid = 70% ของรอบรวม, pre = 92%, end = 100%
   const mid = {
-    x: s.x + 360 * randInt(1, 2) + randInt(0, 80),
-    y: s.y + 360 * randInt(1, 2) + randInt(0, 80),
-    z: s.z + 360 * randInt(1, 2) + randInt(0, 80),
+    x: s.x + Math.round(spinX * 0.70) + randInt(40, 90),
+    y: s.y + Math.round(spinY * 0.70) + randInt(60, 120),
+    z: s.z + Math.round(spinZ * 0.70) + randInt(40, 90),
   };
 
-  // ✅ end base (orientation ถูกจริง) — ให้ top ตรงตาม pick แน่นอน
-  const e = spinToPickAngles(pick);
-
-  // ✅ prePick ใกล้จบ: ให้เข้าใกล้ท่าสุดท้ายแบบนุ่ม ๆ ลด “กระชาก”
-  const prePick = {
-    x: shortestDeg(e.x, pick.x) + (Math.random() < 0.5 ? 6 : -6),
-    y: shortestDeg(e.y, pick.y) + (Math.random() < 0.5 ? 8 : -8),
-    z: shortestDeg(e.z, pick.z) + (Math.random() < 0.5 ? 5 : -5),
+  const pre = {
+    x: s.x + Math.round(spinX * 0.92) + randInt(10, 30),
+    y: s.y + Math.round(spinY * 0.92) + randInt(10, 30),
+    z: s.z + Math.round(spinZ * 0.92) + randInt(10, 30),
   };
 
-  el.style.transition = "none";
+  // end: ให้ “ชิด pick” มาก ๆ เพื่อไม่เกิดจังหวะกระชาก
+  // และใส่รอบรวมครบ + ปิดที่ pick จริง ๆ (lock top)
+  const end = {
+    x: pick.x + spinX,
+    y: pick.y + spinY,
+    z: pick.z + spinZ,
+  };
 
-  // ✅ timing:
-  // - ให้ช่วงกลางกินเวลาหลัก (เหมือนกลิ้ง)
-  // - prePick ใกล้จบขึ้น (ลดช่วงรอ “ก่อนจังหวะ 2”)
-  const oMid = 0.76;
-  const oPre = 0.965;
+  // offsets: ช่วงต้น-กลางกินเวลาหลัก, ปลายเหลือสั้น ๆ
+  const oMid = 0.72;
+  const oPre = 0.92;
 
   const anim = el.animate(
     [
       { transform: `rotateX(${s.x}deg) rotateY(${s.y}deg) rotateZ(${s.z}deg)` },
       { offset: oMid, transform: `rotateX(${mid.x}deg) rotateY(${mid.y}deg) rotateZ(${mid.z}deg)` },
-      { offset: oPre, transform: `rotateX(${prePick.x}deg) rotateY(${prePick.y}deg) rotateZ(${prePick.z}deg)` },
-      { transform: `rotateX(${e.x}deg) rotateY(${e.y}deg) rotateZ(${e.z}deg)` },
+      { offset: oPre, transform: `rotateX(${pre.x}deg) rotateY(${pre.y}deg) rotateZ(${pre.z}deg)` },
+      { transform: `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)` },
     ],
     {
       duration: rollMs,
-      easing: "cubic-bezier(.14,.82,.18,1)", // ชะลอเนียน ๆ
+      easing: "cubic-bezier(.10,.85,.12,1)", // ชะลอแบบจริงจัง (ease-out หนัก ๆ)
       fill: "forwards",
     }
   );
 
   await anim.finished;
 
-  // ตรึงเฟรมสุดท้าย (กัน WAAPI ค้าง/ค่าเพี้ยน)
-  el.getAnimations().forEach(a => a.cancel());
-  el.style.transform = `rotateX(${e.x}deg) rotateY(${e.y}deg) rotateZ(${e.z}deg)`;
+  // ตรึงเฟรมสุดท้าย
+  try { el.getAnimations().forEach(a => a.cancel()); } catch {}
+  el.style.transition = "none";
+  el.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
 
-  return e;
+  return end;
 }
 
 async function settleToPick(el, pick, settleMs){
@@ -1113,7 +1135,14 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   diceCommitDone = false;
 
   if (!diceOverlayEl || !dice3dEl) return finalRoll;
+
+  // เปิด overlay ก่อน แล้วบังคับ layout ให้ stable
   diceOverlayEl.style.display = "flex";
+  await raf(); await raf();
+
+  // กัน first-roll glitch: เคลียร์ anim/transition แล้ว force reflow
+  prepDiceForAnimate(dice3dEl);
+  await raf();
 
   if (closeDiceOverlayBtn) {
     closeDiceOverlayBtn.style.display = "none";
@@ -1130,19 +1159,20 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
     ? candidates[randInt(0, candidates.length - 1)]
     : { x: 0, y: 0, z: 0 };
 
-  // เวลา: roll ยาว + settle สั้น (คุณชอบจังหวะ 2 อยู่แล้ว)
-  const rollMs   = Math.max(2000, Math.floor(durationMs * 0.88));
-  const settleMs = Math.max(260, durationMs - rollMs);
+  // ปรับเวลาให้ดูต่อเนื่องขึ้น:
+  // - ลด roll ไม่ให้ยาวเกินจนช้ากว่าจะ settle
+  // - settle สั้นลงหน่อย (ลด gap ระหว่าง “เกือบหยุด” -> “หยุดสนิท”)
+  const rollMs   = Math.max(1800, Math.floor(durationMs * 0.84));
+  const settleMs = Math.max(220, durationMs - rollMs);
 
   logDiceState("computed-end-before-animate", finalRoll, { pick, rollMs, settleMs });
 
-  // ✅ 1) กลิ้งแบบธรรมชาติและ “จบที่ pick อยู่แล้ว”
+  // 1) roll: ความเร็วลดลงจริง
   await animateRollToPick(dice3dEl, pick, rollMs);
 
-  // ✅ 2) จังหวะหยุดเนียน (เด้งนิด ๆ แล้วนิ่งที่ pick)
+  // 2) settle: เด้งนิด ๆ แล้วนิ่ง
   await settleToPick(dice3dEl, pick, settleMs);
 
-  // log/check เหมือนเดิม
   const seenTop = getTopVisibleValue?.();
   if (seenTop != null && seenTop !== finalRoll) {
     console.warn("[DICE SNAP MISMATCH]", { finalRoll, seenTop, pick });
