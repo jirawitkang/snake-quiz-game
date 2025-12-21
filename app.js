@@ -1108,27 +1108,17 @@ async function settleToPick(el, pick, settleMs, endAbs){
     z: nearestEquivalentDeg(endAbs?.z ?? pick.z, pick.z),
   };
 
-  // overshoot เบามาก (กันสะบัด)
-  const over = {
-    x: targetAbs.x + (Math.random() < 0.5 ? 1.2 : -1.2),
-    y: targetAbs.y + (Math.random() < 0.5 ? 1.6 : -1.6),
-    z: targetAbs.z + (Math.random() < 0.5 ? 1.2 : -1.2),
-  };
+  // ถ้าไม่อยากให้มี “ขยับ” เลย ให้ settleMs เล็กมาก หรือ 0
+  const t = Math.max(0, Math.floor(settleMs));
 
-  const t1 = Math.floor(settleMs * 0.58);
-  const t2 = Math.max(120, settleMs - t1);
+  if (t > 0) {
+    // เฟสเดียว: ค่อย ๆ เข้าท่าสุดท้ายแบบนุ่ม (ไม่มีเด้ง)
+    el.style.transition = `transform ${t}ms cubic-bezier(.18,.92,.22,1)`;
+    el.style.transform = `rotateX(${targetAbs.x}deg) rotateY(${targetAbs.y}deg) rotateZ(${targetAbs.z}deg)`;
+    await waitTransformEnd(el, t + 120);
+  }
 
-  // 1) แตะ overshoot สั้น ๆ
-  el.style.transition = `transform ${t1}ms cubic-bezier(.12,.92,.18,1)`;
-  el.style.transform = `rotateX(${over.x}deg) rotateY(${over.y}deg) rotateZ(${over.z}deg)`;
-  await waitTransformEnd(el, t1 + 120);
-
-  // 2) กลับเข้าท่าสุดท้าย (ยังเป็นองศา absolute ที่ใกล้ end)
-  el.style.transition = `transform ${t2}ms cubic-bezier(.18,.92,.22,1)`;
-  el.style.transform = `rotateX(${targetAbs.x}deg) rotateY(${targetAbs.y}deg) rotateZ(${targetAbs.z}deg)`;
-  await waitTransformEnd(el, t2 + 120);
-
-  // SNAP แบบไม่ animate ไปเป็นค่ามาตรฐาน pick (0/90/180/270) เพื่อกัน floating/สะสมเลข
+  // SNAP แบบไม่ animate ไปเป็นค่ามาตรฐาน (กัน floating/sum องศา)
   el.style.transition = "none";
   el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
   await raf();
@@ -1166,11 +1156,8 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
     ? candidates[randInt(0, candidates.length - 1)]
     : { x: 0, y: 0, z: 0 };
 
-  // ปรับเวลาให้ดูต่อเนื่องขึ้น:
-  // - ลด roll ไม่ให้ยาวเกินจนช้ากว่าจะ settle
-  // - settle สั้นลงหน่อย (ลด gap ระหว่าง “เกือบหยุด” -> “หยุดสนิท”)
-  const rollMs   = Math.max(1800, Math.floor(durationMs * 0.84));
-  const settleMs = Math.max(220, durationMs - rollMs);
+  const rollMs   = Math.max(2000, Math.floor(durationMs * 0.94));
+  const settleMs = Math.max(80, durationMs - rollMs);  // สั้นมากพอให้เนียน แต่ไม่รู้สึกว่ามีเฟส
 
   logDiceState("computed-end-before-animate", finalRoll, { pick, rollMs, settleMs });
 
