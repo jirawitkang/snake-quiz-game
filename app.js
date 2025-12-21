@@ -1162,13 +1162,11 @@ async function animateRollToPick(el, pick, rollMs){
     z: randInt(-40, 40),
   };
 
-  // ✅ ลดรอบหมุนโดยรวม (เดิม 2..5 / 2..5 / 2..4)
-  // และลดมุมสุ่มเพิ่ม เพื่อให้กลางทางไม่เร็วตาม
-  const mid = {
-    x: s.x + 360 * randInt(1, 2) + randInt(0, 120),
-    y: s.y + 360 * randInt(1, 3) + randInt(0, 120),
-    z: s.z + 360 * randInt(1, 2) + randInt(0, 120),
-  };
+  // ใน mid:
+  x: s.x + 360 * randInt(1, 1) + randInt(0, 90),
+  y: s.y + 360 * randInt(1, 2) + randInt(0, 90),
+  z: s.z + 360 * randInt(1, 1) + randInt(0, 90),
+
 
   // ปลาย “ฐาน” (orientation ถูก) — ฟังก์ชันนี้ต้องคืนค่าเทียบเท่าเดิมของคุณ
   const e = spinToPickAngles(pick);
@@ -1186,7 +1184,7 @@ async function animateRollToPick(el, pick, rollMs){
   // - ช่วงต้นกินเวลามากขึ้น (ให้รู้สึก “กลิ้ง” ไม่ใช่ “spin”)
   // - ช่วง prePick ใกล้จบขึ้น (ลดเวลารอจังหวะ 1 -> จังหวะ 2)
   const oMid = 0.78;
-  const oPre = 0.95;
+  const oPre = 0.97;
 
   // ✅ easing ให้นุ่มขึ้น (ชะลอแบบธรรมชาติขึ้น)
   const anim = el.animate(
@@ -1213,24 +1211,26 @@ async function animateRollToPick(el, pick, rollMs){
 }
 
 async function settleToPick(el, pick, settleMs){
-  // overshoot เบามาก เพื่อให้เหมือน “กระแทกแล้วนิ่ง”
   const over = {
     x: pick.x + (Math.random() < 0.5 ? 2 : -2),
     y: pick.y + (Math.random() < 0.5 ? 3 : -3),
     z: pick.z + (Math.random() < 0.5 ? 2 : -2),
   };
 
-  // 1) ไป overshoot
-  el.style.transition = `transform ${Math.floor(settleMs * 0.55)}ms cubic-bezier(.12,.92,.18,1)`;
+  const t1 = Math.floor(settleMs * 0.55);
+  const t2 = Math.floor(settleMs * 0.45);
+
+  // 1) overshoot (สั้น ๆ)
+  el.style.transition = `transform ${t1}ms cubic-bezier(.12,.92,.18,1)`;
   el.style.transform = `rotateX(${over.x}deg) rotateY(${over.y}deg) rotateZ(${over.z}deg)`;
-  await waitTransformEnd(el, settleMs + 600);
+  await waitTransformEnd(el, t1 + 200);
 
-  // 2) settle เข้าท่าสุดท้าย (นี่แหละที่ล็อค top ให้ตรง finalRoll)
-  el.style.transition = `transform ${Math.floor(settleMs * 0.45)}ms cubic-bezier(.2,.9,.2,1)`;
+  // 2) settle เข้าท่าสุดท้าย (ล็อค top)
+  el.style.transition = `transform ${t2}ms cubic-bezier(.2,.9,.2,1)`;
   el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
-  await waitTransformEnd(el, settleMs + 600);
+  await waitTransformEnd(el, t2 + 200);
 
-  // SNAP สุดท้ายแบบไม่ animate ให้คม ๆ
+  // snap สุดท้าย (กัน floating error)
   el.style.transition = "none";
   el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
   await raf();
@@ -1269,8 +1269,8 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
     : { x: 0, y: 0, z: 0 };
 
   // เวลา: roll ยาว + settle สั้น (คุณชอบจังหวะ 2 อยู่แล้ว)
-  const rollMs   = Math.max(2200, Math.floor(durationMs * 0.82));
-  const settleMs = Math.max(480, durationMs - rollMs);
+  const rollMs   = Math.max(2000, Math.floor(durationMs * 0.88));
+  const settleMs = Math.max(260, durationMs - rollMs);
 
   logDiceState("computed-end-before-animate", finalRoll, { pick, rollMs, settleMs });
 
