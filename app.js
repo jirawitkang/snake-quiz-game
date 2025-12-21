@@ -1,5 +1,5 @@
 // app.js
-// Stable Multiplayer: transactions for dice/answer/host actions
+// Stable Multiplayer: transactions for dice/answer/host actions (patched)
 
 import { initializeApp as firebaseInitializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -25,14 +25,29 @@ const firebaseConfig = {
   measurementId: "G-32FNRV7FH4",
 };
 
-console.log("app.js loaded (Stable Transactions)");
+console.log("app.js loaded (Stable Transactions - patched)");
 const app = firebaseInitializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // ---------------- Constants ----------------
 const BOARD_SIZE = 30;
 const STORAGE_KEY = "SQ_SESSION_V1";
-const STORAGE = sessionStorage; // ✅ แยกต่อแท็บ (แนะนำที่สุดสำหรับ Host/Player ในเครื่องเดียวกัน)
+const STORAGE = sessionStorage; // ✅ แยกต่อแท็บ
+
+const STATUS = Object.freeze({
+  LOBBY: "lobby",
+  IN_GAME: "inGame",
+  FINISHED: "finished",
+});
+
+const PHASE = Object.freeze({
+  IDLE: "idle",
+  ROLLING: "rolling",
+  QUESTION_COUNTDOWN: "questionCountdown",
+  ANSWERING: "answering",
+  RESULT: "result",
+  ENDED: "ended",
+});
 
 // ---------------- Question Sets ----------------
 const QUESTION_SETS = {
@@ -82,7 +97,7 @@ const roomCodeInput = document.getElementById("roomCodeInput");
 const playerNameInput = document.getElementById("playerNameInput");
 
 const lobbyEl = document.getElementById("lobby");
-const roomInfoEl = document.getElementById("roomInfo");
+// NOTE: roomInfo ไม่มีใน index.html ล่าสุด → ไม่ใช้งาน
 const roleInfoEl = document.getElementById("roleInfo");
 const playerListEl = document.getElementById("playerList");
 const entrySectionEl = document.getElementById("entrySection");
@@ -93,10 +108,10 @@ const leaveRoomBtn = document.getElementById("leaveRoomBtn");
 
 const startGameBtn = document.getElementById("startGameBtn");
 if (!startGameBtn) console.warn("[UI] startGameBtn not found");
+
 const hostGameControlsEl = document.getElementById("hostGameControls");
 const playerGameControlsEl = document.getElementById("playerGameControls");
 
-const hostRoundControlsEl = document.getElementById("hostRoundControls");
 const startRoundBtn = document.getElementById("startRoundBtn");
 const startQuestionBtn = document.getElementById("startQuestionBtn");
 const revealAnswerBtn = document.getElementById("revealAnswerBtn");
@@ -107,63 +122,12 @@ const phaseInfoEl = document.getElementById("phaseInfo");
 const boardEl = document.getElementById("board");
 
 const rollDiceBtn = document.getElementById("rollDiceBtn");
-const playerStatusEl = document.getElementById("playerStatus");
 
+// Dice Overlay
 const diceOverlayEl = document.getElementById("diceOverlay");
 const dice3dEl = document.getElementById("dice3d");
 const diceHintEl = document.getElementById("diceHint");
 const closeDiceOverlayBtn = document.getElementById("closeDiceOverlayBtn");
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-
-let diceIsRolling = false;
-let diceCommitDone = false;
-
-function showDiceOverlayRolling(){
-  if (!diceOverlayEl) return;
-  diceIsRolling = true;
-  diceCommitDone = false;
-
-  diceOverlayEl.style.display = "flex";
-
-  if (closeDiceOverlayBtn){
-    closeDiceOverlayBtn.style.display = "none";   // ✅ ห้ามเห็นระหว่างกลิ้ง
-    closeDiceOverlayBtn.disabled = true;          // ✅ กันเผลอ
-  }
-}
-
-function showDiceOverlayWaitingCommit(){
-  diceIsRolling = false; // ✅ หมุนจบแล้ว
-
-  if (closeDiceOverlayBtn){
-    closeDiceOverlayBtn.style.display = "inline-flex"; // ✅ โชว์ได้ แต่ยังห้ามปิด
-    closeDiceOverlayBtn.disabled = true;
-  }
-}
-
-function enableDiceOverlayClose(){
-  diceCommitDone = true;
-  if (closeDiceOverlayBtn){
-    closeDiceOverlayBtn.disabled = false; // ✅ ปิดได้หลัง commit เท่านั้น
-  }
-}
-
-function hideDiceOverlay(){
-  if (diceOverlayEl) diceOverlayEl.style.display = "none";
-  if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
-  diceIsRolling = false;
-  diceCommitDone = false;
-}
-
-closeDiceOverlayBtn?.addEventListener("click", () => {
-  if (diceIsRolling) return;
-  if (!diceCommitDone) return;
-
-  diceOverlayEl.style.display = "none";
-  diceCommitDone = false;
-
-  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
-});
 
 const questionAreaEl = document.getElementById("questionArea");
 const countdownDisplayEl = document.getElementById("countdownDisplay");
@@ -172,6 +136,11 @@ const choicesContainerEl = document.getElementById("choicesContainer");
 
 const endGameAreaEl = document.getElementById("endGameArea");
 const endGameSummaryEl = document.getElementById("endGameSummary");
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const raf = () => new Promise((r) => requestAnimationFrame(r));
+const rand360 = () => Math.floor(Math.random() * 360);
+const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
 // ---------------- State ----------------
 let currentRoomCode = null;
@@ -183,11 +152,13 @@ let roomUnsub = null;
 let timerInterval = null;
 let timerPhase = null;
 let timerRound = 0;
-
 let countdownAutoTimeout = null;
 
 let rollPending = false; // ✅ กันกดทอยซ้ำระหว่างรอ DB sync
 let answerPending = false;
+
+// Dice overlay state
+let diceOverlayState = "hidden"; // hidden | rolling | committing | done
 
 // ---------------- Utils ----------------
 function escapeHtml(str) {
@@ -216,6 +187,62 @@ function createRoomCode() {
   for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
   return code;
 }
+function randomColor() {
+  const colors = ["#e91e63", "#9c27b0", "#3f51b5", "#009688", "#ff9800", "#795548"];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+function clearTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  if (countdownAutoTimeout) {
+    clearTimeout(countdownAutoTimeout);
+    countdownAutoTimeout = null;
+  }
+  timerPhase = null;
+  timerRound = 0;
+}
+function getPathCells(from, to) {
+  const cells = [];
+  if (from === to) return cells;
+  const step = from < to ? 1 : -1;
+  let pos = from + step;
+  while (true) {
+    if (pos >= 1 && pos <= BOARD_SIZE) cells.push(pos);
+    if (pos === to) break;
+    pos += step;
+  }
+  return cells;
+}
+function saveSession() {
+  const payload = { room: currentRoomCode, role: currentRole, pid: currentPlayerId };
+  STORAGE.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+function clearSession() {
+  STORAGE.removeItem(STORAGE_KEY);
+}
+function setHeaderPills() {
+  const uiRoomPill = document.getElementById("uiRoomPill");
+  const uiRolePill = document.getElementById("uiRolePill");
+  if (uiRoomPill) uiRoomPill.textContent = `Room: ${currentRoomCode || "-"}`;
+  if (uiRolePill) uiRolePill.textContent = `Role: ${currentRole || "-"}`;
+}
+function lockEntryUIForRole(role) {
+  const lockHost = role === "host";
+  const lockPlayer = role === "player";
+
+  // Host block
+  if (hostNameInput) hostNameInput.disabled = lockHost;
+  if (createRoomBtn) createRoomBtn.disabled = lockHost;
+  if (confirmCreateRoomBtn) confirmCreateRoomBtn.disabled = lockHost;
+
+  // Player block
+  if (roomCodeInput) roomCodeInput.disabled = lockPlayer;
+  if (playerNameInput) playerNameInput.disabled = lockPlayer;
+  if (joinRoomBtn) joinRoomBtn.disabled = lockPlayer;
+}
+
 function renderLobbyBadges(roomData) {
   if (!lobbyBadgesEl) return;
 
@@ -251,114 +278,67 @@ function renderLobbyBadges(roomData) {
     lobbyBadgesEl.appendChild(el);
   }
 }
-function randomColor() {
-  const colors = ["#e91e63", "#9c27b0", "#3f51b5", "#009688", "#ff9800", "#795548"];
-  return colors[Math.floor(Math.random() * colors.length)];
-}
-function clearTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
+
+// ---------------- Dice Overlay (single state machine) ----------------
+function setDiceOverlayState(state, rollValue = null, hint = null) {
+  diceOverlayState = state;
+
+  if (!diceOverlayEl) return;
+
+  if (state === "hidden") {
+    diceOverlayEl.style.display = "none";
+    if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
+    return;
   }
-  if (countdownAutoTimeout) {
-    clearTimeout(countdownAutoTimeout);
-    countdownAutoTimeout = null;
+
+  diceOverlayEl.style.display = "flex";
+
+  // default hint
+  if (diceHintEl) {
+    if (hint != null) diceHintEl.textContent = hint;
+    else {
+      if (state === "rolling") diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
+      else if (state === "committing") diceHintEl.textContent = `ได้แต้ม: ${rollValue ?? "-"} (กำลังบันทึกผล…)`;
+      else if (state === "done") diceHintEl.textContent = rollValue != null ? `ได้แต้ม: ${rollValue}` : "เสร็จแล้ว";
+    }
   }
-  timerPhase = null;
-  timerRound = 0;
+
+  if (!closeDiceOverlayBtn) return;
+
+  if (state === "rolling" || state === "committing") {
+    closeDiceOverlayBtn.style.display = "inline-flex";
+    closeDiceOverlayBtn.disabled = true; // ห้ามปิดก่อนบันทึกสำเร็จ/จบขั้นตอน
+  } else if (state === "done") {
+    closeDiceOverlayBtn.style.display = "inline-flex";
+    closeDiceOverlayBtn.disabled = false;
+  }
 }
 
-function getPathCells(from, to) {
-  const cells = [];
-  if (from === to) return cells;
-  const step = from < to ? 1 : -1;
-  let pos = from + step;
-  while (true) {
-    if (pos >= 1 && pos <= BOARD_SIZE) cells.push(pos);
-    if (pos === to) break;
-    pos += step;
-  }
-  return cells;
-}
-function saveSession() {
-  const payload = { room: currentRoomCode, role: currentRole, pid: currentPlayerId };
-  STORAGE.setItem(STORAGE_KEY, JSON.stringify(payload));
-}
-function clearSession() {
-  STORAGE.removeItem(STORAGE_KEY);
-}
-function setHeaderPills() {
-  const uiRoomPill = document.getElementById("uiRoomPill");
-  const uiRolePill = document.getElementById("uiRolePill");
-  if (uiRoomPill) uiRoomPill.textContent = `Room: ${currentRoomCode || "-"}`;
-  if (uiRolePill) uiRolePill.textContent = `Role: ${currentRole || "-"}`;
-}
-function lockEntryUIForRole(role) {
-  const lockHost = role === "host";
-  const lockPlayer = role === "player";
-
-  // Host block
-  hostNameInput.disabled = lockHost;
-  createRoomBtn.disabled = lockHost;
-  confirmCreateRoomBtn.disabled = lockHost;
-
-  // Player block
-  roomCodeInput.disabled = lockPlayer;
-  playerNameInput.disabled = lockPlayer;
-  joinRoomBtn.disabled = lockPlayer;
-}
+closeDiceOverlayBtn?.addEventListener("click", () => {
+  if (diceOverlayState !== "done") return;
+  setDiceOverlayState("hidden");
+  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 // ---------------- Lobby View ----------------
 function enterLobbyView() {
   if (lobbyEl) lobbyEl.style.display = "block";
+  setEntryVisible(false);
 
-  setEntryVisible(false); // ✅ ซ่อนหน้าแรก (LIBRARY RESOURCES + การ์ด Host/Player)
+  // ปุ่มขวาสุดบนแถบ LOBBY
+  if (cancelRoomBtn) cancelRoomBtn.style.display = currentRole === "host" ? "inline-flex" : "none";
+  if (leaveRoomBtn) leaveRoomBtn.style.display = currentRole === "player" ? "inline-flex" : "none";
 
-  if (roomInfoEl) {
-    roomInfoEl.textContent = currentRoomCode ? `Room Code: ${currentRoomCode}` : "";
-  }
-
-  if (currentRole === "host") {
-  if (hostRoundControlsEl) {
-    hostRoundControlsEl.style.display = "flex";
-    hostRoundControlsEl.style.visibility = "visible";
-    hostRoundControlsEl.style.pointerEvents = "auto";
-  }
-} else if (currentRole === "player") {
-  if (hostRoundControlsEl) {
-    hostRoundControlsEl.style.display = "flex";       // จองพื้นที่ไว้ให้เท่ากัน
-    hostRoundControlsEl.style.visibility = "hidden";  // แต่ไม่ให้เห็น
-    hostRoundControlsEl.style.pointerEvents = "none";
-  }
-} else {
-    if (roleInfoEl) roleInfoEl.textContent = "";
-    if (hostRoundControlsEl) hostRoundControlsEl.style.display = "none";
-  }
-
-  // ✅ ปุ่มขวาสุดบนแถบ LOBBY
-  if (cancelRoomBtn) cancelRoomBtn.style.display = (currentRole === "host") ? "inline-block" : "none";
-  if (leaveRoomBtn)  leaveRoomBtn.style.display  = (currentRole === "player") ? "inline-block" : "none";
-
-  const cancelBtn = document.getElementById("cancelRoomBtn");
-  const leaveBtn  = document.getElementById("leaveRoomBtn");
-  
-  if (currentRole === "host") {
-    if (cancelBtn) cancelBtn.style.display = "inline-flex";
-    if (leaveBtn)  leaveBtn.style.display = "none";
-  } else if (currentRole === "player") {
-    if (cancelBtn) cancelBtn.style.display = "none";
-    if (leaveBtn)  leaveBtn.style.display = "inline-flex";
-  } else {
-    if (cancelBtn) cancelBtn.style.display = "none";
-    if (leaveBtn)  leaveBtn.style.display = "none";
-  }
-
+  if (roleInfoEl) roleInfoEl.textContent = "";
   setHeaderPills();
 }
 
 // ---------------- Subscribe Room ----------------
 function subscribeRoom(roomCode) {
-  if (roomUnsub) { try { roomUnsub(); } catch {} roomUnsub = null; } // ✅ กันซ้อน
+  if (roomUnsub) {
+    try { roomUnsub(); } catch {}
+    roomUnsub = null;
+  }
 
   const roomRef = ref(db, `rooms/${roomCode}`);
   roomUnsub = onValue(roomRef, (snapshot) => {
@@ -369,38 +349,16 @@ function subscribeRoom(roomCode) {
 
     const roomData = snapshot.val();
     const players = roomData.players || {};
-    const hostName = roomData.hostName || "(ไม่ทราบชื่อ)";
-    const gs = roomData.gameSettings || {};
 
-    // ✅ เพิ่มตรงนี้: อัปเดต badge บนแถบ LOBBY ทุกครั้งที่ room เปลี่ยน
+    // update lobby badges
     renderLobbyBadges(roomData);
-
-    // (จะเก็บไว้หรือจะลบทิ้งก็ได้ เพราะใน index.html เราซ่อน roomInfoEl แล้ว)
-    if (currentRoomCode === roomCode && roomInfoEl) {
-      const questionSetId = gs.questionSetId || "general";
-      const maxRounds = gs.maxRounds ?? 10;
-      const maxWinners = gs.maxWinners ?? 5;
-      const rewardCorrect = Number.isFinite(gs.rewardCorrect) ? gs.rewardCorrect : 1;
-      const penaltyWrong = Number.isFinite(gs.penaltyWrong) ? gs.penaltyWrong : -1;
-
-      const rewardText = rewardCorrect >= 0 ? `+${rewardCorrect}` : `${rewardCorrect}`;
-      const penaltyText = penaltyWrong >= 0 ? `+${penaltyWrong}` : `${penaltyWrong}`;
-
-      roomInfoEl.textContent =
-        `Room Code: ${roomCode} | Host: ${hostName} ` +
-        `| ชุดคำถาม: ${questionSetId} ` +
-        `| รอบสูงสุด: ${maxRounds} ` +
-        `| ผู้เข้าเส้นชัย: ${maxWinners} คน ` +
-        `| ตอบถูก: ${rewardText} ช่อง ` +
-        `| ตอบผิด/ไม่ทัน: ${penaltyText} ช่อง`;
-    }
 
     try { renderPlayerList(roomData, players); }
     catch (e) { console.error("renderPlayerList failed:", e); }
-    
+
     try { updateGameView(roomData, players); }
     catch (e) { console.error("updateGameView failed:", e); }
-    
+
     try { updateStartGameButton(roomData, players); }
     catch (e) { console.error("updateStartGameButton failed:", e); }
   });
@@ -411,11 +369,10 @@ function updateStartGameButton(roomData, players) {
 
   const totalPlayers = Object.keys(players || {}).length;
 
-  // โชว์เฉพาะ Host และเฉพาะตอนอยู่ lobby และมีผู้เล่นอย่างน้อย 1 คน
   const shouldShow =
     currentRole === "host" &&
     currentRoomCode &&
-    roomData?.status === "lobby" &&
+    roomData?.status === STATUS.LOBBY &&
     totalPlayers > 0;
 
   startGameBtn.style.display = shouldShow ? "inline-flex" : "none";
@@ -467,7 +424,7 @@ function updateStartGameButton(roomData, players) {
 })();
 
 // ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
-createRoomBtn.addEventListener("click", () => {
+createRoomBtn?.addEventListener("click", () => {
   const hostName = (hostNameInput?.value || "").trim();
 
   if (!hostName) {
@@ -476,42 +433,43 @@ createRoomBtn.addEventListener("click", () => {
   }
 
   // lock input + button
-  hostNameInput.disabled = true;
-  createRoomBtn.disabled = true;
+  if (hostNameInput) hostNameInput.disabled = true;
+  if (createRoomBtn) createRoomBtn.disabled = true;
 
-  // ✅ บังคับแสดงแบบชนะทุก CSS (รวม !important)
   if (!hostGameOptionsEl) {
     alert("ไม่พบแผงตั้งค่าเกม (#hostGameOptions) กรุณาตรวจสอบ id ใน index.html");
-    // unlock เพื่อให้แก้แล้วกดใหม่ได้
-    hostNameInput.disabled = false;
-    createRoomBtn.disabled = false;
+    if (hostNameInput) hostNameInput.disabled = false;
+    if (createRoomBtn) createRoomBtn.disabled = false;
     return;
   }
 
   hostGameOptionsEl.style.setProperty("display", "block", "important");
   hostGameOptionsEl.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  // debug แบบไม่รบกวน (เผื่อเช็ค)
   console.log("[UI] open hostGameOptions");
 });
 
 // ---------------- Host Step 2: create room ----------------
-confirmCreateRoomBtn.addEventListener("click", async () => {
-  const hostName = (hostNameInput.value || "").trim();
+confirmCreateRoomBtn?.addEventListener("click", async () => {
+  const hostName = (hostNameInput?.value || "").trim();
   if (!hostName) {
     alert("กรุณากรอกชื่อของ Host");
     return;
   }
 
-  const questionSetId = questionSetSelect.value || "general";
-  const maxRounds = Math.max(1, parseInt(maxRoundsInput.value, 10) || 10);
-  const maxWinners = Math.max(1, parseInt(maxWinnersInput.value, 10) || 5);
-  const rewardCorrect = parseInt(rewardCorrectInput.value, 10);
-  const penaltyWrong = parseInt(penaltyWrongInput.value, 10);
+  const questionSetId = questionSetSelect?.value || "general";
+  const maxRounds = Math.max(1, parseInt(maxRoundsInput?.value, 10) || 10);
+  const maxWinners = Math.max(1, parseInt(maxWinnersInput?.value, 10) || 5);
+
+  // reward: allow +/- (แต่โดยทั่วไปควร >=0)
+  const rewardRaw = parseInt(rewardCorrectInput?.value, 10);
+  const rewardCorrect = Number.isFinite(rewardRaw) ? rewardRaw : 1;
+
+  // penalty: enforce negative always to prevent misunderstanding
+  const penaltyRaw = parseInt(penaltyWrongInput?.value, 10);
+  const penaltyWrong = Number.isFinite(penaltyRaw) ? -Math.abs(penaltyRaw) : -1;
 
   const roomRefBase = (code) => ref(db, `rooms/${code}`);
 
-  // collision-safe (few tries)
   let roomCode = null;
   for (let i = 0; i < 6; i++) {
     const c = createRoomCode();
@@ -520,8 +478,8 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
   }
   if (!roomCode) {
     alert("สร้างห้องไม่สำเร็จ (รหัสชนกันหลายครั้ง) ลองใหม่อีกครั้ง");
-    hostNameInput.disabled = false;
-    createRoomBtn.disabled = false;
+    if (hostNameInput) hostNameInput.disabled = false;
+    if (createRoomBtn) createRoomBtn.disabled = false;
     return;
   }
 
@@ -534,12 +492,12 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
   try {
     await set(roomRefBase(roomCode), {
       createdAt: Date.now(),
-      status: "lobby",      // lobby | inGame | finished
+      status: STATUS.LOBBY,      // lobby | inGame | finished
       hostId,
       hostName,
       boardSize: BOARD_SIZE,
       currentRound: 0,
-      phase: "idle",        // idle | rolling | questionCountdown | answering | result | ended
+      phase: PHASE.IDLE,         // idle | rolling | questionCountdown | answering | result | ended
       questionIndex: null,
       questionCountdownStartAt: null,
       questionCountdownSeconds: 3,
@@ -552,8 +510,8 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
         questionSetId,
         maxRounds,
         maxWinners,
-        rewardCorrect: Number.isFinite(rewardCorrect) ? rewardCorrect : 1,
-        penaltyWrong: Number.isFinite(penaltyWrong) ? penaltyWrong : -1,
+        rewardCorrect,
+        penaltyWrong,
       },
     });
 
@@ -567,8 +525,8 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
   } catch (err) {
     console.error("Error creating room:", err);
     alert("มีปัญหาในการสร้างห้อง ดู error ใน Console");
-    hostNameInput.disabled = false;
-    createRoomBtn.disabled = false;
+    if (hostNameInput) hostNameInput.disabled = false;
+    if (createRoomBtn) createRoomBtn.disabled = false;
   }
 });
 
@@ -584,7 +542,7 @@ leaveRoomBtn?.addEventListener("click", async () => {
   resetToHome("ออกจากห้องเรียบร้อย");
 });
 
-// ---------------- ยกเลิกห้อง (Host)” ลบ room ใน DB ----------------
+// ---------------- Cancel Room (Host) ----------------
 cancelRoomBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
@@ -592,7 +550,7 @@ cancelRoomBtn?.addEventListener("click", async () => {
   if (!ok) return;
 
   try {
-    await set(ref(db, `rooms/${currentRoomCode}`), null); // ✅ ลบทั้งห้อง
+    await set(ref(db, `rooms/${currentRoomCode}`), null);
   } catch (e) {
     console.error(e);
     alert("ยกเลิกห้องไม่สำเร็จ (ดู Console)");
@@ -602,9 +560,8 @@ cancelRoomBtn?.addEventListener("click", async () => {
   resetToHome("ยกเลิกห้องเรียบร้อย");
 });
 
-
 // ---------------- Player: Join Room ----------------
-joinRoomBtn.addEventListener("click", async () => {
+joinRoomBtn?.addEventListener("click", async () => {
   const roomCode = (roomCodeInput?.value || "").trim().toUpperCase();
   const playerNameRaw = (playerNameInput?.value || "").trim();
 
@@ -626,8 +583,8 @@ joinRoomBtn.addEventListener("click", async () => {
 
   const roomData = snap.val();
 
-  // ✅ กัน join กลางเกม
-  if (roomData.status !== "lobby" || (roomData.currentRound || 0) > 0) {
+  // กัน join กลางเกม
+  if (roomData.status !== STATUS.LOBBY || (roomData.currentRound || 0) > 0) {
     alert("ห้องนี้เริ่มเกมแล้ว ไม่สามารถ Join เพิ่มได้");
     return;
   }
@@ -698,7 +655,6 @@ function renderPlayerList(roomData, playersObj) {
 
   const history = roomData.history || {};
 
-  // 1) init perPlayer
   const perPlayer = {};
   for (const [pid, p] of entries) {
     perPlayer[pid] = {
@@ -713,13 +669,9 @@ function renderPlayerList(roomData, playersObj) {
     };
   }
 
-  // 2) parse history (ถ้าต้องการเอามาโชว์สถิติ)
   const roundKeys = Object.keys(history)
     .filter((k) => k.startsWith("round_"))
-    .sort(
-      (a, b) =>
-        parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10)
-    );
+    .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
 
   for (const rk of roundKeys) {
     const roundData = history[rk] || {};
@@ -730,7 +682,6 @@ function renderPlayerList(roomData, playersObj) {
 
       if (rec.diceRoll != null) perPlayer[pid].rolls.push(rec.diceRoll);
 
-      // neutral: เข้าเส้นชัยด้วยเต๋าและไม่ได้ตอบคำถามรอบนั้น -> ไม่นับผล Q
       const finalPos = rec.finalPosition ?? perPlayer[pid].position;
       const basePos = rec.basePosition ?? finalPos;
       const neutralFinishByDice =
@@ -746,10 +697,7 @@ function renderPlayerList(roomData, playersObj) {
     }
   }
 
-  // 3) render table
-  const list = Object.values(perPlayer).sort((a, b) =>
-    String(a.name || "").localeCompare(String(b.name || ""))
-  );
+  const list = Object.values(perPlayer).sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 
   let html = `
     <table>
@@ -794,7 +742,7 @@ function renderPlayerList(roomData, playersObj) {
   playerListEl.innerHTML = html;
 }
 
-// ---------------- Host: Start Game (ไปโฟกัส GAME BOARD) ----------------
+// ---------------- Host: Start Game ----------------
 startGameBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
@@ -806,7 +754,7 @@ startGameBtn?.addEventListener("click", async () => {
   const players = roomData.players || {};
   const totalPlayers = Object.keys(players).length;
 
-  if (roomData.status !== "lobby") {
+  if (roomData.status !== STATUS.LOBBY) {
     alert("ห้องนี้เริ่มเกมแล้ว");
     return;
   }
@@ -816,17 +764,16 @@ startGameBtn?.addEventListener("click", async () => {
   }
 
   await update(roomRef, {
-    status: "inGame",
-    phase: "idle",
+    status: STATUS.IN_GAME,
+    phase: PHASE.IDLE,
     gameStartedAt: Date.now(),
   });
 
-  // เลื่อนไป GAME BOARD ให้โฟกัสตามที่ต้องการ
   document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 // ---------------- Host: Start New Round (Transaction) ----------------
-startRoundBtn.addEventListener("click", async () => {
+startRoundBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
@@ -834,29 +781,24 @@ startRoundBtn.addEventListener("click", async () => {
   const result = await runTransaction(roomRef, (room) => {
     if (!room) return room;
 
-    const phase = room.phase || "idle";
-    if (phase === "ended") return; // abort
-    
-    // ✅ ไม่ให้ข้ามตอนกำลัง countdown/answering
-    if (phase === "questionCountdown" || phase === "answering") return;
-    
-    // ✅ (แนะนำ) เริ่มรอบใหม่ได้เฉพาะตอน idle หรือ result เท่านั้น
-    if (phase !== "idle" && phase !== "result") return;
-    
-    // ✅ (แนะนำ) ต้องอยู่สถานะ inGame ก่อนถึงเริ่มรอบได้
-    if (room.status !== "inGame") return;
-    
+    const phase = room.phase || PHASE.IDLE;
+    if (phase === PHASE.ENDED) return;
+
+    if (phase === PHASE.QUESTION_COUNTDOWN || phase === PHASE.ANSWERING) return;
+    if (phase !== PHASE.IDLE && phase !== PHASE.RESULT) return;
+    if (room.status !== STATUS.IN_GAME) return;
+
     const gs = room.gameSettings || {};
     const maxRounds = Math.max(1, gs.maxRounds ?? 10);
     const currentRound = room.currentRound || 0;
-    if (currentRound >= maxRounds) return; // abort (should be ended by reveal)
+    if (currentRound >= maxRounds) return;
 
     const players = room.players || {};
     const questionSetLen = getQuestionSetLengthForRoom(room);
 
     const newRound = currentRound + 1;
     room.currentRound = newRound;
-    room.phase = "rolling";
+    room.phase = PHASE.ROLLING;
     room.questionIndex = (newRound - 1) % (questionSetLen || 1);
     room.questionCountdownStartAt = null;
     room.answerStartAt = null;
@@ -868,7 +810,7 @@ startRoundBtn.addEventListener("click", async () => {
       p.startOfRoundPos = posNow;
 
       if (p.finished || posNow >= BOARD_SIZE) {
-        p.hasRolled = true; // finished players auto-rolled
+        p.hasRolled = true;
       } else {
         p.lastRoll = null;
         p.hasRolled = false;
@@ -891,7 +833,8 @@ startRoundBtn.addEventListener("click", async () => {
   }
 });
 
-function waitTransformEnd(el, timeoutMs = 6500){
+// ---------------- Dice 3D logic (as-is, minimal touch) ----------------
+function waitTransformEnd(el, timeoutMs = 6500) {
   return new Promise((resolve) => {
     let done = false;
 
@@ -911,15 +854,9 @@ function waitTransformEnd(el, timeoutMs = 6500){
     const t = setTimeout(cleanup, timeoutMs);
   });
 }
-  
-const raf = () => new Promise((r) => requestAnimationFrame(r));
-const rand360 = () => Math.floor(Math.random() * 360);
-const randInt = (a,b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
-// ถ้ายังไม่ใช้ DICE_BASE จริง ๆ ก็ปล่อยไว้ได้ แต่ห้ามประกาศซ้ำ
 const DICE_BASE = { x: 0, y: 0, z: 0 };
 
-// ใช้ mapping นี้ของคุณได้เลย (ตาม index.html ล่าสุด)
 const FACE_CLASS_TO_VALUE = {
   "face-1": 5, // FRONT
   "face-2": 4, // RIGHT
@@ -929,22 +866,18 @@ const FACE_CLASS_TO_VALUE = {
   "face-6": 2, // BACK
 };
 
-// หา "Top ที่เห็น" = face ที่อยู่สูงสุดบนหน้าจอ (centerY ต่ำสุด)
 function getTopVisibleValue() {
   const faces = dice3dEl?.querySelectorAll(".face");
   if (!faces || faces.length === 0) return null;
 
-  let best = { y: Infinity, value: null, cls: null };
+  let best = { y: Infinity, value: null };
 
   faces.forEach((el) => {
     const rect = el.getBoundingClientRect();
     const cy = rect.top + rect.height / 2;
-
-    // หา class face-#
     const cls = [...el.classList].find((c) => /^face-\d$/.test(c));
     const value = FACE_CLASS_TO_VALUE[cls];
-
-    if (value != null && cy < best.y) best = { y: cy, value, cls };
+    if (value != null && cy < best.y) best = { y: cy, value };
   });
 
   return best.value;
@@ -952,17 +885,13 @@ function getTopVisibleValue() {
 
 let TOP_VISIBLE_TO_POSES = null;
 
-// สร้าง list ของท่าที่เป็นไปได้ (หมุน 90 องศา) ให้ครบพอใช้งาน
 function genPoseList() {
   const A = [0, 90, 180, 270];
   const poses = [];
-  for (const x of A) for (const y of A) for (const z of A) {
-    poses.push({ x, y, z, key: `${x}_${y}_${z}` });
-  }
+  for (const x of A) for (const y of A) for (const z of A) poses.push({ x, y, z, key: `${x}_${y}_${z}` });
   return poses;
 }
 
-// build map: value(1..6) -> poses[] ที่ทำให้ "Top ที่เห็น" = value
 async function buildTopVisiblePoseMap() {
   if (!dice3dEl) return null;
 
@@ -976,92 +905,56 @@ async function buildTopVisiblePoseMap() {
 
   for (const p of poses) {
     dice3dEl.style.transform = `rotateX(${p.x}deg) rotateY(${p.y}deg) rotateZ(${p.z}deg)`;
-    await raf(); // ให้ layout/update ทัน
-
+    await raf();
     const topVal = getTopVisibleValue();
     if (topVal >= 1 && topVal <= 6) map[topVal].push(p);
   }
 
-  // restore
   dice3dEl.style.transform = prevTransform;
   dice3dEl.style.transition = prevTransition;
 
   console.log("[DICE] TOP_VISIBLE_TO_POSES built:", Object.fromEntries(
-    Object.entries(map).map(([k,v]) => [k, v.length])
+    Object.entries(map).map(([k, v]) => [k, v.length])
   ));
 
   return map;
 }
 
-function normDeg(d){
-  // ลดองศาให้อยู่ช่วง [-180..180] เพื่อเลี่ยง browser เลือกเส้นทางหมุนแปลก ๆ
+function normDeg(d) {
   let x = ((d % 360) + 360) % 360;
   if (x > 180) x -= 360;
   return x;
 }
 
-function prepDiceForAnimate(el){
+function prepDiceForAnimate(el) {
   if (!el) return;
-
-  // เคลียร์ WAAPI เก่า
-  try { el.getAnimations().forEach(a => a.cancel()); } catch {}
-
-  // เคลียร์ transition เก่า (กันกระพริบ)
+  try { el.getAnimations().forEach((a) => a.cancel()); } catch {}
   el.style.transition = "none";
-
-  // บังคับให้ browser “รับรู้ layout” ก่อนเริ่ม anim (แก้เคส hard refresh หมุนไม่ออก)
   el.getBoundingClientRect();
 }
 
-function spinToPickAngles(pick){
-  // ทำให้จบที่ pick แต่หมุนเยอะ (เพิ่ม 360*k) เพื่อให้ดู “กลิ้งจริง”
-  const kx = 360 * randInt(6, 10);
-  const ky = 360 * randInt(7, 12);
-  const kz = 360 * randInt(6, 10);
-
-  return {
-    x: normDeg(pick.x) + kx,
-    y: normDeg(pick.y) + ky,
-    z: normDeg(pick.z) + kz,
-  };
+function nearestEquivalentDeg(currentDeg, targetDeg) {
+  const c = Number(currentDeg) || 0;
+  const t = Number(targetDeg) || 0;
+  const n = Math.round((c - t) / 360);
+  return t + 360 * n;
 }
 
-function shortestDeg(from, to){
-  // คืนค่ามุมปลายทาง "แบบเลือกทางสั้น" จาก from -> to
-  let a = normDeg(from);
-  let b = normDeg(to);
-  let d = b - a;
-  if (d > 180) d -= 360;
-  if (d < -180) d += 360;
-  return a + d;
+function easeOutPow(t, p = 3.2) {
+  return 1 - Math.pow(1 - t, p);
 }
 
-async function animateRollToPick(el, pick, rollMs){
+async function animateRollToPick(el, pick, rollMs) {
   prepDiceForAnimate(el);
 
-  // start pose: เบากว่าเดิม (กันเริ่มเร็วเกิน)
-  const s = {
-    x: randInt(-18, 18),
-    y: rand360(),
-    z: randInt(-18, 18),
-  };
-
-  // จำนวนรอบรวม: ลดลงให้ "ดูเป็นการกลิ้ง" ไม่ใช่ spin
+  const s = { x: randInt(-18, 18), y: rand360(), z: randInt(-18, 18) };
   const kx = randInt(1, 3);
-  const ky = randInt(2, 4); // แกน Y ให้เด่นนิด (ดูมีมิติ)
+  const ky = randInt(2, 4);
   const kz = randInt(1, 3);
 
-  // end เป็น "องศาใหญ่" ที่ congruent กับ pick (ล็อค top แน่นอน)
-  const end = {
-    x: pick.x + 360 * kx,
-    y: pick.y + 360 * ky,
-    z: pick.z + 360 * kz,
-  };
+  const end = { x: pick.x + 360 * kx, y: pick.y + 360 * ky, z: pick.z + 360 * kz };
 
-  // key times (เป็น phase เดียว แต่แบ่งหลายจุดให้เนียน)
   const T = [0, 0.22, 0.48, 0.72, 0.88, 1.0];
-
-  // ทำให้มุมเป็น s + (end-s)*easeOut(t)  -> ความเร็วลดลงสม่ำเสมอ ไม่แกว่ง
   const frames = T.map((tt) => {
     const f = easeOutPow(tt, 3.2);
     const ax = s.x + (end.x - s.x) * f;
@@ -1070,127 +963,35 @@ async function animateRollToPick(el, pick, rollMs){
     return { offset: tt, transform: `rotateX(${ax}deg) rotateY(${ay}deg) rotateZ(${az}deg)` };
   });
 
-  const anim = el.animate(frames, {
-    duration: rollMs,
-    easing: "linear",      // สำคัญ: เราคุม easing ด้วย mapping แล้ว
-    fill: "forwards",
-  });
-
+  const anim = el.animate(frames, { duration: rollMs, easing: "linear", fill: "forwards" });
   await anim.finished;
 
-  // ตรึงเฟรมสุดท้าย
-  try { el.getAnimations().forEach(a => a.cancel()); } catch {}
+  try { el.getAnimations().forEach((a) => a.cancel()); } catch {}
   el.style.transition = "none";
   el.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
 
   return { s, end };
 }
 
-function nearestEquivalentDeg(currentDeg, targetDeg){
-  // คืนค่า targetDeg + 360*n ที่ "ใกล้ currentDeg ที่สุด"
-  const c = Number(currentDeg) || 0;
-  const t = Number(targetDeg) || 0;
-  const n = Math.round((c - t) / 360);
-  return t + 360 * n;
-}
-
-// mapping ให้ความเร็ว "ลดลงเรื่อย ๆ" แบบนิ่ง (ไม่แกว่ง)
-function easeOutPow(t, p = 3.2){
-  // t: 0..1
-  return 1 - Math.pow(1 - t, p);
-}
-
-async function settleToPick(el, pick, settleMs, endAbs){
-  // targetAbs = pick ที่ถูก "ยก/ลด 360*n" ให้ใกล้ endAbs ที่สุด
+async function settleToPick(el, pick, settleMs, endAbs) {
   const targetAbs = {
     x: nearestEquivalentDeg(endAbs?.x ?? pick.x, pick.x),
     y: nearestEquivalentDeg(endAbs?.y ?? pick.y, pick.y),
     z: nearestEquivalentDeg(endAbs?.z ?? pick.z, pick.z),
   };
 
-  // ถ้าไม่อยากให้มี “ขยับ” เลย ให้ settleMs เล็กมาก หรือ 0
   const t = Math.max(0, Math.floor(settleMs));
 
   if (t > 0) {
-    // เฟสเดียว: ค่อย ๆ เข้าท่าสุดท้ายแบบนุ่ม (ไม่มีเด้ง)
     el.style.transition = `transform ${t}ms cubic-bezier(.18,.92,.22,1)`;
     el.style.transform = `rotateX(${targetAbs.x}deg) rotateY(${targetAbs.y}deg) rotateZ(${targetAbs.z}deg)`;
     await waitTransformEnd(el, t + 120);
   }
 
-  // SNAP แบบไม่ animate ไปเป็นค่ามาตรฐาน (กัน floating/sum องศา)
   el.style.transition = "none";
   el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
   await raf();
 }
-
-const rollDiceWithOverlay = async (durationMs = 5000) => {
-  const finalRoll = Math.floor(Math.random() * 6) + 1;
-  logDiceState("before-roll", finalRoll, null);
-
-  diceIsRolling = true;
-  diceCommitDone = false;
-
-  if (!diceOverlayEl || !dice3dEl) return finalRoll;
-
-  // เปิด overlay ก่อน แล้วบังคับ layout ให้ stable
-  diceOverlayEl.style.display = "flex";
-  await raf(); await raf();
-
-  // กัน first-roll glitch: เคลียร์ anim/transition แล้ว force reflow
-  prepDiceForAnimate(dice3dEl);
-  await raf();
-
-  if (closeDiceOverlayBtn) {
-    closeDiceOverlayBtn.style.display = "none";
-    closeDiceOverlayBtn.disabled = true;
-  }
-  if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
-
-  // ✅ ใช้ calibration เดิมของคุณ (ห้ามแตะ)
-  if (!TOP_VISIBLE_TO_POSES) {
-    TOP_VISIBLE_TO_POSES = await buildTopVisiblePoseMap();
-  }
-  const candidates = TOP_VISIBLE_TO_POSES?.[finalRoll] || [];
-  const pick = candidates.length
-    ? candidates[randInt(0, candidates.length - 1)]
-    : { x: 0, y: 0, z: 0 };
-
-  const rollMs   = Math.max(2000, Math.floor(durationMs * 0.94));
-  const settleMs = Math.max(80, durationMs - rollMs);  // สั้นมากพอให้เนียน แต่ไม่รู้สึกว่ามีเฟส
-
-  logDiceState("computed-end-before-animate", finalRoll, { pick, rollMs, settleMs });
-
-  // 1) roll: ความเร็วลดลงจริง
-  const { end } = await animateRollToPick(dice3dEl, pick, rollMs);
-  // 2) settle: เด้งนิด ๆ แล้วนิ่ง
-  await settleToPick(dice3dEl, pick, settleMs, end);
-
-  const seenTop = getTopVisibleValue?.();
-  if (seenTop != null && seenTop !== finalRoll) {
-    console.warn("[DICE SNAP MISMATCH]", { finalRoll, seenTop, pick });
-  }
-  logDiceState("after-snap-final", finalRoll, { pick, seenTop });
-
-  diceIsRolling = false;
-  if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
-  return finalRoll;
-};
-
-// face normals in dice local space (ตาม cube setup ของคุณ)
-const FACE_NORMALS = {
-  1: [0, 0, 1],   // face-1 front
-  2: [1, 0, 0],   // face-2 right
-  6: [0, 0, -1],  // face-6 back
-  5: [-1, 0, 0],  // face-5 left
-  3: [0, 1, 0],   // face-3 top
-  4: [0, -1, 0],  // face-4 bottom
-};
-
-// faceId -> value (ตรงกับ index.html ของคุณ)
-const FACE_ID_TO_VALUE = {
-  1: 5, 2: 4, 3: 1, 4: 6, 5: 3, 6: 2,
-};
 
 function logDiceState(stage, finalRoll, endObj) {
   try {
@@ -1215,29 +1016,53 @@ function logDiceState(stage, finalRoll, endObj) {
   }
 }
 
-// debug กันหลอน: เช็คว่า “มีจริง” หลังโหลด
+const rollDiceWithOverlay = async (durationMs = 5000) => {
+  const finalRoll = Math.floor(Math.random() * 6) + 1;
+  logDiceState("before-roll", finalRoll, null);
+
+  if (!diceOverlayEl || !dice3dEl) return finalRoll;
+
+  setDiceOverlayState("rolling", null, "ลูกเต๋ากำลังกลิ้ง…");
+  await raf(); await raf();
+
+  prepDiceForAnimate(dice3dEl);
+  await raf();
+
+  if (!TOP_VISIBLE_TO_POSES) {
+    TOP_VISIBLE_TO_POSES = await buildTopVisiblePoseMap();
+  }
+  const candidates = TOP_VISIBLE_TO_POSES?.[finalRoll] || [];
+  const pick = candidates.length ? candidates[randInt(0, candidates.length - 1)] : { x: 0, y: 0, z: 0 };
+
+  const rollMs = Math.max(2000, Math.floor(durationMs * 0.94));
+  const settleMs = Math.max(80, durationMs - rollMs);
+
+  logDiceState("computed-end-before-animate", finalRoll, { pick, rollMs, settleMs });
+
+  const { end } = await animateRollToPick(dice3dEl, pick, rollMs);
+  await settleToPick(dice3dEl, pick, settleMs, end);
+
+  const seenTop = getTopVisibleValue?.();
+  if (seenTop != null && seenTop !== finalRoll) {
+    console.warn("[DICE SNAP MISMATCH]", { finalRoll, seenTop, pick });
+  }
+  logDiceState("after-snap-final", finalRoll, { pick, seenTop });
+
+  return finalRoll;
+};
+
+// debug
 window.__SQ_rollDiceWithOverlay = rollDiceWithOverlay;
-console.log("rollDiceWithOverlay typeof:", typeof rollDiceWithOverlay);
 
 // ---------------- Player: Roll Dice (Transaction-safe) ----------------
-rollDiceBtn.addEventListener("click", async () => {
+rollDiceBtn?.addEventListener("click", async () => {
   if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
-
   if (rollPending) return;
+
   rollPending = true;
   rollDiceBtn.disabled = true;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
-
-  // ✅ เพิ่ม: reset สถานะ overlay ทุกครั้งที่กดทอย
-  diceIsRolling = false;
-  diceCommitDone = false;
-
-  // กันกรณีปุ่มปิดค้างจากรอบก่อน
-  if (closeDiceOverlayBtn) {
-    closeDiceOverlayBtn.style.display = "none";
-    closeDiceOverlayBtn.disabled = true;
-  }
 
   try {
     const snap = await get(roomRef);
@@ -1248,7 +1073,7 @@ rollDiceBtn.addEventListener("click", async () => {
     }
 
     const roomData = snap.val();
-    if (roomData.phase !== "rolling") {
+    if (roomData.phase !== PHASE.ROLLING) {
       rollPending = false;
       rollDiceBtn.disabled = false;
       alert("ตอนนี้ยังไม่ใช่ช่วงทอยลูกเต๋า (รอครูเริ่มรอบ)");
@@ -1277,41 +1102,28 @@ rollDiceBtn.addEventListener("click", async () => {
       return;
     }
 
-    // ✅ เพิ่ม: เริ่ม “ช่วงหมุน”
-    diceIsRolling = true;
-    diceCommitDone = false;
-
-    // ✅ เรียก overlay 5 วิ แล้วค่อย commit
+    // 1) roll (visual)
     const roll = await rollDiceWithOverlay(5000);
 
-    // ✅ เพิ่ม: หมุนจบแล้ว (แต่ยังห้ามปิด เพราะยังไม่ commit)
-    diceIsRolling = false;
+    // 2) committing
+    setDiceOverlayState("committing", roll, `ได้แต้ม: ${roll} (กำลังบันทึกผล…)`);
 
-    // commit ด้วย transaction
-    await finalizeRollTransaction(roll);
-
-    diceCommitDone = true;           // ✅ เพิ่มบรรทัดนี้
-    
-    if (closeDiceOverlayBtn) {
-      closeDiceOverlayBtn.style.display = "inline-flex";
-      closeDiceOverlayBtn.disabled = false;
+    // 3) commit
+    const ok = await finalizeRollTransaction(roll);
+    if (!ok) {
+      // abort means phase changed / already rolled / etc.
+      setDiceOverlayState("done", roll, "บันทึกผลไม่สำเร็จ (สถานะห้องเปลี่ยน) ลองกดทอยใหม่หรือรอ Host");
+      rollPending = false;
+      rollDiceBtn.disabled = false;
+      return;
     }
 
-    // ✅ success: ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls()
+    // 4) done (allow close)
+    setDiceOverlayState("done", roll, `ได้แต้ม: ${roll}`);
+    // ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls
   } catch (e) {
     console.error(e);
-
-    // ✅ เพิ่ม: fail ต้อง reset flag
-    diceIsRolling = false;
-    diceCommitDone = false;
-
-    // ✅ ปิด overlay + รีเซ็ตปุ่ม
-    if (diceOverlayEl) diceOverlayEl.style.display = "none";
-    if (closeDiceOverlayBtn) {
-      closeDiceOverlayBtn.style.display = "none";
-      closeDiceOverlayBtn.disabled = true;
-    }
-
+    setDiceOverlayState("hidden");
     rollPending = false;
     rollDiceBtn.disabled = false;
     alert("ทอยเต๋าไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
@@ -1325,17 +1137,17 @@ async function finalizeRollTransaction(roll) {
   const tx = await runTransaction(roomRef, (room) => {
     if (!room) return room;
 
-    if (room.phase !== "rolling") return;          // abort
-    if ((room.currentRound || 0) <= 0) return;     // abort
+    if (room.phase !== PHASE.ROLLING) return;
+    if ((room.currentRound || 0) <= 0) return;
 
     const players = room.players || {};
     const me = players[currentPlayerId];
-    if (!me) return;                               // abort
+    if (!me) return;
 
     const pos = clampPos(me.position);
     const finished = !!me.finished || pos >= BOARD_SIZE;
-    if (finished) return;                          // abort
-    if (me.hasRolled) return;                       // abort
+    if (finished) return;
+    if (me.hasRolled) return;
 
     const startPos = pos;
     const newPos = clampPos(startPos + roll);
@@ -1383,8 +1195,8 @@ async function finalizeRollTransaction(roll) {
 
     const finishedCount = Object.values(players).filter((p) => (p.finished || clampPos(p.position) >= BOARD_SIZE)).length;
     if (room.winners.length >= targetWinners || finishedCount === totalPlayers) {
-      room.phase = "ended";
-      room.status = "finished";
+      room.phase = PHASE.ENDED;
+      room.status = STATUS.FINISHED;
       room.endInfo = {
         endedAt: now,
         endReason: "winners",
@@ -1403,7 +1215,7 @@ async function finalizeRollTransaction(roll) {
 }
 
 // ---------------- Host: Start Question (Transaction) ----------------
-startQuestionBtn.addEventListener("click", async () => {
+startQuestionBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
@@ -1411,21 +1223,22 @@ startQuestionBtn.addEventListener("click", async () => {
 
   const tx = await runTransaction(roomRef, (room) => {
     if (!room) return room;
-    if (room.phase !== "rolling") return;
+    if (room.phase !== PHASE.ROLLING) return;
 
     const players = room.players || {};
     const activePlayers = Object.values(players).filter((p) => !p.finished && clampPos(p.position) < BOARD_SIZE);
     const totalActive = activePlayers.length;
     const rolledCount = activePlayers.filter((p) => !!p.hasRolled).length;
-    if (totalActive > 0 && rolledCount < totalActive) return; // abort
+    if (totalActive > 0 && rolledCount < totalActive) return;
 
     const questionIndex = room.questionIndex ?? 0;
     const q = getQuestionFromRoom(room, questionIndex);
     if (!q) return;
 
-    room.phase = "questionCountdown";
+    room.phase = PHASE.QUESTION_COUNTDOWN;
     room.questionCountdownStartAt = now;
     room.questionCountdownSeconds = 3;
+
     room.answerStartAt = null;
     room.answerTimeSeconds = q.timeLimit;
     room.answerDeadlineExpired = false;
@@ -1434,20 +1247,18 @@ startQuestionBtn.addEventListener("click", async () => {
   });
 
   if (!tx.committed) {
-  alert("เริ่มคำถามไม่ได้ (ยังมีคนไม่ทอย หรือ phase ไม่ถูกต้อง)");
-  return;
-}
+    alert("เริ่มคำถามไม่ได้ (ยังมีคนไม่ทอย หรือ phase ไม่ถูกต้อง)");
+    return;
+  }
 
-// ✅ เคลียร์ timer เก่า + ตั้ง auto-advance กันค้าง
-clearTimer();
-countdownAutoTimeout = setTimeout(() => {
-  moveCountdownToAnsweringTx().catch((e) => console.error("auto-advance failed:", e));
-}, 3080); // 3s + buffer เล็กน้อย
-
+  clearTimer();
+  countdownAutoTimeout = setTimeout(() => {
+    moveCountdownToAnsweringTx().catch((e) => console.error("auto-advance failed:", e));
+  }, 3080);
 });
 
 // ---------------- Host: Reveal Answer & Move (Transaction) ----------------
-revealAnswerBtn.addEventListener("click", async () => {
+revealAnswerBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
@@ -1455,7 +1266,7 @@ revealAnswerBtn.addEventListener("click", async () => {
 
   const tx = await runTransaction(roomRef, (room) => {
     if (!room) return room;
-    if (room.phase !== "answering") return;
+    if (room.phase !== PHASE.ANSWERING) return;
 
     const players = room.players || {};
     const gs = room.gameSettings || {};
@@ -1505,7 +1316,6 @@ revealAnswerBtn.addEventListener("click", async () => {
           p.finishedBy = "answer";
         }
       } else {
-        // neutral record for finished players this round (no Q stats)
         answered = false;
         ans = null;
         correct = null;
@@ -1513,7 +1323,6 @@ revealAnswerBtn.addEventListener("click", async () => {
         finalPos = basePos;
       }
 
-      // history record
       room.history[roundKey].answers[pid] = {
         playerId: pid,
         playerName: p.name || "",
@@ -1531,7 +1340,6 @@ revealAnswerBtn.addEventListener("click", async () => {
         timestamp: now,
       };
 
-      // winners update
       if (finalPos >= BOARD_SIZE && !winnerIds.has(pid)) {
         room.winners.push({
           playerId: pid,
@@ -1547,7 +1355,6 @@ revealAnswerBtn.addEventListener("click", async () => {
 
     room.players = players;
 
-    // end game decision
     const totalPlayers = Object.keys(players).length;
     const targetWinners = Math.min(maxWinners, totalPlayers);
 
@@ -1563,8 +1370,8 @@ revealAnswerBtn.addEventListener("click", async () => {
     }
 
     if (gameEnded) {
-      room.phase = "ended";
-      room.status = "finished";
+      room.phase = PHASE.ENDED;
+      room.status = STATUS.FINISHED;
       room.endInfo = {
         endedAt: now,
         endReason,
@@ -1573,7 +1380,7 @@ revealAnswerBtn.addEventListener("click", async () => {
         winnerCount: room.winners.length,
       };
     } else {
-      room.phase = "result";
+      room.phase = PHASE.RESULT;
     }
 
     return room;
@@ -1586,45 +1393,43 @@ revealAnswerBtn.addEventListener("click", async () => {
 // ---------------- Game View ----------------
 function updateGameView(roomData, players) {
   const round = roomData.currentRound || 0;
-  const phase = roomData.phase || "idle";
+  const phase = roomData.phase || PHASE.IDLE;
   const deadlineExpired = roomData.answerDeadlineExpired === true;
 
-  const status = roomData.status || "lobby";
-  const showGameArea = (status === "inGame") || (round > 0) || (phase === "ended");
-  
+  const status = roomData.status || STATUS.LOBBY;
+  const showGameArea = (status === STATUS.IN_GAME) || (round > 0) || (phase === PHASE.ENDED);
+
   if (gameAreaEl) gameAreaEl.style.display = showGameArea ? "block" : "none";
-  
+
   const gameBarEl = document.getElementById("gameBar");
   if (gameBarEl) gameBarEl.style.display = showGameArea ? "flex" : "none";
-  
+
   if (roundInfoEl) {
     if (round > 0) roundInfoEl.textContent = `รอบที่: ${round}`;
-    else if (status === "inGame") roundInfoEl.textContent = `รอบที่: -`; // ยังไม่เริ่มรอบ
+    else if (status === STATUS.IN_GAME) roundInfoEl.textContent = `รอบที่: -`;
     else roundInfoEl.textContent = "ยังไม่ได้เริ่มรอบ";
   }
 
-  // สถานะรอบ (ข้อความหลัก)
   let phaseText = "";
   switch (phase) {
-    case "rolling": phaseText = "กำลังทอยลูกเต๋า"; break;
-    case "questionCountdown": phaseText = "เตรียมคำถาม"; break;
-    case "answering": phaseText = "กำลังตอบคำถาม"; break;
-    case "result": phaseText = "สรุปผลคำถามรอบนี้"; break;
-    case "ended": phaseText = "เกมจบแล้ว"; break;
+    case PHASE.ROLLING: phaseText = "กำลังทอยลูกเต๋า"; break;
+    case PHASE.QUESTION_COUNTDOWN: phaseText = "เตรียมคำถาม"; break;
+    case PHASE.ANSWERING: phaseText = "กำลังตอบคำถาม"; break;
+    case PHASE.RESULT: phaseText = "สรุปผลคำถามรอบนี้"; break;
+    case PHASE.ENDED: phaseText = "เกมจบแล้ว"; break;
     default: phaseText = "รอ Host เริ่มรอบใหม่";
   }
 
-  // ✅ suffix เฉพาะ Host (ตาม format ที่ต้องการ)
   let hostSuffix = "";
   if (currentRole === "host") {
     const playerList = Object.values(players || {});
     const activePlayers = playerList.filter(p => !p.finished && (p.position || 1) < BOARD_SIZE);
     const totalActive = activePlayers.length;
 
-    if (phase === "rolling") {
+    if (phase === PHASE.ROLLING) {
       const rolledActive = activePlayers.filter(p => !!p.hasRolled).length;
       hostSuffix = ` | ทอยแล้ว ${rolledActive}/${totalActive} คน`;
-    } else if (phase === "answering") {
+    } else if (phase === PHASE.ANSWERING) {
       const answeredActive = activePlayers.filter(p => !!p.answered).length;
       hostSuffix = ` | ตอบแล้ว ${answeredActive}/${totalActive} คน`;
       if (deadlineExpired) hostSuffix += " | หมดเวลาแล้ว";
@@ -1632,119 +1437,111 @@ function updateGameView(roomData, players) {
   }
 
   if (phaseInfoEl) {
-    // host: [สถานะรอบ: ... | ...]
-    // player: [สถานะรอบ: ...]
-    phaseInfoEl.textContent = round > 0
-      ? `[สถานะรอบ: ${phaseText}${hostSuffix}]`
-      : "";
+    phaseInfoEl.textContent = round > 0 ? `[สถานะรอบ: ${phaseText}${hostSuffix}]` : "";
   }
 
   renderBoard(roomData, players);
   updateRoleControls(roomData, players);
   updateQuestionUI(roomData, players);
 
-  // ✅ End game summary
-  const ended = (phase === "ended") || (status === "finished");
+  const ended = (phase === PHASE.ENDED) || (status === STATUS.FINISHED);
   if (endGameAreaEl) endGameAreaEl.style.display = ended ? "block" : "none";
-  if (ended) {
-    renderEndGameSummary(roomData, players);
-  }
+  if (ended) renderEndGameSummary(roomData, players);
 }
 
 // ---------------- Role Controls ----------------
 function updateRoleControls(roomData, players) {
-  const phase = roomData.phase || "idle";
+  const phase = roomData.phase || PHASE.IDLE;
 
-  // 1) ปุ่มบนแถบ GAME BAR: แยก Host / Player ชัดเจน
   if (hostGameControlsEl) {
-    hostGameControlsEl.style.display = (currentRole === "host") ? "flex" : "none";
+    hostGameControlsEl.style.display = currentRole === "host" ? "flex" : "none";
     hostGameControlsEl.style.visibility = "visible";
-    hostGameControlsEl.style.pointerEvents = (currentRole === "host") ? "auto" : "none";
+    hostGameControlsEl.style.pointerEvents = currentRole === "host" ? "auto" : "none";
   }
 
   if (playerGameControlsEl) {
-    playerGameControlsEl.style.display = (currentRole === "player") ? "flex" : "none";
+    playerGameControlsEl.style.display = currentRole === "player" ? "flex" : "none";
     playerGameControlsEl.style.visibility = "visible";
-    playerGameControlsEl.style.pointerEvents = (currentRole === "player") ? "auto" : "none";
+    playerGameControlsEl.style.pointerEvents = currentRole === "player" ? "auto" : "none";
   }
 
-  // 2) Player: คุมปุ่มทอยอย่างเดียว (ไม่มีข้อความสถานะใน card แล้ว)
+  // Player roll button
   if (currentRole === "player") {
     const me = (players && currentPlayerId && players[currentPlayerId]) || {};
     const pos = me.position || 1;
     const finished = !!me.finished || pos >= BOARD_SIZE;
     const rolled = !!me.hasRolled;
 
-    // ✅ ปลด pending เมื่อ DB บอกว่า hasRolled แล้ว หรือ phase ไม่ใช่ rolling
-    if (rollPending && (rolled || roomData.phase !== "rolling" || finished)) {
+    if (rollPending && (rolled || roomData.phase !== PHASE.ROLLING || finished)) {
       rollPending = false;
       if (rollDiceBtn) rollDiceBtn.textContent = "ทอยลูกเต๋า";
     }
 
     const rolledOrPending = rolled || rollPending;
-    const canRoll = roomData.phase === "rolling" && !rolledOrPending && !finished;
+    const canRoll = roomData.phase === PHASE.ROLLING && !rolledOrPending && !finished;
 
     if (rollDiceBtn) {
       rollDiceBtn.disabled = !canRoll;
       rollDiceBtn.style.display = "inline-flex";
     }
-
   } else {
-    // ไม่ใช่ player ก็ไม่ต้องเห็นปุ่มทอย
     if (rollDiceBtn) rollDiceBtn.style.display = "none";
   }
 
-  // 3) Host: enable/disable ปุ่มควบคุม (ไม่มีข้อความ "คุณเป็น Host..." แล้ว)
+  // Host controls
   if (currentRole === "host") {
     const list = Object.values(players || {});
     const activePlayers = list.filter((p) => !p.finished && clampPos(p.position) < BOARD_SIZE);
     const totalActive = activePlayers.length;
     const rolledActive = activePlayers.filter((p) => p.hasRolled).length;
 
-    startRoundBtn.disabled = (phase === "ended");
-    startQuestionBtn.style.display = (phase === "ended") ? "none" : "inline-block";
-    revealAnswerBtn.style.display = (phase === "ended") ? "none" : "inline-block";
+    if (startRoundBtn) startRoundBtn.disabled = (phase === PHASE.ENDED);
 
-    startQuestionBtn.disabled = !(phase === "rolling" && (totalActive === 0 || rolledActive === totalActive));
-    revealAnswerBtn.disabled = (phase !== "answering");
+    if (startQuestionBtn) {
+      startQuestionBtn.style.display = (phase === PHASE.ENDED) ? "none" : "inline-block";
+      startQuestionBtn.disabled = !(phase === PHASE.ROLLING && (totalActive === 0 || rolledActive === totalActive));
+    }
+
+    if (revealAnswerBtn) {
+      revealAnswerBtn.style.display = (phase === PHASE.ENDED) ? "none" : "inline-block";
+      revealAnswerBtn.disabled = (phase !== PHASE.ANSWERING);
+    }
   } else {
-    // ไม่ใช่ host ก็ซ่อนปุ่ม host
-    startRoundBtn.disabled = true;
-    startQuestionBtn.style.display = "none";
-    revealAnswerBtn.style.display = "none";
+    if (startRoundBtn) startRoundBtn.disabled = true;
+    if (startQuestionBtn) startQuestionBtn.style.display = "none";
+    if (revealAnswerBtn) revealAnswerBtn.style.display = "none";
   }
 }
 
 // ---------------- Question UI + Timer ----------------
 function updateQuestionUI(roomData, players) {
-  const phase = roomData.phase || "idle";
+  const phase = roomData.phase || PHASE.IDLE;
   const round = roomData.currentRound || 0;
   const questionIndex = roomData.questionIndex;
   const question = questionIndex != null ? getQuestionFromRoom(roomData, questionIndex) : null;
 
   if (round === 0) {
-    questionAreaEl.style.display = "none";
-    countdownDisplayEl.textContent = "";
+    if (questionAreaEl) questionAreaEl.style.display = "none";
+    if (countdownDisplayEl) countdownDisplayEl.textContent = "";
     clearTimer();
     return;
   }
 
-  if (phase === "questionCountdown") {
-    questionAreaEl.style.display = "block";
-    questionTextEl.textContent = `เตรียมคำถามรอบที่ ${round} …`;
-    choicesContainerEl.innerHTML = "";
-    ensureTimer(roomData, "questionCountdown");
+  if (phase === PHASE.QUESTION_COUNTDOWN) {
+    if (questionAreaEl) questionAreaEl.style.display = "block";
+    if (questionTextEl) questionTextEl.textContent = `เตรียมคำถามรอบที่ ${round} …`;
+    if (choicesContainerEl) choicesContainerEl.innerHTML = "";
+    ensureTimer(roomData, PHASE.QUESTION_COUNTDOWN);
     return;
   }
 
-  if (phase === "answering" && question) {
-    questionAreaEl.style.display = "block";
-    questionTextEl.textContent = question.text;
+  if (phase === PHASE.ANSWERING && question) {
+    if (questionAreaEl) questionAreaEl.style.display = "block";
+    if (questionTextEl) questionTextEl.textContent = question.text;
 
     const me = players?.[currentPlayerId] || {};
     const selectedOption = me.answer || null;
 
-    // ✅ กันตอบหลังหมดเวลา แม้ flag ยัง false (เช่น host หลุด)
     const startAt = roomData.answerStartAt;
     const duration = roomData.answerTimeSeconds;
     const now = Date.now();
@@ -1757,14 +1554,14 @@ function updateQuestionUI(roomData, players) {
     const disableButtons = deadlineExpired || !!me.finished;
 
     renderChoicesForPhase(question, selectedOption, question.correctOption, false, disableButtons);
-    ensureTimer(roomData, "answering");
+    ensureTimer(roomData, PHASE.ANSWERING);
     return;
   }
 
-  if (phase === "result" && question) {
-    questionAreaEl.style.display = "block";
-    questionTextEl.textContent = `เฉลยรอบที่ ${round}: ${question.text}`;
-    countdownDisplayEl.textContent = "";
+  if (phase === PHASE.RESULT && question) {
+    if (questionAreaEl) questionAreaEl.style.display = "block";
+    if (questionTextEl) questionTextEl.textContent = `เฉลยรอบที่ ${round}: ${question.text}`;
+    if (countdownDisplayEl) countdownDisplayEl.textContent = "";
 
     let selectedOption = null;
     if (currentRole === "player") {
@@ -1777,12 +1574,14 @@ function updateQuestionUI(roomData, players) {
     return;
   }
 
-  questionAreaEl.style.display = "none";
-  countdownDisplayEl.textContent = "";
+  if (questionAreaEl) questionAreaEl.style.display = "none";
+  if (countdownDisplayEl) countdownDisplayEl.textContent = "";
   clearTimer();
 }
 
 function renderChoicesForPhase(question, selectedOption, correctOption, showResultOnly, disableAnswerButtons = false) {
+  if (!choicesContainerEl) return;
+
   choicesContainerEl.innerHTML = "";
   if (!question) return;
 
@@ -1809,12 +1608,12 @@ function renderChoicesForPhase(question, selectedOption, correctOption, showResu
 }
 
 function ensureTimer(roomData, targetPhase) {
-  const phase = roomData.phase || "idle";
+  const phase = roomData.phase || PHASE.IDLE;
   const round = roomData.currentRound || 0;
 
   if (phase !== targetPhase || round === 0) {
     clearTimer();
-    countdownDisplayEl.textContent = "";
+    if (countdownDisplayEl) countdownDisplayEl.textContent = "";
     return;
   }
   if (timerPhase === phase && timerRound === round && timerInterval) return;
@@ -1823,17 +1622,17 @@ function ensureTimer(roomData, targetPhase) {
   timerPhase = phase;
   timerRound = round;
 
-  if (phase === "questionCountdown") {
+  if (phase === PHASE.QUESTION_COUNTDOWN) {
     const start = roomData.questionCountdownStartAt || Date.now();
     const duration = roomData.questionCountdownSeconds || 3;
-  
+
     timerInterval = setInterval(() => {
       const now = Date.now();
       let remaining = Math.ceil((start + duration * 1000 - now) / 1000);
       if (remaining < 0) remaining = 0;
-  
-      countdownDisplayEl.textContent = `เริ่มตอบใน ${remaining} วินาที`;
-  
+
+      if (countdownDisplayEl) countdownDisplayEl.textContent = `เริ่มตอบใน ${remaining} วินาที`;
+
       if (remaining <= 0) {
         clearTimer();
         if (currentRole === "host" && currentRoomCode) {
@@ -1843,33 +1642,27 @@ function ensureTimer(roomData, targetPhase) {
     }, 250);
   }
 
-  if (phase === "answering") {
+  if (phase === PHASE.ANSWERING) {
     const duration = roomData.answerTimeSeconds || 20;
-  
-    // ✅ fallback: ถ้า phase เป็น answering แต่ answerStartAt ไม่ถูกตั้ง
+
+    // ❗ ไม่ auto-fix answerStartAt แล้ว (กันเวลาเพี้ยน/ไม่แฟร์)
     if (!Number.isFinite(roomData.answerStartAt)) {
-      if (currentRole === "host" && currentRoomCode) {
-        const roomRef = ref(db, `rooms/${currentRoomCode}`);
-        update(roomRef, { answerStartAt: Date.now() })
-          .catch((e) => console.error("fix answerStartAt failed:", e));
-      }
-      countdownDisplayEl.textContent = "รอเริ่มจับเวลา…";
+      if (countdownDisplayEl) countdownDisplayEl.textContent = "กำลังรอ Host เริ่มจับเวลา…";
       return;
     }
-  
+
     const start = roomData.answerStartAt;
-  
+
     timerInterval = setInterval(() => {
       const now = Date.now();
       let remaining = Math.ceil((start + duration * 1000 - now) / 1000);
       if (remaining < 0) remaining = 0;
-  
-      countdownDisplayEl.textContent = `เหลือเวลา ${remaining} วินาที`;
-  
+
+      if (countdownDisplayEl) countdownDisplayEl.textContent = `เหลือเวลา ${remaining} วินาที`;
+
       if (remaining <= 0) {
         clearTimer();
-  
-        // Host set flag หมดเวลา (ไม่ใช้ async ใน interval)
+
         if (currentRole === "host" && currentRoomCode && roomData.answerDeadlineExpired !== true) {
           const roomRef = ref(db, `rooms/${currentRoomCode}`);
           update(roomRef, { answerDeadlineExpired: true })
@@ -1880,25 +1673,7 @@ function ensureTimer(roomData, targetPhase) {
   }
 }
 
-// host: questionCountdown -> answering (Transaction)
-async function moveToAnswering() {
-  if (currentRole !== "host" || !currentRoomCode) return;
-
-  const snap = await get(ref(db, `rooms/${currentRoomCode}`));
-  if (!snap.exists()) return;
-
-  const roomData = snap.val();
-  if (roomData.phase !== "questionCountdown") return;
-
-  const now = Date.now();
-  await update(ref(db), {
-    [`rooms/${currentRoomCode}/phase`]: "answering",
-    [`rooms/${currentRoomCode}/answerStartAt`]: now,
-    [`rooms/${currentRoomCode}/answerDeadlineExpired`]: false,
-  });
-}
-
-// ---------------- “เลื่อน countdown → answering ----------------
+// ---------------- Countdown -> Answering (Transaction) ----------------
 async function moveCountdownToAnsweringTx() {
   if (currentRole !== "host" || !currentRoomCode) return;
 
@@ -1907,10 +1682,10 @@ async function moveCountdownToAnsweringTx() {
 
   await runTransaction(roomRef, (room) => {
     if (!room) return room;
-    if (room.phase !== "questionCountdown") return; // ไม่ใช่ countdown แล้วก็ไม่ต้องทำอะไร
+    if (room.phase !== PHASE.QUESTION_COUNTDOWN) return;
 
-    room.phase = "answering";
-    room.answerStartAt = now;              // ✅ สำคัญมาก กัน “รอเริ่มจับเวลา…”
+    room.phase = PHASE.ANSWERING;
+    room.answerStartAt = now;
     room.answerDeadlineExpired = false;
     return room;
   });
@@ -1919,53 +1694,47 @@ async function moveCountdownToAnsweringTx() {
 // ---------------- Player: Submit Answer (Transaction-safe) ----------------
 async function submitAnswerTx(optionKey) {
   if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
-  if (answerPending) return;                 // ✅ กันกดรัว ๆ ระหว่างรอ transaction
+  if (answerPending) return;
+
   answerPending = true;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
+  const now = Date.now(); // ✅ deterministic during retries
 
   try {
     const tx = await runTransaction(roomRef, (room) => {
-      if (!room) return;                     // abort
-      if (room.phase !== "answering") return; // abort
+      if (!room) return;
+      if (room.phase !== PHASE.ANSWERING) return;
 
       const startAt = room.answerStartAt;
       const duration = room.answerTimeSeconds;
 
-      // ถ้ายังไม่เริ่มจับเวลา -> ไม่ให้ตอบ (กันค้าง/ค่าไม่ครบ)
-      if (!Number.isFinite(startAt) || !Number.isFinite(duration)) {
-        return; // abort
-      }
+      if (!Number.isFinite(startAt) || !Number.isFinite(duration)) return;
 
-      const now = Date.now();
       const expired = now > (startAt + duration * 1000);
 
-      // หมดเวลา -> ปัก flag แล้ว commit (ให้ทุกคนเห็นหมดเวลา)
       if (room.answerDeadlineExpired === true || expired) {
         room.answerDeadlineExpired = true;
-        return room; // commit เฉพาะ flag
+        return room;
       }
 
       const players = room.players || {};
       const me = players[currentPlayerId];
-      if (!me) return;                       // abort
+      if (!me) return;
 
       const pos = clampPos(me.position);
-      if (me.finished || pos >= BOARD_SIZE) return; // abort
-      if (me.answered) return;               // abort (ตอบไปแล้ว)
+      if (me.finished || pos >= BOARD_SIZE) return;
+      if (me.answered) return;
 
       me.answer = optionKey;
       me.answered = true;
       players[currentPlayerId] = me;
       room.players = players;
 
-      return room; // commit
+      return room;
     });
 
-    // ---- วิเคราะห์ผล หลัง transaction ----
     if (!tx.committed) {
-      // ไม่ได้ commit = ส่วนใหญ่คือ abort (phase ไม่ใช่ answering / ตอบไปแล้ว / ยังไม่เริ่มเวลา ฯลฯ)
-      // ใช้ get เพิ่มเพื่อบอกเหตุแบบตรง ๆ (ไม่แพงมากและช่วย UX)
       const snap = await get(roomRef);
       if (!snap.exists()) {
         alert("ส่งคำตอบไม่สำเร็จ (ไม่พบห้องแล้ว)");
@@ -1973,7 +1742,7 @@ async function submitAnswerTx(optionKey) {
       }
 
       const room = snap.val();
-      if (room.phase !== "answering") {
+      if (room.phase !== PHASE.ANSWERING) {
         alert("ส่งคำตอบไม่สำเร็จ (ยังไม่ใช่ช่วงตอบคำถาม)");
         return;
       }
@@ -1996,17 +1765,12 @@ async function submitAnswerTx(optionKey) {
         return;
       }
 
-      if (me.answered) {
-        // ไม่ต้อง alert ก็ได้ แต่ถ้าต้องการให้ชัด
-        // alert("คุณตอบไปแล้ว");
-        return;
-      }
+      if (me.answered) return;
 
       alert("ส่งคำตอบไม่สำเร็จ (ลองใหม่)");
       return;
     }
 
-    // tx.committed อาจเป็นการ commit แค่ flag หมดเวลา (ไม่ได้บันทึกคำตอบเรา)
     const after = tx.snapshot?.val?.() || null;
     const meAfter = after?.players?.[currentPlayerId] || null;
 
@@ -2016,12 +1780,9 @@ async function submitAnswerTx(optionKey) {
     }
 
     if (!meAfter || meAfter.answered !== true || meAfter.answer !== optionKey) {
-      // commit เกิดขึ้น แต่ไม่ใช่การบันทึกคำตอบเรา (เช่น commit flag อื่น)
       alert("ส่งคำตอบไม่สำเร็จ (ลองใหม่)");
       return;
     }
-
-    // ✅ สำเร็จจริง: ไม่ต้อง alert (ปล่อยให้ UI update เลือกคำตอบ/disable เอง)
   } catch (e) {
     console.error("submitAnswerTx failed:", e);
     alert("ส่งคำตอบไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
@@ -2039,30 +1800,29 @@ function renderBoard(roomData, players) {
 
   boardEl.innerHTML = "";
 
-  // label row (ให้ layout เหมือนแถวผู้เล่น: ไม่มี spacer ซ้าย)
   const labelRow = document.createElement("div");
   labelRow.className = "board-label-row";
-  
+
   const labelTrack = document.createElement("div");
   labelTrack.className = "board-track";
-  
+
   const startLabelCell = document.createElement("div");
   startLabelCell.className = "cell-card start-cell";
   startLabelCell.innerHTML = `<span class="cell-label">Start</span>`;
   labelTrack.appendChild(startLabelCell);
-  
+
   for (let i = 1; i <= BOARD_SIZE; i++) {
     const c = document.createElement("div");
     c.className = "cell-card play-cell";
     c.innerHTML = `<span class="cell-label">${i}</span>`;
     labelTrack.appendChild(c);
   }
-  
+
   const finishLabelCell = document.createElement("div");
   finishLabelCell.className = "cell-card finish-cell";
   finishLabelCell.innerHTML = `<span class="cell-label">Finish</span>`;
   labelTrack.appendChild(finishLabelCell);
-  
+
   labelRow.appendChild(labelTrack);
   boardEl.appendChild(labelRow);
 
@@ -2105,7 +1865,7 @@ function renderBoard(roomData, players) {
     return state;
   }
 
-  const sorted = Object.entries(players || {}).sort(([,a],[,b]) => String(a.name||"").localeCompare(String(b.name||"")));
+  const sorted = Object.entries(players || {}).sort(([, a], [, b]) => String(a.name || "").localeCompare(String(b.name || "")));
 
   for (const [pid, p] of sorted) {
     const row = document.createElement("div");
@@ -2114,10 +1874,9 @@ function renderBoard(roomData, players) {
     const track = document.createElement("div");
     track.className = "board-track";
 
-    // ✅ start cell แสดงชื่อผู้เล่น
     const startCell = document.createElement("div");
     startCell.className = "cell-card start-cell";
-    startCell.textContent = p.name || pid;   // หรือใส่เป็น HTML span ก็ได้
+    startCell.textContent = p.name || pid;
     track.appendChild(startCell);
 
     const cellState = buildCellStateForPlayer(pid, p);
@@ -2151,13 +1910,13 @@ function renderBoard(roomData, players) {
     const finishCell = document.createElement("div");
     finishCell.className = "cell-card finish-cell";
     track.appendChild(finishCell);
-  
+
     row.appendChild(track);
     boardEl.appendChild(row);
   }
 }
 
-// ---------------- End Game Summary (ใช้ของเดิมได้ แต่เพิ่ม wrapper + escape) ----------------
+// ---------------- End Game Summary (escaped) ----------------
 function renderEndGameSummary(roomData, players) {
   const history = roomData.history || {};
   const winners = Array.isArray(roomData.winners) ? roomData.winners : [];
@@ -2167,7 +1926,6 @@ function renderEndGameSummary(roomData, players) {
   const maxWinners = gs.maxWinners ?? "-";
   const endReason = endInfo.endReason || "unknown";
 
-  // ---------- reason text ----------
   let reasonText = "เกมจบแล้ว";
   if (endReason === "winners") {
     reasonText = `เกมจบเพราะมีผู้เข้าเส้นชัยครบ ${Math.min(
@@ -2178,7 +1936,6 @@ function renderEndGameSummary(roomData, players) {
     reasonText = `เกมจบเพราะเล่นครบ ${maxRounds} รอบแล้ว`;
   }
 
-  // ---------- per-player base from players ----------
   const perPlayer = {};
   for (const [pid, p] of Object.entries(players || {})) {
     perPlayer[pid] = {
@@ -2187,7 +1944,7 @@ function renderEndGameSummary(roomData, players) {
       finalPosition: p.position ?? 1,
       finished: !!p.finished || (p.position ?? 1) >= BOARD_SIZE,
       finishRound: p.finishedRound ?? null,
-      finishBy: p.finishedBy ?? null, // "dice" | "answer" | null
+      finishBy: p.finishedBy ?? null,
       correct: 0,
       wrong: 0,
       timeout: 0,
@@ -2198,14 +1955,9 @@ function renderEndGameSummary(roomData, players) {
     };
   }
 
-  // ---------- enrich from history (if exists) ----------
   const roundKeys = Object.keys(history)
     .filter((k) => k.startsWith("round_"))
-    .sort((a, b) => {
-      const ra = parseInt(a.split("_")[1] || "0", 10);
-      const rb = parseInt(b.split("_")[1] || "0", 10);
-      return ra - rb;
-    });
+    .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
 
   for (const rk of roundKeys) {
     const roundData = history[rk] || {};
@@ -2234,7 +1986,6 @@ function renderEndGameSummary(roomData, players) {
 
       if (rec.diceRoll != null) s.rolls.push(rec.diceRoll);
 
-      // เคส neutral: เข้าเส้นชัยด้วยลูกเต๋าและไม่ได้ตอบคำถาม
       const basePos = rec.basePosition ?? null;
       const finalPos = rec.finalPosition ?? null;
       const neutralFinishByDice =
@@ -2254,7 +2005,6 @@ function renderEndGameSummary(roomData, players) {
         }
       }
 
-      // อัปเดตตำแหน่งสุดท้ายจาก history ถ้ามี
       if (Number.isFinite(finalPos)) s.finalPosition = finalPos;
       if (finalPos >= BOARD_SIZE && s.finishRound == null) {
         const rn = parseInt(rk.split("_")[1] || "0", 10);
@@ -2263,14 +2013,11 @@ function renderEndGameSummary(roomData, players) {
     }
   }
 
-  // pct correct
   for (const s of Object.values(perPlayer)) {
     const totalQ = s.correct + s.wrong + s.timeout;
     s.pctCorrect = totalQ > 0 ? (s.correct / totalQ) * 100 : 0;
   }
 
-  // ---------- ranking ----------
-  // ใช้ winners เป็นหลัก ถ้ามี
   const winMap = new Map();
   winners.forEach((w) => winMap.set(w.playerId, w));
 
@@ -2281,7 +2028,6 @@ function renderEndGameSummary(roomData, players) {
     const wb = winMap.has(b.id) ? (winMap.get(b.id).rank ?? 9999) : 9999;
     if (wa !== wb) return wa - wb;
 
-    // รอง: finishRound น้อยกว่า, position มากกว่า, % ถูกมากกว่า
     const fa = a.finishRound ?? 9999;
     const fb = b.finishRound ?? 9999;
     if (fa !== fb) return fa - fb;
@@ -2293,9 +2039,8 @@ function renderEndGameSummary(roomData, players) {
 
   stats.forEach((s, i) => (s.rank = i + 1));
 
-  // ---------- build HTML ----------
   let html = `<p><strong>สรุปผลเกม</strong></p>`;
-  html += `<p><strong>${reasonText}</strong></p>`;
+  html += `<p><strong>${escapeHtml(reasonText)}</strong></p>`;
 
   if (winners.length > 0) {
     html += `<p><strong>ผู้เข้าเส้นชัย</strong></p><ul>`;
@@ -2331,8 +2076,8 @@ function renderEndGameSummary(roomData, players) {
   `;
 
   for (const s of stats) {
-    const pctText =
-      (s.correct + s.wrong + s.timeout) > 0 ? `${Math.round(s.pctCorrect)}%` : "-";
+    const totalQ = s.correct + s.wrong + s.timeout;
+    const pctText = totalQ > 0 ? `${Math.round(s.pctCorrect)}%` : "-";
     const rollsText = s.rolls.length ? s.rolls.join("") : "-";
     const ansText = s.answerSymbols.length ? s.answerSymbols.join("") : "-";
     const finishFlag = s.finished ? "✅" : "-";
@@ -2344,7 +2089,7 @@ function renderEndGameSummary(roomData, players) {
     html += `
       <tr>
         <td>${s.rank ?? "-"}</td>
-        <td class="name-col">${s.name}</td>
+        <td class="name-col">${escapeHtml(s.name)}</td>
         <td>${s.finalPosition ?? "-"}</td>
         <td>${finishFlag}</td>
         <td>${finishRoundText}</td>
@@ -2360,66 +2105,53 @@ function renderEndGameSummary(roomData, players) {
   }
 
   html += `</tbody></table>`;
-  endGameSummaryEl.innerHTML = html;
+  if (endGameSummaryEl) endGameSummaryEl.innerHTML = html;
 }
 
-// ---------------- (สำคัญ) เปลี่ยน phase จาก questionCountdown -> answering โดยอัตโนมัติ ----------------
-// (ทำผ่าน ensureTimer + moveToAnsweringTx)
-
-// ---------------- เมื่อ role set แล้วให้เปิด lobby ----------------
+// ---------------- Init (when role set) ----------------
 function initUiIfReady() {
   if (currentRoomCode && currentRole) {
     enterLobbyView();
     subscribeRoom(currentRoomCode);
-    lockEntryUIForRole(currentRole); // ✅ แทน lockEntryUI(true)
+    lockEntryUIForRole(currentRole);
   }
 }
 initUiIfReady();
 
-// ---------------- Reset UI กลับหน้าแรก ----------------
+// ---------------- Reset UI ----------------
 function resetToHome(message) {
   clearTimer();
 
-  // stop listener
   if (roomUnsub) {
     try { roomUnsub(); } catch {}
     roomUnsub = null;
   }
 
-  // clear session
-  if (typeof clearSession === "function") clearSession();
+  clearSession();
 
-  // clear state
   currentRoomCode = null;
   currentRole = null;
   currentPlayerId = null;
 
-  // ---------- UI: hide in-room sections ----------
   const gameBarEl = document.getElementById("gameBar");
   if (gameBarEl) gameBarEl.style.display = "none";
-  
+
   if (lobbyEl) lobbyEl.style.display = "none";
   if (gameAreaEl) gameAreaEl.style.display = "none";
   if (endGameAreaEl) endGameAreaEl.style.display = "none";
   if (questionAreaEl) questionAreaEl.style.display = "none";
   if (countdownDisplayEl) countdownDisplayEl.textContent = "";
 
-  // clear dynamic areas
   if (playerListEl) playerListEl.innerHTML = "";
   if (boardEl) boardEl.innerHTML = "";
-  if (roomInfoEl) roomInfoEl.textContent = ""; // (แม้จะซ่อนไว้ก็เคลียร์ได้)
   if (roleInfoEl) roleInfoEl.textContent = "";
 
-  // lobby badges (ถ้ามี)
   if (lobbyBadgesEl) lobbyBadgesEl.innerHTML = "";
 
-  // ---------- UI: show entry (Host/Player cards) ----------
   setEntryVisible(true);
 
-  // reset host panel
   if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
 
-  // unlock inputs/buttons (entry)
   if (hostNameInput) hostNameInput.disabled = false;
   if (createRoomBtn) createRoomBtn.disabled = false;
   if (confirmCreateRoomBtn) confirmCreateRoomBtn.disabled = false;
@@ -2428,11 +2160,15 @@ function resetToHome(message) {
   if (playerNameInput) playerNameInput.disabled = false;
   if (joinRoomBtn) joinRoomBtn.disabled = false;
 
-  // header pills
   const uiRoomPill = document.getElementById("uiRoomPill");
   const uiRolePill = document.getElementById("uiRolePill");
   if (uiRoomPill) uiRoomPill.textContent = "Room: -";
   if (uiRolePill) uiRolePill.textContent = "Role: -";
+
+  setDiceOverlayState("hidden");
+
+  rollPending = false;
+  answerPending = false;
 
   if (message) alert(message);
 }
