@@ -945,13 +945,13 @@ button:disabled{
   justify-content: center;
 }
 
-/* ===== Dice rolling animation (หลายแกน, ไม่บอกผลล่วงหน้า) ===== */
+/* Rolling: เริ่มเร็ว → ค่อย ๆ ช้าลง */
 #dice3d.is-rolling{
-  animation: diceSpin var(--roll-dur, 5000ms) linear both;
+  animation: diceRollEase var(--roll-dur, 3200ms) cubic-bezier(.08,.85,.18,1) both;
   will-change: transform;
 }
 
-@keyframes diceSpin{
+@keyframes diceRollEase{
   0%{
     transform:
       rotateX(var(--sx, 10deg))
@@ -959,9 +959,10 @@ button:disabled{
       rotateZ(var(--sz, 30deg));
   }
   100%{
+    /* หมุนเยอะพอให้ดูธรรมชาติ (หลายแกน) */
     transform:
-      rotateX(calc(var(--sx, 10deg) + 2520deg)) /* 7 รอบ */
-      rotateY(calc(var(--sy, 20deg) + 2880deg)) /* 8 รอบ */
-      rotateZ(calc(var(--sz, 30deg) + 2160deg)); /* 6 รอบ */
+      rotateX(calc(var(--sx, 10deg) + 2520deg))
+      rotateY(calc(var(--sy, 20deg) + 2880deg))
+      rotateZ(calc(var(--sz, 30deg) + 2160deg));
   }
 }
