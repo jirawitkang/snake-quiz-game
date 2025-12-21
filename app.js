@@ -1123,6 +1123,13 @@ function buildEndMatrixForValue(value, yawDeg = 0){
   return { M, css: mat3ToCssMatrix3d(M) };
 }
 
+function freezeCurrentTransform(el){
+  const t = getComputedStyle(el).transform; // matrix / matrix3d
+  el.classList.remove("is-rolling");
+  el.style.transition = "none";
+  el.style.transform = (t && t !== "none") ? t : "none";
+}
+
 const rollDiceWithOverlay = async (durationMs = 5000) => {
   const finalRoll = Math.floor(Math.random() * 6) + 1;
   logDiceState("before-roll", finalRoll, null);
@@ -1131,7 +1138,6 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   diceCommitDone = false;
 
   if (!diceOverlayEl || !dice3dEl) return finalRoll;
-
   diceOverlayEl.style.display = "flex";
 
   if (closeDiceOverlayBtn) {
@@ -1140,22 +1146,21 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   }
   if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
 
-  // ✅ build map (ครั้งแรกเท่านั้น)
+  // ✅ build map (ครั้งแรกเท่านั้น) — ห้ามเปลี่ยน logic นี้
   if (!TOP_VISIBLE_TO_POSES) {
     TOP_VISIBLE_TO_POSES = await buildTopVisiblePoseMap();
   }
-
-  // ถ้า map ว่างผิดปกติ ให้ fallback
   const candidates = TOP_VISIBLE_TO_POSES?.[finalRoll] || [];
-  if (candidates.length === 0) {
-    console.warn("[DICE] No pose candidates for", finalRoll, TOP_VISIBLE_TO_POSES);
-  }
+  const pick = candidates.length
+    ? candidates[randInt(0, candidates.length - 1)]
+    : { x: 0, y: 0, z: 0 };
 
-  // ===== 1) ช่วงกลิ้ง: หมุน “หลายแกน” แบบเดาแต้มไม่ได้ =====
+  // ===== A) ROLL PHASE: ease-out (เร็วแล้วค่อยช้า) =====
+  const rollMs = Math.max(1800, Math.floor(durationMs * 0.78)); // 78% เวลา = กลิ้ง
+  const settleMs = Math.max(420, durationMs - rollMs);          // ที่เหลือ = หยุดเนียน ๆ
+
   dice3dEl.style.transition = "none";
-  dice3dEl.classList.remove("is-rolling");
-
-  dice3dEl.style.setProperty("--roll-dur", `${durationMs}ms`);
+  dice3dEl.style.setProperty("--roll-dur", `${rollMs}ms`);
   dice3dEl.style.setProperty("--sx", `${rand360()}deg`);
   dice3dEl.style.setProperty("--sy", `${rand360()}deg`);
   dice3dEl.style.setProperty("--sz", `${rand360()}deg`);
@@ -1163,36 +1168,44 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   await raf(); await raf();
   dice3dEl.classList.add("is-rolling");
 
-  await sleep(durationMs);
+  await sleep(rollMs);
 
-  // ===== 2) เลือกท่าจบจาก “สิ่งที่เห็นจริง” =====
-  dice3dEl.classList.remove("is-rolling");
+  // ===== B) FREEZE: จับเฟรมสุดท้ายของ roll มาเป็นฐาน (กัน snap) =====
+  freezeCurrentTransform(dice3dEl);
+  await raf();
 
-  const pick = candidates.length
-    ? candidates[randInt(0, candidates.length - 1)]
-    : { x: 0, y: 0, z: 0 };
+  // ===== C) SETTLE: ไปที่ท่าจบแบบเนียน + มี overshoot เล็กน้อย =====
+  // ทำ overshoot เบามาก (ไม่เสี่ยง top เพี้ยน เพราะปลายทางสุดท้ายคือ pick)
+  const over = {
+    x: pick.x + (Math.random() < 0.5 ? 8 : -8),
+    y: pick.y + (Math.random() < 0.5 ? 10 : -10),
+    z: pick.z + (Math.random() < 0.5 ? 6 : -6),
+  };
 
-  // settle
-  dice3dEl.style.transition = "transform 260ms cubic-bezier(.2,.9,.2,1)";
+  // 1) ไป overshoot ก่อน
+  dice3dEl.style.transition = `transform ${Math.floor(settleMs * 0.62)}ms cubic-bezier(.12,.92,.18,1)`;
+  dice3dEl.style.transform = `rotateX(${over.x}deg) rotateY(${over.y}deg) rotateZ(${over.z}deg)`;
+  await waitTransformEnd(dice3dEl, settleMs + 600);
+
+  // 2) แล้วค่อย settle เข้าท่าสุดท้าย (final = pick)
+  dice3dEl.style.transition = `transform ${Math.floor(settleMs * 0.38)}ms cubic-bezier(.2,.9,.2,1)`;
   dice3dEl.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
+  await waitTransformEnd(dice3dEl, settleMs + 600);
 
-  await waitTransformEnd(dice3dEl, 900);
-
+  // SNAP แบบปลอดภัย (ไม่ animate) ให้คม ๆ อีกที
   dice3dEl.style.transition = "none";
   dice3dEl.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
   await raf();
 
-  // ✅ ตรวจ top ที่เห็นจริงหลัง snap
+  // ✅ ตรวจ top หลังจบ (ไว้ดูเฉย ๆ)
   const seenTop = getTopVisibleValue();
   if (seenTop !== finalRoll) {
     console.warn("[DICE SNAP MISMATCH]", { finalRoll, seenTop, pick });
   }
-
   logDiceState("after-snap-final", finalRoll, { pick, seenTop });
 
   diceIsRolling = false;
   if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
-
   return finalRoll;
 };
 
