@@ -1039,57 +1039,42 @@ function shortestDeg(from, to){
 async function animateRollToPick(el, pick, rollMs){
   prepDiceForAnimate(el);
 
-  // start pose: ไม่สุดโต่ง (ดูเป็น rolling มากกว่า spin)
+  // start pose: เบากว่าเดิม (กันเริ่มเร็วเกิน)
   const s = {
-    x: randInt(-25, 25),
+    x: randInt(-18, 18),
     y: rand360(),
-    z: randInt(-25, 25),
+    z: randInt(-18, 18),
   };
 
-  // กำหนด "รอบรวม" ต่อแกน (ลดจากเดิมเยอะ เพื่อไม่ให้ต้นเร็วเกิน + กลางไม่เร่ง)
-  const spinX = 360 * randInt(2, 4);
-  const spinY = 360 * randInt(2, 4);
-  const spinZ = 360 * randInt(2, 4);
+  // จำนวนรอบรวม: ลดลงให้ "ดูเป็นการกลิ้ง" ไม่ใช่ spin
+  const kx = randInt(1, 3);
+  const ky = randInt(2, 4); // แกน Y ให้เด่นนิด (ดูมีมิติ)
+  const kz = randInt(1, 3);
 
-  // กระจายรอบให้ mid ได้ “เยอะที่สุด” แล้วค่อย ๆ ลดไป pre/end
-  // mid = 70% ของรอบรวม, pre = 92%, end = 100%
-  const mid = {
-    x: s.x + Math.round(spinX * 0.70) + randInt(40, 90),
-    y: s.y + Math.round(spinY * 0.70) + randInt(60, 120),
-    z: s.z + Math.round(spinZ * 0.70) + randInt(40, 90),
-  };
-
-  const pre = {
-    x: s.x + Math.round(spinX * 0.92) + randInt(10, 30),
-    y: s.y + Math.round(spinY * 0.92) + randInt(10, 30),
-    z: s.z + Math.round(spinZ * 0.92) + randInt(10, 30),
-  };
-
-  // end: ให้ “ชิด pick” มาก ๆ เพื่อไม่เกิดจังหวะกระชาก
-  // และใส่รอบรวมครบ + ปิดที่ pick จริง ๆ (lock top)
+  // end เป็น "องศาใหญ่" ที่ congruent กับ pick (ล็อค top แน่นอน)
   const end = {
-    x: pick.x + spinX,
-    y: pick.y + spinY,
-    z: pick.z + spinZ,
+    x: pick.x + 360 * kx,
+    y: pick.y + 360 * ky,
+    z: pick.z + 360 * kz,
   };
 
-  // offsets: ช่วงต้น-กลางกินเวลาหลัก, ปลายเหลือสั้น ๆ
-  const oMid = 0.72;
-  const oPre = 0.92;
+  // key times (เป็น phase เดียว แต่แบ่งหลายจุดให้เนียน)
+  const T = [0, 0.22, 0.48, 0.72, 0.88, 1.0];
 
-  const anim = el.animate(
-    [
-      { transform: `rotateX(${s.x}deg) rotateY(${s.y}deg) rotateZ(${s.z}deg)` },
-      { offset: oMid, transform: `rotateX(${mid.x}deg) rotateY(${mid.y}deg) rotateZ(${mid.z}deg)` },
-      { offset: oPre, transform: `rotateX(${pre.x}deg) rotateY(${pre.y}deg) rotateZ(${pre.z}deg)` },
-      { transform: `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)` },
-    ],
-    {
-      duration: rollMs,
-      easing: "cubic-bezier(.10,.85,.12,1)", // ชะลอแบบจริงจัง (ease-out หนัก ๆ)
-      fill: "forwards",
-    }
-  );
+  // ทำให้มุมเป็น s + (end-s)*easeOut(t)  -> ความเร็วลดลงสม่ำเสมอ ไม่แกว่ง
+  const frames = T.map((tt) => {
+    const f = easeOutPow(tt, 3.2);
+    const ax = s.x + (end.x - s.x) * f;
+    const ay = s.y + (end.y - s.y) * f;
+    const az = s.z + (end.z - s.z) * f;
+    return { offset: tt, transform: `rotateX(${ax}deg) rotateY(${ay}deg) rotateZ(${az}deg)` };
+  });
+
+  const anim = el.animate(frames, {
+    duration: rollMs,
+    easing: "linear",      // สำคัญ: เราคุม easing ด้วย mapping แล้ว
+    fill: "forwards",
+  });
 
   await anim.finished;
 
@@ -1098,30 +1083,52 @@ async function animateRollToPick(el, pick, rollMs){
   el.style.transition = "none";
   el.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
 
-  return end;
+  return { s, end };
 }
 
-async function settleToPick(el, pick, settleMs){
-  const over = {
-    x: pick.x + (Math.random() < 0.5 ? 2 : -2),
-    y: pick.y + (Math.random() < 0.5 ? 3 : -3),
-    z: pick.z + (Math.random() < 0.5 ? 2 : -2),
+function nearestEquivalentDeg(currentDeg, targetDeg){
+  // คืนค่า targetDeg + 360*n ที่ "ใกล้ currentDeg ที่สุด"
+  const c = Number(currentDeg) || 0;
+  const t = Number(targetDeg) || 0;
+  const n = Math.round((c - t) / 360);
+  return t + 360 * n;
+}
+
+// mapping ให้ความเร็ว "ลดลงเรื่อย ๆ" แบบนิ่ง (ไม่แกว่ง)
+function easeOutPow(t, p = 3.2){
+  // t: 0..1
+  return 1 - Math.pow(1 - t, p);
+}
+
+async function settleToPick(el, pick, settleMs, endAbs){
+  // targetAbs = pick ที่ถูก "ยก/ลด 360*n" ให้ใกล้ endAbs ที่สุด
+  const targetAbs = {
+    x: nearestEquivalentDeg(endAbs?.x ?? pick.x, pick.x),
+    y: nearestEquivalentDeg(endAbs?.y ?? pick.y, pick.y),
+    z: nearestEquivalentDeg(endAbs?.z ?? pick.z, pick.z),
   };
 
-  const t1 = Math.floor(settleMs * 0.55);
-  const t2 = Math.floor(settleMs * 0.45);
+  // overshoot เบามาก (กันสะบัด)
+  const over = {
+    x: targetAbs.x + (Math.random() < 0.5 ? 1.2 : -1.2),
+    y: targetAbs.y + (Math.random() < 0.5 ? 1.6 : -1.6),
+    z: targetAbs.z + (Math.random() < 0.5 ? 1.2 : -1.2),
+  };
 
-  // 1) overshoot (สั้น ๆ)
+  const t1 = Math.floor(settleMs * 0.58);
+  const t2 = Math.max(120, settleMs - t1);
+
+  // 1) แตะ overshoot สั้น ๆ
   el.style.transition = `transform ${t1}ms cubic-bezier(.12,.92,.18,1)`;
   el.style.transform = `rotateX(${over.x}deg) rotateY(${over.y}deg) rotateZ(${over.z}deg)`;
-  await waitTransformEnd(el, t1 + 200);
+  await waitTransformEnd(el, t1 + 120);
 
-  // 2) settle เข้าท่าสุดท้าย (ล็อค top)
-  el.style.transition = `transform ${t2}ms cubic-bezier(.2,.9,.2,1)`;
-  el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
-  await waitTransformEnd(el, t2 + 200);
+  // 2) กลับเข้าท่าสุดท้าย (ยังเป็นองศา absolute ที่ใกล้ end)
+  el.style.transition = `transform ${t2}ms cubic-bezier(.18,.92,.22,1)`;
+  el.style.transform = `rotateX(${targetAbs.x}deg) rotateY(${targetAbs.y}deg) rotateZ(${targetAbs.z}deg)`;
+  await waitTransformEnd(el, t2 + 120);
 
-  // snap สุดท้าย (กัน floating error)
+  // SNAP แบบไม่ animate ไปเป็นค่ามาตรฐาน pick (0/90/180/270) เพื่อกัน floating/สะสมเลข
   el.style.transition = "none";
   el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
   await raf();
@@ -1168,10 +1175,9 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   logDiceState("computed-end-before-animate", finalRoll, { pick, rollMs, settleMs });
 
   // 1) roll: ความเร็วลดลงจริง
-  await animateRollToPick(dice3dEl, pick, rollMs);
-
+  const { end } = await animateRollToPick(dice3dEl, pick, rollMs);
   // 2) settle: เด้งนิด ๆ แล้วนิ่ง
-  await settleToPick(dice3dEl, pick, settleMs);
+  await settleToPick(dice3dEl, pick, settleMs, end);
 
   const seenTop = getTopVisibleValue?.();
   if (seenTop != null && seenTop !== finalRoll) {
