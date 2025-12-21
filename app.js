@@ -926,14 +926,14 @@ function rotationForTopFace(faceId){
   return map[faceId] || map[3];
 }
 
-// pip value -> face id (ตาม HTML: face-1=5, face-2=4, face-3=1, face-4=6, face-5=3, face-6=2)
+// value (1-6) -> faceId (ตาม class face-1..6 ใน HTML)
 const VALUE_TO_FACE_ID = {
-  1: 3, // face-3 = 1 pip
-  2: 6, // face-6 = 2 pip
-  3: 5, // face-5 = 3 pip
-  4: 2, // face-2 = 4 pip
-  5: 1, // face-1 = 5 pip
-  6: 4, // face-4 = 6 pip
+  1: 3, // top face-3
+  2: 6, // back face-6
+  3: 5, // left face-5
+  4: 2, // right face-2
+  5: 1, // front face-1
+  6: 4, // bottom face-4
 };
 
 // แต่ละ face-# แสดงแต้มอะไร (อ้างอิงจาก index.html ของคุณ)
@@ -959,18 +959,30 @@ const randInt = (a,b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
 // ถ้ายังไม่ใช้ DICE_BASE จริง ๆ ก็ปล่อยไว้ได้ แต่ห้ามประกาศซ้ำ
 const DICE_BASE = { x: 0, y: 0, z: 0 };
-  
+
+function randSpin() {
+  // หมุนแรงๆ หลายแกน (ตัวเลขเยอะเพื่อให้ดูเหมือนเดิม)
+  return {
+    x: rand360() + 360 * randInt(6, 12),
+    y: rand360() + 360 * randInt(6, 12),
+    z: rand360() + 360 * randInt(6, 12),
+  };
+}
+
 const rollDiceWithOverlay = async (durationMs = 5000) => {
   const finalRoll = Math.floor(Math.random() * 6) + 1;
-  logDiceState("before-roll", finalRoll, null);
+  logDiceState?.("before-roll", finalRoll, null);
 
   diceIsRolling = true;
   diceCommitDone = false;
 
+  // fallback ถ้า element ไม่ครบ
   if (!diceOverlayEl || !dice3dEl) return finalRoll;
 
+  // show overlay
   diceOverlayEl.style.display = "flex";
 
+  // ระหว่างหมุน: ซ่อนปุ่ม + กันกด
   if (closeDiceOverlayBtn) {
     closeDiceOverlayBtn.style.display = "none";
     closeDiceOverlayBtn.disabled = true;
@@ -978,49 +990,158 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
 
   if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
 
-  // random start pose (no transition)
+  // ---------- START POSE (no transition) ----------
   dice3dEl.style.transition = "none";
-  dice3dEl.style.transform =
-    `rotateX(${rand360()}deg) rotateY(${rand360()}deg) rotateZ(${rand360()}deg)`;
+  const s0 = { x: rand360(), y: rand360(), z: rand360() };
+  dice3dEl.style.transform = `rotateX(${s0.x}deg) rotateY(${s0.y}deg) rotateZ(${s0.z}deg)`;
 
-  await raf(); await raf();
+  // ให้ browser ทัน apply transform จริง ๆ
+  await raf();
+  await raf();
 
-  // ✅ end pose: TOP = finalRoll
-  const faceId = VALUE_TO_FACE_ID[finalRoll] || 3;
+  // ---------- END POSE: TOP = finalRoll ----------
+  // หมายเหตุ: VALUE_TO_FACE_ID + rotationForTopFace ต้อง "ถูก" ตาม cube ของคุณ
+  const faceId = (typeof VALUE_TO_FACE_ID === "object" && VALUE_TO_FACE_ID)
+    ? (VALUE_TO_FACE_ID[finalRoll] ?? 3)
+    : finalRoll;
+
   const end = rotationForTopFace(faceId);
 
-  // ✅ เพิ่ม yaw เพื่อความสวย (ไม่กระทบ TOP ถ้าวาง order ถูก)
+  // เพิ่ม yaw ให้สวย แต่ "ไม่ทำให้ TOP เปลี่ยน" (เพราะหมุนรอบแกนตั้ง)
   const yawBase = [0, 90, 180, 270][randInt(0, 3)];
-  const yawSpin = 360 * randInt(6, 10);      // หมุนเยอะได้แบบเดิม
+  const yawSpin = 360 * randInt(6, 10);
   const yaw = yawBase + yawSpin;
 
-  logDiceState("computed-end-before-animate", finalRoll, { ...end, yaw });
+  logDiceState?.("computed-end-before-animate", finalRoll, { ...end, yaw });
 
-  // ✅ spin extra ที่ “ไม่ทำให้หน้าเปลี่ยน”
-  const extraX = 360 * randInt(6, 10);
-  const extraZ = 360 * randInt(6, 10);
+  // ---------- MULTI-AXIS TUMBLE (keyframes) ----------
+  // ทำให้ "กลิ้งหลายแกน" + เดาท่าไม่ได้
+  const k1 = { x: rand360() + 360 * randInt(3, 6), y: rand360() + 360 * randInt(3, 6), z: rand360() + 360 * randInt(3, 6) };
+  const k2 = { x: rand360() + 360 * randInt(3, 7), y: rand360() + 360 * randInt(3, 7), z: rand360() + 360 * randInt(3, 7) };
+  const k3 = { x: rand360() + 360 * randInt(4, 8), y: rand360() + 360 * randInt(4, 8), z: rand360() + 360 * randInt(4, 8) };
 
-  // 🔥 ใช้ ORDER ใหม่: rotateY(yaw) อยู่ซ้ายสุด = apply ทีหลังสุด
-  dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
-  dice3dEl.style.transform =
-    `rotateY(${yaw}deg) rotateX(${end.x + extraX}deg) rotateZ(${end.z + extraZ}deg)`;
+  // endSpin = ไปจบใกล้ end แต่ยังหมุนเยอะได้ (360*k ไม่เปลี่ยนหน้า)
+  const endSpin = {
+    x: end.x + 360 * randInt(6, 10),
+    y: yaw   + 360 * randInt(6, 10),
+    z: end.z + 360 * randInt(6, 10),
+  };
 
-  await waitTransformEnd(dice3dEl, durationMs + 1200);
+  const anim = dice3dEl.animate(
+    [
+      { transform: `rotateX(${s0.x}deg) rotateY(${s0.y}deg) rotateZ(${s0.z}deg)` },
+      { transform: `rotateX(${k1.x}deg) rotateY(${k1.y}deg) rotateZ(${k1.z}deg)` },
+      { transform: `rotateX(${k2.x}deg) rotateY(${k2.y}deg) rotateZ(${k2.z}deg)` },
+      { transform: `rotateX(${k3.x}deg) rotateY(${k3.y}deg) rotateZ(${k3.z}deg)` },
+      { transform: `rotateX(${endSpin.x}deg) rotateY(${endSpin.y}deg) rotateZ(${endSpin.z}deg)` },
+    ],
+    {
+      duration: durationMs,
+      easing: "cubic-bezier(.08,.85,.18,1)",
+      fill: "forwards",
+    }
+  );
 
-  // SNAP (clean)
+  // รอให้กลิ้งจบ
+  await anim.finished;
+
+  // cancel เพื่อไม่ทิ้ง state ของ animation engine ค้างไว้ (เราจะ SNAP ด้วย style แทน)
+  anim.cancel();
+
+  // ---------- SNAP (clean & deterministic) ----------
+  // ล็อกท่าสุดท้ายแบบนิ่ง (TOP ต้องตรงตาม end ที่คำนวณ)
   dice3dEl.style.transition = "none";
-  dice3dEl.style.transform =
-    `rotateY(${yawBase}deg) rotateX(${end.x}deg) rotateZ(${end.z}deg)`;
+  dice3dEl.style.transform = `rotateX(${end.x}deg) rotateY(${yawBase}deg) rotateZ(${end.z}deg)`;
 
   await raf();
-  logDiceState("after-snap-final", finalRoll, { ...end, yaw: yawBase });
+  logDiceState?.("after-snap-final", finalRoll, { ...end, yaw: yawBase });
 
   diceIsRolling = false;
 
+  // ยังไม่ให้ปิด: รอ commit เสร็จก่อน
   if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
 
   return finalRoll;
 };
+
+function parseMatrixAny(m) {
+  if (!m || m === "none") return null;
+  const nums = m.match(/-?\d+\.?\d*(e-?\d+)?/g)?.map(Number);
+  if (!nums) return null;
+
+  // matrix(a,b,c,d,e,f) -> 4x4
+  if (m.startsWith("matrix(")) {
+    const [a,b,c,d,e,f] = nums;
+    return [
+      [a, c, 0, e],
+      [b, d, 0, f],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1],
+    ];
+  }
+
+  // matrix3d(16) -> 4x4 (column-major in CSS, convert to row-major)
+  if (m.startsWith("matrix3d(") && nums.length === 16) {
+    const n = nums;
+    return [
+      [n[0], n[4], n[8],  n[12]],
+      [n[1], n[5], n[9],  n[13]],
+      [n[2], n[6], n[10], n[14]],
+      [n[3], n[7], n[11], n[15]],
+    ];
+  }
+  return null;
+}
+
+function mulMat(A, B) {
+  const R = Array.from({length:4}, () => Array(4).fill(0));
+  for (let r=0;r<4;r++) for (let c=0;c<4;c++)
+    for (let k=0;k<4;k++) R[r][c] += A[r][k]*B[k][c];
+  return R;
+}
+
+function mulVec(M, v) {
+  const [x,y,z,w] = v;
+  return [
+    M[0][0]*x + M[0][1]*y + M[0][2]*z + M[0][3]*w,
+    M[1][0]*x + M[1][1]*y + M[1][2]*z + M[1][3]*w,
+    M[2][0]*x + M[2][1]*y + M[2][2]*z + M[2][3]*w,
+    M[3][0]*x + M[3][1]*y + M[3][2]*z + M[3][3]*w,
+  ];
+}
+
+// คืนค่า "faceId" ที่ชี้ขึ้นด้านบนของจอ (ใช้ cam + dice)
+function detectTopFaceId() {
+  const cam = document.querySelector(".dice-cam");
+  if (!cam || !dice3dEl) return null;
+
+  const camM = parseMatrixAny(getComputedStyle(cam).transform) || [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+  const diceM = parseMatrixAny(getComputedStyle(dice3dEl).transform) || [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+  const M = mulMat(camM, diceM);
+
+  // normals ของแต่ละ face ใน local space (y+ = ลงจอ)
+  const normals = {
+    1: [ 0,  0,  1, 0], // front
+    6: [ 0,  0, -1, 0], // back
+    2: [ 1,  0,  0, 0], // right
+    5: [-1,  0,  0, 0], // left
+    3: [ 0, -1,  0, 0], // top (ขึ้นจอ = y-)
+    4: [ 0,  1,  0, 0], // bottom
+  };
+
+  // เลือก face ที่ normal มีค่า y "ติดลบมากที่สุด" = ชี้ขึ้นบนจอที่สุด
+  let best = null;
+  let bestY = +Infinity;
+  for (const [fid, n] of Object.entries(normals)) {
+    const v = mulVec(M, n);
+    const y = v[1]; // screen-space Y
+    if (y < bestY) { bestY = y; best = Number(fid); }
+  }
+  return best;
+}
+
+// faceId -> value ตาม HTML ของคุณ
+const FACE_ID_TO_VALUE = { 1:5, 2:4, 3:1, 4:6, 5:3, 6:2 };
 
 function logDiceState(stage, finalRoll, endObj) {
   try {
@@ -1031,6 +1152,10 @@ function logDiceState(stage, finalRoll, endObj) {
     const diceComputed = dice ? getComputedStyle(dice).transform : "";
     const camStyle = cam?.style?.transform || "";
     const camComputed = cam ? getComputedStyle(cam).transform : "";
+
+    const topF = detectTopFaceId();
+    const topV = topF ? FACE_ID_TO_VALUE[topF] : null;
+    console.log("[DICE TOP DETECT]", { topFaceId: topF, topValue: topV });
 
     console.log(
       `%c[DICE LOG] ${stage}`,
