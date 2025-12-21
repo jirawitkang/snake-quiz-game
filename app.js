@@ -1308,56 +1308,6 @@ function detectTopValueFromDOM() {
   return FACE_CLASS_TO_VALUE[best.cls] ?? null;
 }
 
-async function buildTopRotationMap() {
-  if (!dice3dEl) return null;
-
-  // เก็บ transform เดิมไว้คืนค่า
-  const prevTransition = dice3dEl.style.transition;
-  const prevTransform = dice3dEl.style.transform;
-
-  dice3dEl.style.transition = "none";
-
-  const angles = [0, 90, 180, 270];
-  const map = {}; // topValue -> {x,y,z}
-
-  // helper: apply and wait 2 frames ให้ layout stable
-  const apply = async (x, y, z) => {
-    dice3dEl.style.transform = `rotateX(${x}deg) rotateY(${y}deg) rotateZ(${z}deg)`;
-    await new Promise((r) => requestAnimationFrame(r));
-    await new Promise((r) => requestAnimationFrame(r));
-  };
-
-  // ไล่ลองทุกท่า
-  for (const x of angles) {
-    for (const y of angles) {
-      for (const z of angles) {
-        await apply(x, y, z);
-
-        const topVal = detectTopValueFromDOM();
-        if (topVal == null) continue;
-
-        // เก็บท่าแรกที่เจอสำหรับแต้มนี้
-        if (!map[topVal]) {
-          map[topVal] = { x, y, z };
-        }
-
-        // ถ้าครบ 1..6 แล้วหยุดได้
-        if (Object.keys(map).length >= 6) break;
-      }
-      if (Object.keys(map).length >= 6) break;
-    }
-    if (Object.keys(map).length >= 6) break;
-  }
-
-  // คืนค่าเดิม
-  dice3dEl.style.transform = prevTransform;
-  dice3dEl.style.transition = prevTransition;
-
-  TOP_VALUE_TO_ROT = map;
-  console.log("[DICE] TOP_VALUE_TO_ROT =", map);
-  return map;
-}
-
 // debug กันหลอน: เช็คว่า “มีจริง” หลังโหลด
 window.__SQ_rollDiceWithOverlay = rollDiceWithOverlay;
 console.log("rollDiceWithOverlay typeof:", typeof rollDiceWithOverlay);
