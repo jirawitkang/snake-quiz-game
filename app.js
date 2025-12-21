@@ -1017,16 +1017,17 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   dice3dEl.style.transform = `rotateX(${s0.x}deg) rotateY(${s0.y}deg) rotateZ(${s0.z}deg)`;
   await raf(); await raf();
 
-  // ✅ build calibration map once
-  if (!TOP_VALUE_TO_ROT) {
+  // ✅ ensure calibration map exists (build every overlay open หรือ build once ก็ได้)
+  if (!TOP_VALUE_TO_ROT || Object.keys(TOP_VALUE_TO_ROT).length !== 6) {
     await buildTopRotationMap();
   }
-
+  
   // ✅ end pose from calibration (visual top)
   const endBase = TOP_VALUE_TO_ROT?.[finalRoll];
   if (!endBase) {
     console.warn("[DICE] TOP_VALUE_TO_ROT missing for", finalRoll, TOP_VALUE_TO_ROT);
   }
+  
   const end = endBase || { x: 0, y: 0, z: 0 };
 
   // เพิ่ม yaw “แบบไม่ทำให้ top เปลี่ยน”:
