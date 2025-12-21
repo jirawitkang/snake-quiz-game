@@ -916,26 +916,31 @@ function waitTransformEnd(el, timeoutMs = 6500){
 
 function rotationForTopFace(faceId){
   // faceId ตาม DOM: 1..6 คือ .face-1 .. .face-6
-  // TOP=face-3, BOTTOM=face-4, FRONT=face-1, RIGHT=face-2, LEFT=face-5, BACK=face-6
+  // ใน HTML ของคุณ:
+  // face-1=front, face-2=right, face-3=top, face-4=bottom, face-5=left, face-6=back
+
   const map = {
-    3: { x:   0, y: 0, z:   0 },   // face-3 อยู่บน
-    4: { x: 180, y: 0, z:   0 },   // face-4 -> บน
-    1: { x: -90, y: 0, z:   0 },   // face-1(front) -> บน
-    6: { x:  90, y: 0, z:   0 },   // face-6(back)  -> บน
-    2: { x:   0, y: 0, z: -90 },   // face-2(right) -> บน
-    5: { x:   0, y: 0, z:  90 },   // face-5(left)  -> บน
+    3: { x:   0, y: 0, z:   0 },   // top -> top
+    4: { x: 180, y: 0, z:   0 },   // bottom -> top  (หมุนรอบ X)
+    1: { x: -90, y: 0, z:   0 },   // front -> top   (หมุนรอบ X)
+    6: { x:  90, y: 0, z:   0 },   // back  -> top   (หมุนรอบ X)
+
+    // ✅ จุดที่คุณผิดเดิม: RIGHT/LEFT ต้องยกขึ้นด้วย Z ไม่ใช่ Y
+    2: { x:   0, y: 0, z: -90 },   // right -> top   (หมุนรอบ Z)
+    5: { x:   0, y: 0, z:  90 },   // left  -> top   (หมุนรอบ Z)
   };
+
   return map[faceId] || map[3];
 }
 
 // pip value -> face id (ตาม HTML: face-1=5, face-2=4, face-3=1, face-4=6, face-5=3, face-6=2)
 const VALUE_TO_FACE_ID = {
-  1: 3,
-  2: 6,
-  3: 5,
-  4: 2,
-  5: 1,
-  6: 4,
+  1: 3, // face-3 = 1 pip
+  2: 6, // face-6 = 2 pip
+  3: 5, // face-5 = 3 pip
+  4: 2, // face-2 = 4 pip
+  5: 1, // face-1 = 5 pip
+  6: 4, // face-4 = 6 pip
 };
 
 // แต่ละ face-# แสดงแต้มอะไร (อ้างอิงจาก index.html ของคุณ)
@@ -962,74 +967,66 @@ const randInt = (a,b) => Math.floor(Math.random() * (b - a + 1)) + a;
 // ถ้ายังไม่ใช้ DICE_BASE จริง ๆ ก็ปล่อยไว้ได้ แต่ห้ามประกาศซ้ำ
 const DICE_BASE = { x: 0, y: 0, z: 0 };
   
-  const rollDiceWithOverlay = async (durationMs = 5000) => {
-    const finalRoll = Math.floor(Math.random() * 6) + 1;
-    logDiceState("before-roll", finalRoll, null);
-  
-    diceIsRolling = true;
-    diceCommitDone = false;
-  
-    // fallback ถ้า element ไม่ครบ
-    if (!diceOverlayEl || !dice3dEl) return finalRoll;
-  
-    diceOverlayEl.style.display = "flex";
-  
-    // ระหว่างหมุน: ซ่อนปุ่ม + กันกด
-    if (closeDiceOverlayBtn) {
-      closeDiceOverlayBtn.style.display = "none";
-      closeDiceOverlayBtn.disabled = true;
-    }
-  
-    if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
-  
-    // ตั้งท่าเริ่มแบบสุ่ม (ไม่มี transition)
-    dice3dEl.style.transition = "none";
-    dice3dEl.style.transform =
-      `rotateX(${rand360()}deg) rotateY(${rand360()}deg) rotateZ(${rand360()}deg)`;
-  
-    await raf();
-  
-    // ✅ ท่าจบ: ให้ “ด้านบน” เป็นแต้มที่ทอยได้
-    const faceId = VALUE_TO_FACE_ID[finalRoll] || 3;
-    // สร้าง map ครั้งแรกตอนเปิด overlay (หรือก่อนหมุน)
-    if (!TOP_VALUE_TO_ROT) {
-      await buildTopRotationMap();
-    }
-    
-    const target = TOP_VALUE_TO_ROT?.[finalRoll];
-    
-    // fallback เผื่อ map ไม่ครบ
-    const end = target || { x: 0, y: 0, z: 0 };
-    logDiceState("computed-end-before-animate", finalRoll, end);
+const rollDiceWithOverlay = async (durationMs = 5000) => {
+  const finalRoll = Math.floor(Math.random() * 6) + 1;
+  logDiceState("before-roll", finalRoll, null);
 
-  
-    // extra ต้องเป็น “ทวีคูณ 360” เพื่อไม่ทำให้หน้าเปลี่ยน
-    const extraX = 360 * randInt(6, 9);
-    const extraY = 360 * randInt(6, 9);
-    const extraZ = 360 * randInt(4, 6);
-  
-    dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
-    dice3dEl.style.transform =
-      `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
+  diceIsRolling = true;
+  diceCommitDone = false;
 
-  
-    await sleep(durationMs);
-  
-    // ✅ SNAP เข้าค่ามาตรฐาน “แบบไม่ animate” (ไม่ใช่ทอย 2 ครั้ง)
-    dice3dEl.style.transition = "none";
-    dice3dEl.style.transform =
-      `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
+  if (!diceOverlayEl || !dice3dEl) return finalRoll;
 
-    await raf();
-    logDiceState("after-snap-final", finalRoll, end);
-  
-    diceIsRolling = false;
-  
-    // ยังไม่ให้ปิด: รอ commit เสร็จก่อน
-    if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
-  
-    return finalRoll;
-  };
+  diceOverlayEl.style.display = "flex";
+
+  if (closeDiceOverlayBtn) {
+    closeDiceOverlayBtn.style.display = "none";
+    closeDiceOverlayBtn.disabled = true;
+  }
+
+  if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
+
+  // 1) random start pose (no transition)
+  dice3dEl.style.transition = "none";
+  dice3dEl.style.transform =
+    `rotateX(${rand360()}deg) rotateY(${rand360()}deg) rotateZ(${rand360()}deg)`;
+
+  // ให้ browser apply ให้ชัวร์ (2 เฟรม กันบางเครื่อง)
+  await raf(); 
+  await raf();
+
+  // 2) compute end pose (Top = finalRoll)
+  const faceId = VALUE_TO_FACE_ID[finalRoll] || 3;
+  const end = rotationForTopFace(faceId);
+
+  logDiceState("computed-end-before-animate", finalRoll, end);
+
+  // 3) spin extras (ลด drift)
+  const extraX = 360 * randInt(2, 4);
+  const extraY = 360 * randInt(2, 4);
+  const extraZ = 360 * randInt(1, 3);
+
+  // 4) animate to end
+  dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
+  dice3dEl.style.transform =
+    `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
+
+  // ✅ รอ transition จบจริง
+  await waitTransformEnd(dice3dEl, durationMs + 1200);
+
+  // 5) snap to clean end pose (no transition)
+  dice3dEl.style.transition = "none";
+  dice3dEl.style.transform =
+    `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
+
+  await raf();
+  logDiceState("after-snap-final", finalRoll, end);
+
+  diceIsRolling = false;
+
+  if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
+
+  return finalRoll;
+};
 
 function logDiceState(stage, finalRoll, endObj) {
   try {
