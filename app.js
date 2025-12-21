@@ -1123,6 +1123,90 @@ function buildEndMatrixForValue(value, yawDeg = 0){
   return { M, css: mat3ToCssMatrix3d(M) };
 }
 
+function normDeg(d){
+  // ลดองศาให้อยู่ช่วง [-180..180] เพื่อเลี่ยง browser เลือกเส้นทางหมุนแปลก ๆ
+  let x = ((d % 360) + 360) % 360;
+  if (x > 180) x -= 360;
+  return x;
+}
+
+function spinToPickAngles(pick){
+  // ทำให้จบที่ pick แต่หมุนเยอะ (เพิ่ม 360*k) เพื่อให้ดู “กลิ้งจริง”
+  const kx = 360 * randInt(6, 10);
+  const ky = 360 * randInt(7, 12);
+  const kz = 360 * randInt(6, 10);
+
+  return {
+    x: normDeg(pick.x) + kx,
+    y: normDeg(pick.y) + ky,
+    z: normDeg(pick.z) + kz,
+  };
+}
+
+async function animateRollToPick(el, pick, rollMs){
+  // เริ่มจากท่าสุ่ม
+  const s = { x: rand360(), y: rand360(), z: rand360() };
+
+  // กลางทางสุ่มเพิ่มให้ “เดายาก” (สำคัญ: ทำให้ไม่ดูหมุนแกนเดียว)
+  const mid = {
+    x: s.x + 360 * randInt(2, 5) + randInt(0, 180),
+    y: s.y + 360 * randInt(2, 5) + randInt(0, 180),
+    z: s.z + 360 * randInt(2, 4) + randInt(0, 180),
+  };
+
+  // ปลายทาง: จบที่ pick (แต่มี spin เยอะ)
+  const e = spinToPickAngles(pick);
+
+  // ล้าง transition/class เดิมให้หมด
+  el.classList.remove("is-rolling");
+  el.style.transition = "none";
+
+  const anim = el.animate(
+    [
+      { transform: `rotateX(${s.x}deg) rotateY(${s.y}deg) rotateZ(${s.z}deg)` },
+      { offset: 0.72, transform: `rotateX(${mid.x}deg) rotateY(${mid.y}deg) rotateZ(${mid.z}deg)` },
+      { transform: `rotateX(${e.x}deg) rotateY(${e.y}deg) rotateZ(${e.z}deg)` },
+    ],
+    {
+      duration: rollMs,
+      easing: "cubic-bezier(.08,.85,.18,1)", // เร็วตอนต้น ช้าตอนปลาย
+      fill: "forwards",
+    }
+  );
+
+  await anim.finished;
+
+  // “ตรึง” เฟรมสุดท้ายด้วย inline เพื่อความนิ่ง (กันบาง browser รีเซ็ต)
+  el.getAnimations().forEach(a => a.cancel());
+  el.style.transform = `rotateX(${e.x}deg) rotateY(${e.y}deg) rotateZ(${e.z}deg)`;
+
+  return e; // คืนค่าองศาที่จบจริง (ยังเป็น orientation เดียวกับ pick)
+}
+
+async function settleToPick(el, pick, settleMs){
+  // overshoot เบามาก เพื่อให้เหมือน “กระแทกแล้วนิ่ง”
+  const over = {
+    x: pick.x + (Math.random() < 0.5 ? 6 : -6),
+    y: pick.y + (Math.random() < 0.5 ? 8 : -8),
+    z: pick.z + (Math.random() < 0.5 ? 4 : -4),
+  };
+
+  // 1) ไป overshoot
+  el.style.transition = `transform ${Math.floor(settleMs * 0.55)}ms cubic-bezier(.12,.92,.18,1)`;
+  el.style.transform = `rotateX(${over.x}deg) rotateY(${over.y}deg) rotateZ(${over.z}deg)`;
+  await waitTransformEnd(el, settleMs + 600);
+
+  // 2) settle เข้าท่าสุดท้าย (นี่แหละที่ล็อค top ให้ตรง finalRoll)
+  el.style.transition = `transform ${Math.floor(settleMs * 0.45)}ms cubic-bezier(.2,.9,.2,1)`;
+  el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
+  await waitTransformEnd(el, settleMs + 600);
+
+  // SNAP สุดท้ายแบบไม่ animate ให้คม ๆ
+  el.style.transition = "none";
+  el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
+  await raf();
+}
+
 function freezeCurrentTransform(el){
   const t = getComputedStyle(el).transform; // matrix / matrix3d
   el.classList.remove("is-rolling");
@@ -1146,7 +1230,7 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   }
   if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
 
-  // ✅ build map (ครั้งแรกเท่านั้น) — ห้ามเปลี่ยน logic นี้
+  // ✅ ใช้ calibration เดิมของคุณ (ห้ามแตะ)
   if (!TOP_VISIBLE_TO_POSES) {
     TOP_VISIBLE_TO_POSES = await buildTopVisiblePoseMap();
   }
@@ -1155,51 +1239,21 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
     ? candidates[randInt(0, candidates.length - 1)]
     : { x: 0, y: 0, z: 0 };
 
-  // ===== A) ROLL PHASE: ease-out (เร็วแล้วค่อยช้า) =====
-  const rollMs = Math.max(1800, Math.floor(durationMs * 0.78)); // 78% เวลา = กลิ้ง
-  const settleMs = Math.max(420, durationMs - rollMs);          // ที่เหลือ = หยุดเนียน ๆ
+  // เวลา: roll ยาว + settle สั้น (คุณชอบจังหวะ 2 อยู่แล้ว)
+  const rollMs   = Math.max(2200, Math.floor(durationMs * 0.82));
+  const settleMs = Math.max(480, durationMs - rollMs);
 
-  dice3dEl.style.transition = "none";
-  dice3dEl.style.setProperty("--roll-dur", `${rollMs}ms`);
-  dice3dEl.style.setProperty("--sx", `${rand360()}deg`);
-  dice3dEl.style.setProperty("--sy", `${rand360()}deg`);
-  dice3dEl.style.setProperty("--sz", `${rand360()}deg`);
+  logDiceState("computed-end-before-animate", finalRoll, { pick, rollMs, settleMs });
 
-  await raf(); await raf();
-  dice3dEl.classList.add("is-rolling");
+  // ✅ 1) กลิ้งแบบธรรมชาติและ “จบที่ pick อยู่แล้ว”
+  await animateRollToPick(dice3dEl, pick, rollMs);
 
-  await sleep(rollMs);
+  // ✅ 2) จังหวะหยุดเนียน (เด้งนิด ๆ แล้วนิ่งที่ pick)
+  await settleToPick(dice3dEl, pick, settleMs);
 
-  // ===== B) FREEZE: จับเฟรมสุดท้ายของ roll มาเป็นฐาน (กัน snap) =====
-  freezeCurrentTransform(dice3dEl);
-  await raf();
-
-  // ===== C) SETTLE: ไปที่ท่าจบแบบเนียน + มี overshoot เล็กน้อย =====
-  // ทำ overshoot เบามาก (ไม่เสี่ยง top เพี้ยน เพราะปลายทางสุดท้ายคือ pick)
-  const over = {
-    x: pick.x + (Math.random() < 0.5 ? 8 : -8),
-    y: pick.y + (Math.random() < 0.5 ? 10 : -10),
-    z: pick.z + (Math.random() < 0.5 ? 6 : -6),
-  };
-
-  // 1) ไป overshoot ก่อน
-  dice3dEl.style.transition = `transform ${Math.floor(settleMs * 0.62)}ms cubic-bezier(.12,.92,.18,1)`;
-  dice3dEl.style.transform = `rotateX(${over.x}deg) rotateY(${over.y}deg) rotateZ(${over.z}deg)`;
-  await waitTransformEnd(dice3dEl, settleMs + 600);
-
-  // 2) แล้วค่อย settle เข้าท่าสุดท้าย (final = pick)
-  dice3dEl.style.transition = `transform ${Math.floor(settleMs * 0.38)}ms cubic-bezier(.2,.9,.2,1)`;
-  dice3dEl.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
-  await waitTransformEnd(dice3dEl, settleMs + 600);
-
-  // SNAP แบบปลอดภัย (ไม่ animate) ให้คม ๆ อีกที
-  dice3dEl.style.transition = "none";
-  dice3dEl.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
-  await raf();
-
-  // ✅ ตรวจ top หลังจบ (ไว้ดูเฉย ๆ)
-  const seenTop = getTopVisibleValue();
-  if (seenTop !== finalRoll) {
+  // log/check เหมือนเดิม
+  const seenTop = getTopVisibleValue?.();
+  if (seenTop != null && seenTop !== finalRoll) {
     console.warn("[DICE SNAP MISMATCH]", { finalRoll, seenTop, pick });
   }
   logDiceState("after-snap-final", finalRoll, { pick, seenTop });
