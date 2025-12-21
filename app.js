@@ -26,6 +26,13 @@ const firebaseConfig = {
 };
 
 console.log("app.js loaded (Stable Transactions - patched)");
+window.addEventListener("error", (e) => {
+  console.error("[GLOBAL ERROR]", e.message, e.filename, e.lineno, e.colno);
+});
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("[UNHANDLED PROMISE]", e.reason);
+});
+
 const app = firebaseInitializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -153,6 +160,15 @@ const modePlayBtn = document.getElementById("modePlayBtn");
 
 const backToModeBtn1 = document.getElementById("backToModeBtn1");
 const backToModeBtn2 = document.getElementById("backToModeBtn2");
+
+console.log("[ENTRY DOM CHECK]", {
+  pickAdminBtn: !!document.getElementById("pickAdminBtn"),
+  pickPlayerBtn: !!document.getElementById("pickPlayerBtn"),
+  modePlayBtn: !!document.getElementById("modePlayBtn"),
+  modeSelectPage: !!document.getElementById("modeSelectPage"),
+  adminEntryPage: !!document.getElementById("adminEntryPage"),
+  playerEntryPage: !!document.getElementById("playerEntryPage"),
+});
 
 let selectedEntryMode = null; // "admin" | "player"
 
