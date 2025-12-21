@@ -915,21 +915,14 @@ function waitTransformEnd(el, timeoutMs = 6500){
 }
 
 function rotationForTopFace(faceId){
-  // faceId ตาม DOM: 1..6 คือ .face-1 .. .face-6
-  // ใน HTML ของคุณ:
-  // face-1=front, face-2=right, face-3=top, face-4=bottom, face-5=left, face-6=back
-
   const map = {
-    3: { x:   0, y: 0, z:   0 },   // top -> top
-    4: { x: 180, y: 0, z:   0 },   // bottom -> top  (หมุนรอบ X)
-    1: { x: -90, y: 0, z:   0 },   // front -> top   (หมุนรอบ X)
-    6: { x:  90, y: 0, z:   0 },   // back  -> top   (หมุนรอบ X)
-
-    // ✅ จุดที่คุณผิดเดิม: RIGHT/LEFT ต้องยกขึ้นด้วย Z ไม่ใช่ Y
-    2: { x:   0, y: 0, z: -90 },   // right -> top   (หมุนรอบ Z)
-    5: { x:   0, y: 0, z:  90 },   // left  -> top   (หมุนรอบ Z)
+    3: { x:   0, y: 0, z:   0 },
+    4: { x: 180, y: 0, z:   0 },
+    1: { x: -90, y: 0, z:   0 },
+    6: { x:  90, y: 0, z:   0 },
+    2: { x:   0, y: 0, z: -90 },
+    5: { x:   0, y: 0, z:  90 },
   };
-
   return map[faceId] || map[3];
 }
 
@@ -985,41 +978,42 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
 
   if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
 
-  // 1) random start pose (no transition)
+  // random start pose (no transition)
   dice3dEl.style.transition = "none";
   dice3dEl.style.transform =
     `rotateX(${rand360()}deg) rotateY(${rand360()}deg) rotateZ(${rand360()}deg)`;
 
-  // ให้ browser apply ให้ชัวร์ (2 เฟรม กันบางเครื่อง)
-  await raf(); 
-  await raf();
+  await raf(); await raf();
 
-  // 2) compute end pose (Top = finalRoll)
+  // ✅ end pose: TOP = finalRoll
   const faceId = VALUE_TO_FACE_ID[finalRoll] || 3;
   const end = rotationForTopFace(faceId);
 
-  logDiceState("computed-end-before-animate", finalRoll, end);
+  // ✅ เพิ่ม yaw เพื่อความสวย (ไม่กระทบ TOP ถ้าวาง order ถูก)
+  const yawBase = [0, 90, 180, 270][randInt(0, 3)];
+  const yawSpin = 360 * randInt(6, 10);      // หมุนเยอะได้แบบเดิม
+  const yaw = yawBase + yawSpin;
 
-  // 3) spin extras (ลด drift)
-  const extraX = 360 * randInt(2, 4);
-  const extraY = 360 * randInt(2, 4);
-  const extraZ = 360 * randInt(1, 3);
+  logDiceState("computed-end-before-animate", finalRoll, { ...end, yaw });
 
-  // 4) animate to end
+  // ✅ spin extra ที่ “ไม่ทำให้หน้าเปลี่ยน”
+  const extraX = 360 * randInt(6, 10);
+  const extraZ = 360 * randInt(6, 10);
+
+  // 🔥 ใช้ ORDER ใหม่: rotateY(yaw) อยู่ซ้ายสุด = apply ทีหลังสุด
   dice3dEl.style.transition = `transform ${durationMs}ms cubic-bezier(.08,.85,.18,1)`;
   dice3dEl.style.transform =
-    `rotateX(${end.x + extraX}deg) rotateY(${end.y + extraY}deg) rotateZ(${end.z + extraZ}deg)`;
+    `rotateY(${yaw}deg) rotateX(${end.x + extraX}deg) rotateZ(${end.z + extraZ}deg)`;
 
-  // ✅ รอ transition จบจริง
   await waitTransformEnd(dice3dEl, durationMs + 1200);
 
-  // 5) snap to clean end pose (no transition)
+  // SNAP (clean)
   dice3dEl.style.transition = "none";
   dice3dEl.style.transform =
-    `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
+    `rotateY(${yawBase}deg) rotateX(${end.x}deg) rotateZ(${end.z}deg)`;
 
   await raf();
-  logDiceState("after-snap-final", finalRoll, end);
+  logDiceState("after-snap-final", finalRoll, { ...end, yaw: yawBase });
 
   diceIsRolling = false;
 
