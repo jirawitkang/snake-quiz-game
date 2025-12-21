@@ -964,6 +964,7 @@ const DICE_BASE = { x: 0, y: 0, z: 0 };
   
   const rollDiceWithOverlay = async (durationMs = 5000) => {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
+    logDiceState("before-roll", finalRoll, null);
   
     diceIsRolling = true;
     diceCommitDone = false;
@@ -999,6 +1000,7 @@ const DICE_BASE = { x: 0, y: 0, z: 0 };
     
     // fallback เผื่อ map ไม่ครบ
     const end = target || { x: 0, y: 0, z: 0 };
+    logDiceState("computed-end-before-animate", finalRoll, end);
 
   
     // extra ต้องเป็น “ทวีคูณ 360” เพื่อไม่ทำให้หน้าเปลี่ยน
@@ -1019,6 +1021,7 @@ const DICE_BASE = { x: 0, y: 0, z: 0 };
       `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
 
     await raf();
+    logDiceState("after-snap-final", finalRoll, end);
   
     diceIsRolling = false;
   
@@ -1027,6 +1030,34 @@ const DICE_BASE = { x: 0, y: 0, z: 0 };
   
     return finalRoll;
   };
+
+function logDiceState(stage, finalRoll, endObj) {
+  try {
+    const cam = document.querySelector(".dice-cam");
+    const dice = document.getElementById("dice3d");
+
+    const diceStyle = dice?.style?.transform || "";
+    const diceComputed = dice ? getComputedStyle(dice).transform : "";
+    const camStyle = cam?.style?.transform || "";
+    const camComputed = cam ? getComputedStyle(cam).transform : "";
+
+    console.log(
+      `%c[DICE LOG] ${stage}`,
+      "color:#5a4bb0;font-weight:900;",
+      {
+        finalRoll,
+        endObj,
+        dice_style_transform: diceStyle,
+        dice_computed_transform: diceComputed,
+        cam_style_transform: camStyle,
+        cam_computed_transform: camComputed,
+        ts: Date.now(),
+      }
+    );
+  } catch (e) {
+    console.warn("[DICE LOG] failed:", e);
+  }
+}
 
 function detectTopValueFromDOM() {
   if (!dice3dEl) return null;
