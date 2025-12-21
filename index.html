@@ -91,29 +91,55 @@
 
   <main class="container">
     <div id="entrySection">
-      <div class="section-title">LIBRARY RESOURCES</div>
-
-      <div class="grid-2">
-        <!-- Host -->
+      <div class="section-title">FOOD QUEST</div>
+    
+      <!-- หน้าเลือกโหมด (Page 1) -->
+      <div id="modeSelectPage" class="card entry-hero">
+        <h2 class="entry-title">Choose your role</h2>
+        <p class="muted entry-sub">
+          เลือกบทบาทก่อน จากนั้นกด <strong>PLAY</strong> เพื่อไปหน้ากรอกข้อมูล
+        </p>
+    
+        <div class="mode-grid">
+          <button id="pickAdminBtn" class="mode-card" type="button" aria-pressed="false">
+            <div class="mode-badge">ADMIN</div>
+            <div class="mode-name">Admin</div>
+            <div class="mode-desc muted">สร้างห้อง + ตั้งค่าเกม</div>
+          </button>
+    
+          <button id="pickPlayerBtn" class="mode-card" type="button" aria-pressed="false">
+            <div class="mode-badge">PLAY</div>
+            <div class="mode-name">Food Adventure</div>
+            <div class="mode-desc muted">เข้าห้อง + ตั้งชื่อผู้เล่น</div>
+          </button>
+        </div>
+    
+        <button id="modePlayBtn" class="btn-primary mt-14" type="button" disabled>
+          PLAY
+        </button>
+      </div>
+    
+      <!-- หน้าถัดไป: Admin (Host เดิม) -->
+      <div id="adminEntryPage" class="grid-2" style="display:none;">
         <div class="card">
-          <h2>สร้างห้อง (Host)</h2>
-
-          <label for="hostNameInput">ชื่อของคุณ (Host)</label>
+          <h2>Admin (Host)</h2>
+    
+          <label for="hostNameInput">ชื่อของคุณ (Admin)</label>
           <input
             id="hostNameInput"
-            placeholder="เช่น ครูเอ, Teacher A"
+            placeholder="เช่น Teacher A"
             maxlength="40"
             autocomplete="name"
             spellcheck="false"
           />
-
+    
           <button id="createRoomBtn" class="btn-primary" type="button">
             ถัดไป: ตั้งค่าเกม
           </button>
-
+    
           <div id="hostGameOptions" class="mt-14" style="display:none;">
             <div class="section-title">GAME SETTINGS</div>
-
+    
             <div class="card-split">
               <div class="split-col">
                 <label for="questionSetSelect">ชุดคำถามที่ใช้ในเกม</label>
@@ -122,33 +148,46 @@
                   <option value="setA">ชุดคำถามตัวอย่าง A</option>
                   <option value="setB">ชุดคำถามตัวอย่าง B</option>
                 </select>
-
+    
                 <label for="maxRoundsInput">จำนวนรอบสูงสุดของเกม</label>
                 <input id="maxRoundsInput" type="number" min="1" step="1" value="10" inputmode="numeric" />
               </div>
-
+    
               <div class="split-col">
-                <label for="maxWinnersInput">จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อมีผู้เข้าเส้นชัยครบ)</label>
+                <label for="maxWinnersInput">จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อครบ)</label>
                 <input id="maxWinnersInput" type="number" min="1" step="1" value="5" inputmode="numeric" />
-
-                <label for="rewardCorrectInput">จำนวนช่องที่ได้เดินเพิ่มเมื่อตอบถูก</label>
+    
+                <label for="rewardCorrectInput">ได้เดินเพิ่มเมื่อตอบถูก</label>
                 <input id="rewardCorrectInput" type="number" step="1" value="1" inputmode="numeric" />
-
-                <label for="penaltyWrongInput">จำนวนช่องที่ต้องเดินถอยเมื่อตอบผิด / ตอบไม่ทัน</label>
+    
+                <label for="penaltyWrongInput">ถอยเมื่อตอบผิด/ไม่ทัน</label>
                 <input id="penaltyWrongInput" type="number" step="1" value="-1" inputmode="numeric" />
               </div>
             </div>
-
+    
             <button id="confirmCreateRoomBtn" class="btn-primary mt-14" type="button">
               ยืนยันสร้างห้อง
             </button>
           </div>
+    
+          <button id="backToModeBtn1" class="btn-ghost mt-14" type="button">
+            ← กลับไปเลือกโหมด
+          </button>
         </div>
-
-        <!-- Player -->
+    
+        <div class="card" aria-hidden="true">
+          <h2>How to play</h2>
+          <p class="muted">
+            Admin สร้างห้องและแชร์ Room Code ให้ผู้เล่น จากนั้นเริ่มเกมใน Lobby
+          </p>
+        </div>
+      </div>
+    
+      <!-- หน้าถัดไป: Player (Player เดิม) -->
+      <div id="playerEntryPage" class="grid-2" style="display:none;">
         <div class="card">
-          <h2>เข้าห้อง (Player)</h2>
-
+          <h2>Food Adventure (Player)</h2>
+    
           <label for="roomCodeInput">Room Code</label>
           <input
             id="roomCodeInput"
@@ -158,17 +197,28 @@
             autocomplete="off"
             spellcheck="false"
           />
-
-          <label for="playerNameInput">ชื่อนักเรียน</label>
+    
+          <label for="playerNameInput">Adventure name</label>
           <input
             id="playerNameInput"
-            placeholder="เช่น นร.01, นร.ภูมิ, ฯลฯ"
+            placeholder="เช่น Team01, นร.ภูมิ"
             maxlength="40"
             autocomplete="name"
             spellcheck="false"
           />
-
+    
           <button id="joinRoomBtn" class="btn-primary" type="button">Join ห้อง</button>
+    
+          <button id="backToModeBtn2" class="btn-ghost mt-14" type="button">
+            ← กลับไปเลือกโหมด
+          </button>
+        </div>
+    
+        <div class="card" aria-hidden="true">
+          <h2>Tip</h2>
+          <p class="muted">
+            กรุณาตรวจสอบ Room Code ให้ถูกต้อง และตั้งชื่อไม่ซ้ำกับเพื่อนในห้อง
+          </p>
         </div>
       </div>
     </div>
