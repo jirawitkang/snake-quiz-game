@@ -306,12 +306,6 @@ button:disabled{
   white-space: nowrap;
 }
 
-.board-track{
-  display:flex; gap: 4px;
-  align-items:center;
-  min-height: 28px;
-}
-
 /* base */
 .cell-card{
   position: relative;
@@ -703,14 +697,6 @@ button:disabled{
   transform: translateY(-1px);
 }
 
-/* 3) Board: allow horizontal scroll on narrow screens */
-#board{
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 6px; /* กัน scrollbar ชน */
-}
-
 /* track ไม่บีบจนช่องแบน */
 .board-track{
   flex-wrap: nowrap;
@@ -789,15 +775,29 @@ button:disabled{
   text-overflow: ellipsis;
 }
 
-/* ===== Board track: single source of truth ===== */
-/* grid track */
+/* ===== Board track: single source of truth (GRID only) ===== */
 .board-track{
   display: grid !important;
-  grid-template-columns: var(--start-w) repeat(30, minmax(20px, 1fr)) var(--finish-w);
+  grid-template-columns: var(--start-w) repeat(30, var(--cell-h)) var(--finish-w);
   column-gap: var(--track-gap);
   align-items: center;
-  width: 100%;
-  min-width: 0;
+
+  width: max-content;     /* ✅ ทำให้ track กว้างตามคอลัมน์จริง */
+  min-width: 100%;        /* ✅ แต่ไม่เล็กกว่า container */
+}
+
+/* แถว board เป็นตัวเลื่อนแนวนอน */
+#board{
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+}
+
+/* ไม่ต้องให้ .board-track มี overflow-x ซ้ำ (ลด bug) */
+.player-row .board-track,
+.board-label-row .board-track{
+  overflow: visible;
 }
 
 /* cells 1-30 */
@@ -859,23 +859,35 @@ button:disabled{
 }
 
 /* --- Dice overlay: perspective stage --- */
-#diceOverlay.overlay{
+/* Base overlay */
+.overlay{
   position: fixed;
   inset: 0;
+  z-index: 9999; /* ✅ ยกให้สูงพอไปเลย */
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,.45);
-  backdrop-filter: blur(2px);
-  z-index: 9999;
+  padding: 16px;
+  background: rgba(20, 18, 40, .42);
+  backdrop-filter: blur(6px);
 }
 
-#diceOverlay .overlay-card{
+/* Dice overlay uses base overlay */
+#diceOverlay{
+  /* ไม่ต้องประกาศซ้ำ */
+}
+
+/* card */
+.overlay-card{
   width: min(420px, 92vw);
+  max-height: min(78vh, 640px);   /* ✅ กันมือถือเตี้ยแล้ว card ล้น */
+  overflow: auto;                /* ✅ ถ้าล้นให้เลื่อนใน card */
   background: #fff;
-  border-radius: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow2);
   padding: 16px;
-  box-shadow: 0 16px 44px rgba(0,0,0,.25);
+  text-align: center;
 }
 
 /* ===== Dice 3D (pips + perspective) ===== */
@@ -943,26 +955,4 @@ button:disabled{
 #closeDiceOverlayBtn{
   width: 100%;
   justify-content: center;
-}
-
-/* Rolling: เริ่มเร็ว → ค่อย ๆ ช้าลง */
-#dice3d.is-rolling{
-  animation: diceRollEase var(--roll-dur, 3200ms) cubic-bezier(.08,.85,.18,1) both;
-  will-change: transform;
-}
-
-@keyframes diceRollEase{
-  0%{
-    transform:
-      rotateX(var(--sx, 10deg))
-      rotateY(var(--sy, 20deg))
-      rotateZ(var(--sz, 30deg));
-  }
-  100%{
-    /* หมุนเยอะพอให้ดูธรรมชาติ (หลายแกน) */
-    transform:
-      rotateX(calc(var(--sx, 10deg) + 2520deg))
-      rotateY(calc(var(--sy, 20deg) + 2880deg))
-      rotateZ(calc(var(--sz, 30deg) + 2160deg));
-  }
 }
