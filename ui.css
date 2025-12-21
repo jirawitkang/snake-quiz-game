@@ -944,3 +944,24 @@ button:disabled{
   width: 100%;
   justify-content: center;
 }
+
+/* ===== Dice rolling animation (หลายแกน, ไม่บอกผลล่วงหน้า) ===== */
+#dice3d.is-rolling{
+  animation: diceSpin var(--roll-dur, 5000ms) linear both;
+  will-change: transform;
+}
+
+@keyframes diceSpin{
+  0%{
+    transform:
+      rotateX(var(--sx, 10deg))
+      rotateY(var(--sy, 20deg))
+      rotateZ(var(--sz, 30deg));
+  }
+  100%{
+    transform:
+      rotateX(calc(var(--sx, 10deg) + 2520deg)) /* 7 รอบ */
+      rotateY(calc(var(--sy, 20deg) + 2880deg)) /* 8 รอบ */
+      rotateZ(calc(var(--sz, 30deg) + 2160deg)); /* 6 รอบ */
+  }
+}
