@@ -950,6 +950,80 @@ function randSpin() {
   };
 }
 
+// ใช้ mapping นี้ของคุณได้เลย (ตาม index.html ล่าสุด)
+const FACE_CLASS_TO_VALUE = {
+  "face-1": 5, // FRONT
+  "face-2": 4, // RIGHT
+  "face-3": 1, // TOP
+  "face-4": 6, // BOTTOM
+  "face-5": 3, // LEFT
+  "face-6": 2, // BACK
+};
+
+// หา "Top ที่เห็น" = face ที่อยู่สูงสุดบนหน้าจอ (centerY ต่ำสุด)
+function getTopVisibleValue() {
+  const faces = dice3dEl?.querySelectorAll(".face");
+  if (!faces || faces.length === 0) return null;
+
+  let best = { y: Infinity, value: null, cls: null };
+
+  faces.forEach((el) => {
+    const rect = el.getBoundingClientRect();
+    const cy = rect.top + rect.height / 2;
+
+    // หา class face-#
+    const cls = [...el.classList].find((c) => /^face-\d$/.test(c));
+    const value = FACE_CLASS_TO_VALUE[cls];
+
+    if (value != null && cy < best.y) best = { y: cy, value, cls };
+  });
+
+  return best.value;
+}
+
+let TOP_VISIBLE_TO_POSES = null;
+
+// สร้าง list ของท่าที่เป็นไปได้ (หมุน 90 องศา) ให้ครบพอใช้งาน
+function genPoseList() {
+  const A = [0, 90, 180, 270];
+  const poses = [];
+  for (const x of A) for (const y of A) for (const z of A) {
+    poses.push({ x, y, z, key: `${x}_${y}_${z}` });
+  }
+  return poses;
+}
+
+// build map: value(1..6) -> poses[] ที่ทำให้ "Top ที่เห็น" = value
+async function buildTopVisiblePoseMap() {
+  if (!dice3dEl) return null;
+
+  const poses = genPoseList();
+  const map = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+
+  const prevTransition = dice3dEl.style.transition;
+  const prevTransform = dice3dEl.style.transform;
+
+  dice3dEl.style.transition = "none";
+
+  for (const p of poses) {
+    dice3dEl.style.transform = `rotateX(${p.x}deg) rotateY(${p.y}deg) rotateZ(${p.z}deg)`;
+    await raf(); // ให้ layout/update ทัน
+
+    const topVal = getTopVisibleValue();
+    if (topVal >= 1 && topVal <= 6) map[topVal].push(p);
+  }
+
+  // restore
+  dice3dEl.style.transform = prevTransform;
+  dice3dEl.style.transition = prevTransition;
+
+  console.log("[DICE] TOP_VISIBLE_TO_POSES built:", Object.fromEntries(
+    Object.entries(map).map(([k,v]) => [k, v.length])
+  ));
+
+  return map;
+}
+
 // ===== Dice: value -> face normal (ตาม index.html ล่าสุดของคุณ) =====
 // face-3 = TOP = 1  -> +Y
 // face-4 = BOTTOM=6 -> -Y
@@ -1056,7 +1130,6 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   diceIsRolling = true;
   diceCommitDone = false;
 
-  // fallback ถ้า element ไม่ครบ
   if (!diceOverlayEl || !dice3dEl) return finalRoll;
 
   diceOverlayEl.style.display = "flex";
@@ -1065,49 +1138,59 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
     closeDiceOverlayBtn.style.display = "none";
     closeDiceOverlayBtn.disabled = true;
   }
-
   if (diceHintEl) diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
 
-  // 1) หมุนแบบ "ไม่ผูกผลลัพธ์" (เดาไม่ได้)
+  // ✅ build map (ครั้งแรกเท่านั้น)
+  if (!TOP_VISIBLE_TO_POSES) {
+    TOP_VISIBLE_TO_POSES = await buildTopVisiblePoseMap();
+  }
+
+  // ถ้า map ว่างผิดปกติ ให้ fallback
+  const candidates = TOP_VISIBLE_TO_POSES?.[finalRoll] || [];
+  if (candidates.length === 0) {
+    console.warn("[DICE] No pose candidates for", finalRoll, TOP_VISIBLE_TO_POSES);
+  }
+
+  // ===== 1) ช่วงกลิ้ง: หมุน “หลายแกน” แบบเดาแต้มไม่ได้ =====
   dice3dEl.style.transition = "none";
   dice3dEl.classList.remove("is-rolling");
 
-  // set random seed angles via CSS vars
   dice3dEl.style.setProperty("--roll-dur", `${durationMs}ms`);
   dice3dEl.style.setProperty("--sx", `${rand360()}deg`);
   dice3dEl.style.setProperty("--sy", `${rand360()}deg`);
   dice3dEl.style.setProperty("--sz", `${rand360()}deg`);
 
-  // start rolling animation
   await raf(); await raf();
   dice3dEl.classList.add("is-rolling");
 
-  // รอให้หมุนครบ
   await sleep(durationMs);
 
-  // 2) เตรียมท่าจบแบบ matrix3d (TOP = finalRoll แน่นอน)
-  // yawBase เป็น 0/90/180/270 เพื่อให้หน้าข้างเปลี่ยนไปได้ (แต่ TOP ไม่เปลี่ยน)
-  const yawBase = [0, 90, 180, 270][randInt(0, 3)];
-  const end = buildEndMatrixForValue(finalRoll, yawBase);
-
-  logDiceState("computed-end-before-animate", finalRoll, { yawBase, css: end.css });
-
-  // 3) หยุด animation แล้ว settle เข้าท่าจบ
+  // ===== 2) เลือกท่าจบจาก “สิ่งที่เห็นจริง” =====
   dice3dEl.classList.remove("is-rolling");
 
-  // settle แบบสั้น ๆ ให้ดู “หยุดนิ่งสวย”
+  const pick = candidates.length
+    ? candidates[randInt(0, candidates.length - 1)]
+    : { x: 0, y: 0, z: 0 };
+
+  // settle
   dice3dEl.style.transition = "transform 260ms cubic-bezier(.2,.9,.2,1)";
-  dice3dEl.style.transform = end.css;
+  dice3dEl.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
 
   await waitTransformEnd(dice3dEl, 900);
-  dice3dEl.style.transition = "none";
-  dice3dEl.style.transform = end.css;
 
+  dice3dEl.style.transition = "none";
+  dice3dEl.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
   await raf();
-  logDiceState("after-snap-final", finalRoll, { yawBase, css: end.css });
+
+  // ✅ ตรวจ top ที่เห็นจริงหลัง snap
+  const seenTop = getTopVisibleValue();
+  if (seenTop !== finalRoll) {
+    console.warn("[DICE SNAP MISMATCH]", { finalRoll, seenTop, pick });
+  }
+
+  logDiceState("after-snap-final", finalRoll, { pick, seenTop });
 
   diceIsRolling = false;
-
   if (diceHintEl) diceHintEl.textContent = `ได้แต้ม: ${finalRoll} (กำลังบันทึกผล…)`;
 
   return finalRoll;
