@@ -940,6 +940,37 @@ const DICE_BASE = { x: 0, y: 0, z: 0 };
 
 let TOP_VALUE_TO_ROT = null;
 
+async function buildTopRotationMap() {
+  if (!dice3dEl) return null;
+
+  // ✅ reset ทุกครั้งที่ build (สำคัญมากเวลาคุณแก้โค้ด/รีเฟรชบางแบบ)
+  TOP_VALUE_TO_ROT = {};
+
+  const prevTransition = dice3dEl.style.transition;
+  const prevTransform  = dice3dEl.style.transform;
+
+  dice3dEl.style.transition = "none";
+
+  for (const o of ORIENTS_24) {
+    dice3dEl.style.transform = `rotateX(${o.x}deg) rotateY(${o.y}deg) rotateZ(${o.z}deg)`;
+    await raf(); await raf();
+
+    const { topValue } = detectVisualTopValue();
+    if (topValue != null && TOP_VALUE_TO_ROT[topValue] == null) {
+      TOP_VALUE_TO_ROT[topValue] = { ...o };
+    }
+    if (Object.keys(TOP_VALUE_TO_ROT).length >= 6) break;
+  }
+
+  // restore
+  dice3dEl.style.transform = prevTransform;
+  dice3dEl.style.transition = prevTransition;
+  await raf();
+
+  console.log("[DICE] TOP_VALUE_TO_ROT =", TOP_VALUE_TO_ROT);
+  return TOP_VALUE_TO_ROT;
+}
+
 // orientation ทั้งหมด 24 แบบ (cube rotations ที่ทำให้หน้าต่าง ๆ ขึ้นบนได้)
 const ORIENTS_24 = [
   // x,y,z เป็นมุม 0/90/180/270
@@ -952,39 +983,6 @@ const ORIENTS_24 = [
   {x:0,y:0,z:90},{x:0,y:90,z:90},{x:0,y:180,z:90},{x:0,y:270,z:90},
   {x:0,y:0,z:270},{x:0,y:90,z:270},{x:0,y:180,z:270},{x:0,y:270,z:270},
 ];
-
-async function buildTopRotationMap() {
-  if (!dice3dEl) return null;
-
-  const map = {};
-  const prevTransition = dice3dEl.style.transition;
-  const prevTransform = dice3dEl.style.transform;
-
-  dice3dEl.style.transition = "none";
-
-  for (const o of ORIENTS_24) {
-    dice3dEl.style.transform = `rotateX(${o.x}deg) rotateY(${o.y}deg) rotateZ(${o.z}deg)`;
-    await raf(); // ให้ computedStyle อัปเดต
-
-    const { topValue } = detectVisualTopValue();
-    if (topValue != null && map[topValue] == null) {
-      map[topValue] = { ...o };
-    }
-
-    // ครบ 1..6 แล้วหยุด
-    if (Object.keys(map).length >= 6) break;
-  }
-
-  // restore
-  dice3dEl.style.transform = prevTransform;
-  dice3dEl.style.transition = prevTransition;
-  await raf();
-
-  TOP_VALUE_TO_ROT = map;
-  console.log("[DICE] TOP_VALUE_TO_ROT =", TOP_VALUE_TO_ROT);
-
-  return map;
-}
 
 function randSpin() {
   // หมุนแรงๆ หลายแกน (ตัวเลขเยอะเพื่อให้ดูเหมือนเดิม)
@@ -1065,13 +1063,18 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   await anim.finished;
   anim.cancel();
 
-  // SNAP clean: ใช้ yawBase (ไม่ spin) เพื่อให้หยุดนิ่งสวย
+  // SNAP clean:
   dice3dEl.style.transition = "none";
   dice3dEl.style.transform =
     `rotateX(${end.x}deg) rotateY(${end.y + yawBase}deg) rotateZ(${end.z}deg)`;
+  
+  await raf(); await raf();
+  
+  const chk = detectVisualTopValue();
+  if (chk.topValue !== finalRoll) {
+    console.warn("[DICE SNAP MISMATCH]", { finalRoll, chk, end, yawBase });
+  }
 
-  await raf();
-  detectVisualTopValue(); // ✅ log ให้เห็นว่าตรงแล้ว
   logDiceState?.("after-snap-final", finalRoll, { ...end, yaw: yawBase });
 
   diceIsRolling = false;
@@ -1156,15 +1159,63 @@ function detectTopFaceId() {
   return best;
 }
 
-// --- FACE value map (คุณมีแล้ว ใช้อันเดิมได้) ---
-const FACE_ID_TO_VALUE = {
-  1: 5, // face-1 = 5 (front)
-  2: 4, // face-2 = 4 (right)
-  3: 1, // face-3 = 1 (top)
-  4: 6, // face-4 = 6 (bottom)
-  5: 3, // face-5 = 3 (left)
-  6: 2, // face-6 = 2 (back)
+// face normals in dice local space (ตาม cube setup ของคุณ)
+const FACE_NORMALS = {
+  1: [0, 0, 1],   // face-1 front
+  2: [1, 0, 0],   // face-2 right
+  6: [0, 0, -1],  // face-6 back
+  5: [-1, 0, 0],  // face-5 left
+  3: [0, 1, 0],   // face-3 top
+  4: [0, -1, 0],  // face-4 bottom
 };
+
+// faceId -> value (ตรงกับ index.html ของคุณ)
+const FACE_ID_TO_VALUE = {
+  1: 5, 2: 4, 3: 1, 4: 6, 5: 3, 6: 2,
+};
+
+function getDomMatrix3D(el) {
+  const t = getComputedStyle(el).transform;
+  // DOMMatrix จะ handle none/2D/3D ให้ได้หมด
+  return new DOMMatrixReadOnly(t === "none" ? undefined : t);
+}
+
+// ✅ “Top ที่เห็นในมุมกล้อง”: เลือกหน้าที่ normal มี y-component มากสุด หลังผ่าน cam*dice
+function detectVisualTopFaceId() {
+  const camEl = document.querySelector(".dice-cam");
+  if (!camEl || !dice3dEl) return null;
+
+  const camM  = getDomMatrix3D(camEl);
+  const diceM = getDomMatrix3D(dice3dEl);
+
+  // สำคัญ: world = cam * dice  (พอยต์ของ dice ต้องโดน dice ก่อน แล้วโดน cam)
+  const worldM = camM.multiply(diceM);
+
+  let bestFace = null;
+  let bestUp = -Infinity;
+
+  for (const [faceIdStr, n] of Object.entries(FACE_NORMALS)) {
+    const faceId = Number(faceIdStr);
+
+    // transform normal vector (ใช้ w=0 เพื่อไม่เอา translation)
+    const p = new DOMPointReadOnly(n[0], n[1], n[2], 0).matrixTransform(worldM);
+    const upScore = p.y;
+
+    if (upScore > bestUp) {
+      bestUp = upScore;
+      bestFace = faceId;
+    }
+  }
+
+  return bestFace;
+}
+
+function detectVisualTopValue() {
+  const topFaceId = detectVisualTopFaceId();
+  const topValue = topFaceId ? FACE_ID_TO_VALUE[topFaceId] : null;
+  console.log("[DICE TOP DETECT]", { topFaceId, topValue });
+  return { topFaceId, topValue };
+}
 
 // --- utilities: matrix parse ---
 function parseMatrix(m) {
@@ -1201,56 +1252,6 @@ function matVec3(m, v) {
     m[1] * x + m[5] * y + m[9]  * z,
     m[2] * x + m[6] * y + m[10] * z,
   ];
-}
-
-// face normals in dice local space (ตาม CSS cube มาตรฐานของคุณ)
-const FACE_NORMALS = {
-  1: [0, 0, 1],   // face-1 front
-  2: [1, 0, 0],   // face-2 right
-  6: [0, 0, -1],  // face-6 back
-  5: [-1, 0, 0],  // face-5 left
-  3: [0, 1, 0],   // face-3 top
-  4: [0, -1, 0],  // face-4 bottom
-};
-
-// คำนวณว่า “หน้าไหนเป็น TOP ในมุมกล้อง” = หน้าใดที่ normal ชี้ขึ้นบนจอมากสุด
-function detectVisualTopFaceId() {
-  const camEl = document.querySelector(".dice-cam");
-  if (!camEl || !dice3dEl) return null;
-
-  const camM = parseMatrix(getComputedStyle(camEl).transform);
-  const diceM = parseMatrix(getComputedStyle(dice3dEl).transform);
-
-  // ถ้าเป็น matrix 2D ให้ถือว่า identity (กันเคส matrix(...) ใน log)
-  const I = [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1];
-  const cam4 = (camM && camM.is3d) ? camM.nums : I;
-  const dice4 = (diceM && diceM.is3d) ? diceM.nums : I;
-
-  // world = cam * dice (เพราะ dice อยู่ใต้ cam)
-  const world = matMul4(cam4, dice4);
-
-  let bestFace = null;
-  let bestUp = -Infinity;
-
-  // "ขึ้นบนจอ" ตีความจากแกน Y ของ world-space หลังผ่าน cam (ค่ามาก = อยู่ด้านบน)
-  for (const [faceIdStr, n] of Object.entries(FACE_NORMALS)) {
-    const faceId = Number(faceIdStr);
-    const wn = matVec3(world, n);
-    const upScore = wn[1]; // y component
-    if (upScore > bestUp) {
-      bestUp = upScore;
-      bestFace = faceId;
-    }
-  }
-
-  return bestFace;
-}
-
-function detectVisualTopValue() {
-  const topFaceId = detectVisualTopFaceId();
-  const topValue = topFaceId ? FACE_ID_TO_VALUE[topFaceId] : null;
-  console.log("[DICE TOP DETECT]", { topFaceId, topValue });
-  return { topFaceId, topValue };
 }
 
 function logDiceState(stage, finalRoll, endObj) {
