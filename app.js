@@ -1154,43 +1154,51 @@ function shortestDeg(from, to){
 }
 
 async function animateRollToPick(el, pick, rollMs){
-  // เริ่มจากท่าสุ่ม
-  const s = { x: rand360(), y: rand360(), z: rand360() };
-
-  // กลางทางให้เดายาก
-  const mid = {
-    x: s.x + 360 * randInt(2, 5) + randInt(0, 180),
-    y: s.y + 360 * randInt(2, 5) + randInt(0, 180),
-    z: s.z + 360 * randInt(2, 4) + randInt(0, 180),
+  // ✅ ทำให้ต้นทางไม่แรง: เลือก start pose แบบไม่ “random ล้วน”
+  // ให้ใกล้ ๆ กล้อง (rotateX/rotateZ ไม่สุดโต่ง) จะดูเหมือน “กลิ้ง” มากกว่า “spin”
+  const s = {
+    x: randInt(-40, 40),
+    y: rand360(),
+    z: randInt(-40, 40),
   };
 
-  // ปลาย “ฐาน” (หมุนเยอะ) แต่ต้องจบ orientation = pick
+  // ✅ ลดรอบหมุนโดยรวม (เดิม 2..5 / 2..5 / 2..4)
+  // และลดมุมสุ่มเพิ่ม เพื่อให้กลางทางไม่เร็วตาม
+  const mid = {
+    x: s.x + 360 * randInt(1, 2) + randInt(0, 120),
+    y: s.y + 360 * randInt(1, 3) + randInt(0, 120),
+    z: s.z + 360 * randInt(1, 2) + randInt(0, 120),
+  };
+
+  // ปลาย “ฐาน” (orientation ถูก) — ฟังก์ชันนี้ต้องคืนค่าเทียบเท่าเดิมของคุณ
   const e = spinToPickAngles(pick);
 
-  // ✅ เพิ่ม "prePick" ให้เข้าใกล้ pick แบบนุ่ม ๆ (ลดโอกาสกระชาก)
-  // หลักการ: เฟรมก่อนสุดท้ายให้ใกล้ pick มาก ๆ (ต่างแค่ 8-14deg)
+  // ✅ prePick ใกล้ pick มากขึ้น + ลด wobble เพื่อไม่ให้มี “กระชาก”
   const prePick = {
-    x: shortestDeg(e.x, pick.x) + (Math.random() < 0.5 ? 12 : -12),
-    y: shortestDeg(e.y, pick.y) + (Math.random() < 0.5 ? 14 : -14),
-    z: shortestDeg(e.z, pick.z) + (Math.random() < 0.5 ? 10 : -10),
+    x: shortestDeg(e.x, pick.x) + (Math.random() < 0.5 ? 8 : -8),
+    y: shortestDeg(e.y, pick.y) + (Math.random() < 0.5 ? 10 : -10),
+    z: shortestDeg(e.z, pick.z) + (Math.random() < 0.5 ? 7 : -7),
   };
 
-  // ล้าง transition เดิม
-  el.classList.remove("is-rolling");
   el.style.transition = "none";
 
-  // ✅ keyframes 4 จุด: start -> mid -> prePick -> end(pick-orientation)
-  // สำคัญ: ช่วงท้าย (prePick->end) ให้กินเวลาเยอะ + easing นุ่ม
+  // ✅ ปรับ offset:
+  // - ช่วงต้นกินเวลามากขึ้น (ให้รู้สึก “กลิ้ง” ไม่ใช่ “spin”)
+  // - ช่วง prePick ใกล้จบขึ้น (ลดเวลารอจังหวะ 1 -> จังหวะ 2)
+  const oMid = 0.78;
+  const oPre = 0.95;
+
+  // ✅ easing ให้นุ่มขึ้น (ชะลอแบบธรรมชาติขึ้น)
   const anim = el.animate(
     [
       { transform: `rotateX(${s.x}deg) rotateY(${s.y}deg) rotateZ(${s.z}deg)` },
-      { offset: 0.68, transform: `rotateX(${mid.x}deg) rotateY(${mid.y}deg) rotateZ(${mid.z}deg)` },
-      { offset: 0.90, transform: `rotateX(${prePick.x}deg) rotateY(${prePick.y}deg) rotateZ(${prePick.z}deg)` },
+      { offset: oMid, transform: `rotateX(${mid.x}deg) rotateY(${mid.y}deg) rotateZ(${mid.z}deg)` },
+      { offset: oPre, transform: `rotateX(${prePick.x}deg) rotateY(${prePick.y}deg) rotateZ(${prePick.z}deg)` },
       { transform: `rotateX(${e.x}deg) rotateY(${e.y}deg) rotateZ(${e.z}deg)` },
     ],
     {
       duration: rollMs,
-      easing: "cubic-bezier(.08,.85,.18,1)",
+      easing: "cubic-bezier(.12,.78,.18,1)", // นุ่มกว่าเดิมเล็กน้อย
       fill: "forwards",
     }
   );
