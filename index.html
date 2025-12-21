@@ -8,72 +8,71 @@
   <link rel="stylesheet" href="ui.css" />
 </head>
 
-<!-- Dice Overlay (Modal) -->
-<div id="diceOverlay" class="overlay" style="display:none;">
-  <div class="overlay-card">
-    <div class="overlay-title">กำลังทอยลูกเต๋า…</div>
-
-    <div class="dice-scene">
-      <!-- ตัวครอบกล้อง: ทำให้เห็น 3 ด้านตลอดเวลา -->
-      <div class="dice-cam">
-        <div id="dice3d" class="dice">
-          <!-- FRONT = 5 -->
-          <div class="face face-1">
-            <span class="pip tl"></span>
-            <span class="pip tr"></span>
-            <span class="pip c"></span>
-            <span class="pip bl"></span>
-            <span class="pip br"></span>
-          </div>
-        
-          <!-- RIGHT = 4 -->
-          <div class="face face-2">
-            <span class="pip tl"></span>
-            <span class="pip tr"></span>
-            <span class="pip bl"></span>
-            <span class="pip br"></span>
-          </div>
-        
-          <!-- TOP = 1 -->
-          <div class="face face-3">
-            <span class="pip c"></span>
-          </div>
-        
-          <!-- BOTTOM = 6 -->
-          <div class="face face-4">
-            <span class="pip tl"></span>
-            <span class="pip ml"></span>
-            <span class="pip bl"></span>
-            <span class="pip tr"></span>
-            <span class="pip mr"></span>
-            <span class="pip br"></span>
-          </div>
-        
-          <!-- LEFT = 3 -->
-          <div class="face face-5">
-            <span class="pip tl"></span>
-            <span class="pip c"></span>
-            <span class="pip br"></span>
-          </div>
-        
-          <!-- BACK = 2 -->
-          <div class="face face-6">
-            <span class="pip tl"></span>
-            <span class="pip br"></span>
+<body>
+  <!-- Dice Overlay (Modal) -->
+  <div id="diceOverlay" class="overlay" style="display:none;">
+    <div class="overlay-card">
+      <div class="overlay-title">กำลังทอยลูกเต๋า…</div>
+  
+      <div class="dice-scene">
+        <!-- ตัวครอบกล้อง: ทำให้เห็น 3 ด้านตลอดเวลา -->
+        <div class="dice-cam">
+          <div id="dice3d" class="dice">
+            <!-- FRONT = 5 -->
+            <div class="face face-1">
+              <span class="pip tl"></span>
+              <span class="pip tr"></span>
+              <span class="pip c"></span>
+              <span class="pip bl"></span>
+              <span class="pip br"></span>
+            </div>
+          
+            <!-- RIGHT = 4 -->
+            <div class="face face-2">
+              <span class="pip tl"></span>
+              <span class="pip tr"></span>
+              <span class="pip bl"></span>
+              <span class="pip br"></span>
+            </div>
+          
+            <!-- TOP = 1 -->
+            <div class="face face-3">
+              <span class="pip c"></span>
+            </div>
+          
+            <!-- BOTTOM = 6 -->
+            <div class="face face-4">
+              <span class="pip tl"></span>
+              <span class="pip ml"></span>
+              <span class="pip bl"></span>
+              <span class="pip tr"></span>
+              <span class="pip mr"></span>
+              <span class="pip br"></span>
+            </div>
+          
+            <!-- LEFT = 3 -->
+            <div class="face face-5">
+              <span class="pip tl"></span>
+              <span class="pip c"></span>
+              <span class="pip br"></span>
+            </div>
+          
+            <!-- BACK = 2 -->
+            <div class="face face-6">
+              <span class="pip tl"></span>
+              <span class="pip br"></span>
+            </div>
           </div>
         </div>
       </div>
+  
+      <div id="diceHint" class="overlay-hint">โปรดรอสักครู่…</div>
+  
+      <button id="closeDiceOverlayBtn" class="btn-primary mt-14" type="button" style="display:none;">
+        กลับไปที่ GAME BOARD
+      </button>
     </div>
-
-    <div id="diceHint" class="overlay-hint">โปรดรอสักครู่…</div>
-
-    <button id="closeDiceOverlayBtn" class="btn-primary mt-14" type="button" style="display:none;">
-      กลับไปที่ GAME BOARD
-    </button>
   </div>
-</div>
-
-<body>
   <header class="app-header">
     <div class="header-inner">
       <div class="brand" aria-label="Snake Quiz – Multiplayer">
