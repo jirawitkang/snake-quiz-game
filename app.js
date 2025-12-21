@@ -534,7 +534,7 @@ confirmCreateRoomBtn.addEventListener("click", async () => {
   try {
     await set(roomRefBase(roomCode), {
       createdAt: Date.now(),
-      status: "lobby",      // lobby | playing | finished
+      status: "lobby",      // lobby | inGame | finished
       hostId,
       hostName,
       boardSize: BOARD_SIZE,
@@ -821,7 +821,6 @@ startGameBtn?.addEventListener("click", async () => {
     gameStartedAt: Date.now(),
   });
 
-
   // เลื่อนไป GAME BOARD ให้โฟกัสตามที่ต้องการ
   document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
@@ -858,7 +857,6 @@ startRoundBtn.addEventListener("click", async () => {
     const newRound = currentRound + 1;
     room.currentRound = newRound;
     room.phase = "rolling";
-    room.status = room.status === "lobby" ? "playing" : (room.status || "playing");
     room.questionIndex = (newRound - 1) % (questionSetLen || 1);
     room.questionCountdownStartAt = null;
     room.answerStartAt = null;
@@ -913,13 +911,6 @@ function waitTransformEnd(el, timeoutMs = 6500){
     const t = setTimeout(cleanup, timeoutMs);
   });
 }
-
-function normalizeDeg(d){
-  let x = Number(d) || 0;
-  x = x % 360;
-  if (x < 0) x += 360;
-  return x;
-}
   
 const raf = () => new Promise((r) => requestAnimationFrame(r));
 const rand360 = () => Math.floor(Math.random() * 360);
@@ -927,28 +918,6 @@ const randInt = (a,b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
 // ถ้ายังไม่ใช้ DICE_BASE จริง ๆ ก็ปล่อยไว้ได้ แต่ห้ามประกาศซ้ำ
 const DICE_BASE = { x: 0, y: 0, z: 0 };
-
-// orientation ทั้งหมด 24 แบบ (cube rotations ที่ทำให้หน้าต่าง ๆ ขึ้นบนได้)
-const ORIENTS_24 = [
-  // x,y,z เป็นมุม 0/90/180/270
-  // (ชุดนี้ครอบคลุม 24 orientation จริง)
-  {x:0,y:0,z:0},{x:0,y:90,z:0},{x:0,y:180,z:0},{x:0,y:270,z:0},
-  {x:90,y:0,z:0},{x:90,y:90,z:0},{x:90,y:180,z:0},{x:90,y:270,z:0},
-  {x:180,y:0,z:0},{x:180,y:90,z:0},{x:180,y:180,z:0},{x:180,y:270,z:0},
-  {x:270,y:0,z:0},{x:270,y:90,z:0},{x:270,y:180,z:0},{x:270,y:270,z:0},
-
-  {x:0,y:0,z:90},{x:0,y:90,z:90},{x:0,y:180,z:90},{x:0,y:270,z:90},
-  {x:0,y:0,z:270},{x:0,y:90,z:270},{x:0,y:180,z:270},{x:0,y:270,z:270},
-];
-
-function randSpin() {
-  // หมุนแรงๆ หลายแกน (ตัวเลขเยอะเพื่อให้ดูเหมือนเดิม)
-  return {
-    x: rand360() + 360 * randInt(6, 12),
-    y: rand360() + 360 * randInt(6, 12),
-    z: rand360() + 360 * randInt(6, 12),
-  };
-}
 
 // ใช้ mapping นี้ของคุณได้เลย (ตาม index.html ล่าสุด)
 const FACE_CLASS_TO_VALUE = {
@@ -1022,105 +991,6 @@ async function buildTopVisiblePoseMap() {
   ));
 
   return map;
-}
-
-// ===== Dice: value -> face normal (ตาม index.html ล่าสุดของคุณ) =====
-// face-3 = TOP = 1  -> +Y
-// face-4 = BOTTOM=6 -> -Y
-// face-1 = FRONT=5  -> +Z
-// face-6 = BACK=2   -> -Z
-// face-2 = RIGHT=4  -> +X
-// face-5 = LEFT=3   -> -X
-const VALUE_TO_NORMAL = {
-  1: { x: 0,  y: 1,  z: 0 },   // top
-  2: { x: 0,  y: 0,  z: -1 },  // back
-  3: { x: -1, y: 0,  z: 0 },   // left
-  4: { x: 1,  y: 0,  z: 0 },   // right
-  5: { x: 0,  y: 0,  z: 1 },   // front
-  6: { x: 0,  y: -1, z: 0 },   // bottom
-};
-
-function vDot(a,b){ return a.x*b.x + a.y*b.y + a.z*b.z; }
-function vCross(a,b){
-  return { x: a.y*b.z - a.z*b.y, y: a.z*b.x - a.x*b.z, z: a.x*b.y - a.y*b.x };
-}
-function vLen(a){ return Math.hypot(a.x,a.y,a.z); }
-function vNorm(a){
-  const L = vLen(a) || 1;
-  return { x: a.x/L, y: a.y/L, z: a.z/L };
-}
-
-// Rodrigues rotation matrix 3x3 (axis-angle)
-function rotAxisAngle(axis, angleRad){
-  const u = vNorm(axis);
-  const x=u.x, y=u.y, z=u.z;
-  const c=Math.cos(angleRad), s=Math.sin(angleRad), t=1-c;
-
-  return [
-    [t*x*x + c,   t*x*y - s*z, t*x*z + s*y],
-    [t*x*y + s*z, t*y*y + c,   t*y*z - s*x],
-    [t*x*z - s*y, t*y*z + s*x, t*z*z + c  ],
-  ];
-}
-
-function rotY(angleRad){
-  const c=Math.cos(angleRad), s=Math.sin(angleRad);
-  return [
-    [ c, 0, s],
-    [ 0, 1, 0],
-    [-s, 0, c],
-  ];
-}
-
-function matMul3(a,b){
-  const r = [[0,0,0],[0,0,0],[0,0,0]];
-  for(let i=0;i<3;i++){
-    for(let j=0;j<3;j++){
-      r[i][j] = a[i][0]*b[0][j] + a[i][1]*b[1][j] + a[i][2]*b[2][j];
-    }
-  }
-  return r;
-}
-
-// แปลง 3x3 -> matrix3d CSS (column-major)
-function mat3ToCssMatrix3d(m){
-  const m11=m[0][0], m12=m[0][1], m13=m[0][2];
-  const m21=m[1][0], m22=m[1][1], m23=m[1][2];
-  const m31=m[2][0], m32=m[2][1], m33=m[2][2];
-
-  // column-major for matrix3d:
-  // [ m11 m21 m31 0
-  //   m12 m22 m32 0
-  //   m13 m23 m33 0
-  //   0   0   0   1 ]
-  return `matrix3d(${m11},${m21},${m31},0, ${m12},${m22},${m32},0, ${m13},${m23},${m33},0, 0,0,0,1)`;
-}
-
-// สร้างท่าจบ: ให้ normal ของ "หน้าที่เป็น value" ชี้ขึ้น +Y (TOP)
-function buildEndMatrixForValue(value, yawDeg = 0){
-  const up = { x:0, y:1, z:0 };
-  const n = VALUE_TO_NORMAL[value] || up;
-
-  const dot = Math.max(-1, Math.min(1, vDot(n, up)));
-  const angle = Math.acos(dot);
-
-  let R;
-  if (angle < 1e-6){
-    // already on top
-    R = [[1,0,0],[0,1,0],[0,0,1]];
-  } else if (Math.abs(angle - Math.PI) < 1e-6){
-    // opposite: rotate 180 around X (or Z) ก็ได้
-    R = rotAxisAngle({x:1,y:0,z:0}, Math.PI);
-  } else {
-    const axis = vCross(n, up);
-    R = rotAxisAngle(axis, angle);
-  }
-
-  // ใส่ yaw เพิ่มความสวย: หมุนรอบแกนตั้ง (ไม่กระทบ TOP)
-  const yaw = rotY((yawDeg * Math.PI) / 180);
-  const M = matMul3(yaw, R);
-
-  return { M, css: mat3ToCssMatrix3d(M) };
 }
 
 function normDeg(d){
@@ -1235,13 +1105,6 @@ async function settleToPick(el, pick, settleMs){
   await raf();
 }
 
-function freezeCurrentTransform(el){
-  const t = getComputedStyle(el).transform; // matrix / matrix3d
-  el.classList.remove("is-rolling");
-  el.style.transition = "none";
-  el.style.transform = (t && t !== "none") ? t : "none";
-}
-
 const rollDiceWithOverlay = async (durationMs = 5000) => {
   const finalRoll = Math.floor(Math.random() * 6) + 1;
   logDiceState("before-roll", finalRoll, null);
@@ -1291,82 +1154,6 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   return finalRoll;
 };
 
-function parseMatrixAny(m) {
-  if (!m || m === "none") return null;
-  const nums = m.match(/-?\d+\.?\d*(e-?\d+)?/g)?.map(Number);
-  if (!nums) return null;
-
-  // matrix(a,b,c,d,e,f) -> 4x4
-  if (m.startsWith("matrix(")) {
-    const [a,b,c,d,e,f] = nums;
-    return [
-      [a, c, 0, e],
-      [b, d, 0, f],
-      [0, 0, 1, 0],
-      [0, 0, 0, 1],
-    ];
-  }
-
-  // matrix3d(16) -> 4x4 (column-major in CSS, convert to row-major)
-  if (m.startsWith("matrix3d(") && nums.length === 16) {
-    const n = nums;
-    return [
-      [n[0], n[4], n[8],  n[12]],
-      [n[1], n[5], n[9],  n[13]],
-      [n[2], n[6], n[10], n[14]],
-      [n[3], n[7], n[11], n[15]],
-    ];
-  }
-  return null;
-}
-
-function mulMat(A, B) {
-  const R = Array.from({length:4}, () => Array(4).fill(0));
-  for (let r=0;r<4;r++) for (let c=0;c<4;c++)
-    for (let k=0;k<4;k++) R[r][c] += A[r][k]*B[k][c];
-  return R;
-}
-
-function mulVec(M, v) {
-  const [x,y,z,w] = v;
-  return [
-    M[0][0]*x + M[0][1]*y + M[0][2]*z + M[0][3]*w,
-    M[1][0]*x + M[1][1]*y + M[1][2]*z + M[1][3]*w,
-    M[2][0]*x + M[2][1]*y + M[2][2]*z + M[2][3]*w,
-    M[3][0]*x + M[3][1]*y + M[3][2]*z + M[3][3]*w,
-  ];
-}
-
-// คืนค่า "faceId" ที่ชี้ขึ้นด้านบนของจอ (ใช้ cam + dice)
-function detectTopFaceId() {
-  const cam = document.querySelector(".dice-cam");
-  if (!cam || !dice3dEl) return null;
-
-  const camM = parseMatrixAny(getComputedStyle(cam).transform) || [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
-  const diceM = parseMatrixAny(getComputedStyle(dice3dEl).transform) || [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
-  const M = mulMat(camM, diceM);
-
-  // normals ของแต่ละ face ใน local space (y+ = ลงจอ)
-  const normals = {
-    1: [ 0,  0,  1, 0], // front
-    6: [ 0,  0, -1, 0], // back
-    2: [ 1,  0,  0, 0], // right
-    5: [-1,  0,  0, 0], // left
-    3: [ 0, -1,  0, 0], // top (ขึ้นจอ = y-)
-    4: [ 0,  1,  0, 0], // bottom
-  };
-
-  // เลือก face ที่ normal มีค่า y "ติดลบมากที่สุด" = ชี้ขึ้นบนจอที่สุด
-  let best = null;
-  let bestY = +Infinity;
-  for (const [fid, n] of Object.entries(normals)) {
-    const v = mulVec(M, n);
-    const y = v[1]; // screen-space Y
-    if (y < bestY) { bestY = y; best = Number(fid); }
-  }
-  return best;
-}
-
 // face normals in dice local space (ตาม cube setup ของคุณ)
 const FACE_NORMALS = {
   1: [0, 0, 1],   // face-1 front
@@ -1382,99 +1169,10 @@ const FACE_ID_TO_VALUE = {
   1: 5, 2: 4, 3: 1, 4: 6, 5: 3, 6: 2,
 };
 
-function getDomMatrix3D(el) {
-  const t = getComputedStyle(el).transform;
-  // DOMMatrix จะ handle none/2D/3D ให้ได้หมด
-  return new DOMMatrixReadOnly(t === "none" ? undefined : t);
-}
-
-// ✅ “Top ที่เห็นในมุมกล้อง”: เลือกหน้าที่ normal มี y-component มากสุด หลังผ่าน cam*dice
-function detectVisualTopFaceId() {
-  const camEl = document.querySelector(".dice-cam");
-  if (!camEl || !dice3dEl) return null;
-
-  const camM  = getDomMatrix3D(camEl);
-  const diceM = getDomMatrix3D(dice3dEl);
-
-  // สำคัญ: world = cam * dice  (พอยต์ของ dice ต้องโดน dice ก่อน แล้วโดน cam)
-  const worldM = camM.multiply(diceM);
-
-  let bestFace = null;
-  let bestUp = -Infinity;
-
-  for (const [faceIdStr, n] of Object.entries(FACE_NORMALS)) {
-    const faceId = Number(faceIdStr);
-
-    // transform normal vector (ใช้ w=0 เพื่อไม่เอา translation)
-    const p = new DOMPointReadOnly(n[0], n[1], n[2], 0).matrixTransform(worldM);
-    const upScore = p.y;
-
-    if (upScore > bestUp) {
-      bestUp = upScore;
-      bestFace = faceId;
-    }
-  }
-
-  return bestFace;
-}
-
-function detectVisualTopValue() {
-  const topFaceId = detectVisualTopFaceId();
-  const topValue = topFaceId ? FACE_ID_TO_VALUE[topFaceId] : null;
-  console.log("[DICE TOP DETECT]", { topFaceId, topValue });
-  return { topFaceId, topValue };
-}
-
-// --- utilities: matrix parse ---
-function parseMatrix(m) {
-  if (!m || m === "none") return null;
-  const is3d = m.startsWith("matrix3d(");
-  const nums = m
-    .replace(is3d ? "matrix3d(" : "matrix(", "")
-    .replace(")", "")
-    .split(",")
-    .map((x) => parseFloat(x.trim()));
-  return { is3d, nums };
-}
-
-function matMul4(a, b) {
-  // a,b: 16-length, column-major like CSS matrix3d
-  const out = new Array(16).fill(0);
-  for (let r = 0; r < 4; r++) {
-    for (let c = 0; c < 4; c++) {
-      out[c * 4 + r] =
-        a[0 * 4 + r] * b[c * 4 + 0] +
-        a[1 * 4 + r] * b[c * 4 + 1] +
-        a[2 * 4 + r] * b[c * 4 + 2] +
-        a[3 * 4 + r] * b[c * 4 + 3];
-    }
-  }
-  return out;
-}
-
-function matVec3(m, v) {
-  // apply m to direction vector (ignore translation)
-  const x = v[0], y = v[1], z = v[2];
-  return [
-    m[0] * x + m[4] * y + m[8]  * z,
-    m[1] * x + m[5] * y + m[9]  * z,
-    m[2] * x + m[6] * y + m[10] * z,
-  ];
-}
-
 function logDiceState(stage, finalRoll, endObj) {
   try {
     const cam = document.querySelector(".dice-cam");
     const dice = document.getElementById("dice3d");
-
-    const diceStyle = dice?.style?.transform || "";
-    const diceComputed = dice ? getComputedStyle(dice).transform : "";
-    const camStyle = cam?.style?.transform || "";
-    const camComputed = cam ? getComputedStyle(cam).transform : "";
-
-    const topF = detectTopFaceId();
-    const topV = topF ? FACE_ID_TO_VALUE[topF] : null;
-    console.log("[DICE TOP DETECT]", { topFaceId: topF, topValue: topV });
 
     console.log(
       `%c[DICE LOG] ${stage}`,
@@ -1482,10 +1180,10 @@ function logDiceState(stage, finalRoll, endObj) {
       {
         finalRoll,
         endObj,
-        dice_style_transform: diceStyle,
-        dice_computed_transform: diceComputed,
-        cam_style_transform: camStyle,
-        cam_computed_transform: camComputed,
+        dice_style_transform: dice?.style?.transform || "",
+        dice_computed_transform: dice ? getComputedStyle(dice).transform : "",
+        cam_style_transform: cam?.style?.transform || "",
+        cam_computed_transform: cam ? getComputedStyle(cam).transform : "",
         ts: Date.now(),
       }
     );
@@ -2128,7 +1826,8 @@ function ensureTimer(roomData, targetPhase) {
     // ✅ fallback: ถ้า phase เป็น answering แต่ answerStartAt ไม่ถูกตั้ง
     if (!Number.isFinite(roomData.answerStartAt)) {
       if (currentRole === "host" && currentRoomCode) {
-        update(ref(db), { [`rooms/${currentRoomCode}/answerStartAt`]: Date.now() })
+        const roomRef = ref(db, `rooms/${currentRoomCode}`);
+        update(roomRef, { answerStartAt: Date.now() })
           .catch((e) => console.error("fix answerStartAt failed:", e));
       }
       countdownDisplayEl.textContent = "รอเริ่มจับเวลา…";
@@ -2149,7 +1848,8 @@ function ensureTimer(roomData, targetPhase) {
   
         // Host set flag หมดเวลา (ไม่ใช้ async ใน interval)
         if (currentRole === "host" && currentRoomCode && roomData.answerDeadlineExpired !== true) {
-          update(ref(db), { [`rooms/${currentRoomCode}/answerDeadlineExpired`]: true })
+          const roomRef = ref(db, `rooms/${currentRoomCode}`);
+          update(roomRef, { answerDeadlineExpired: true })
             .catch((e) => console.error("Error setting answerDeadlineExpired:", e));
         }
       }
