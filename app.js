@@ -1308,8 +1308,6 @@ function detectTopValueFromDOM() {
   return FACE_CLASS_TO_VALUE[best.cls] ?? null;
 }
 
-let TOP_VALUE_TO_ROT = null;
-
 async function buildTopRotationMap() {
   if (!dice3dEl) return null;
 
