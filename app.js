@@ -1154,39 +1154,38 @@ function shortestDeg(from, to){
 }
 
 async function animateRollToPick(el, pick, rollMs){
-  // ✅ ทำให้ต้นทางไม่แรง: เลือก start pose แบบไม่ “random ล้วน”
-  // ให้ใกล้ ๆ กล้อง (rotateX/rotateZ ไม่สุดโต่ง) จะดูเหมือน “กลิ้ง” มากกว่า “spin”
+  // ✅ start pose: ไม่ random สุดโต่ง เพื่อให้ดูเหมือน “กลิ้ง” มากกว่า “spin”
   const s = {
-    x: randInt(-40, 40),
+    x: randInt(-35, 35),
     y: rand360(),
-    z: randInt(-40, 40),
+    z: randInt(-35, 35),
   };
 
-  // ใน mid:
-  x: s.x + 360 * randInt(1, 1) + randInt(0, 90),
-  y: s.y + 360 * randInt(1, 2) + randInt(0, 90),
-  z: s.z + 360 * randInt(1, 1) + randInt(0, 90),
+  // ✅ mid pose: เพิ่มรอบแบบพอดี ๆ (ลดความเร็วช่วงต้น/กลาง)
+  const mid = {
+    x: s.x + 360 * randInt(1, 2) + randInt(0, 80),
+    y: s.y + 360 * randInt(1, 2) + randInt(0, 80),
+    z: s.z + 360 * randInt(1, 2) + randInt(0, 80),
+  };
 
-
-  // ปลาย “ฐาน” (orientation ถูก) — ฟังก์ชันนี้ต้องคืนค่าเทียบเท่าเดิมของคุณ
+  // ✅ end base (orientation ถูกจริง) — ให้ top ตรงตาม pick แน่นอน
   const e = spinToPickAngles(pick);
 
-  // ✅ prePick ใกล้ pick มากขึ้น + ลด wobble เพื่อไม่ให้มี “กระชาก”
+  // ✅ prePick ใกล้จบ: ให้เข้าใกล้ท่าสุดท้ายแบบนุ่ม ๆ ลด “กระชาก”
   const prePick = {
-    x: shortestDeg(e.x, pick.x) + (Math.random() < 0.5 ? 8 : -8),
-    y: shortestDeg(e.y, pick.y) + (Math.random() < 0.5 ? 10 : -10),
-    z: shortestDeg(e.z, pick.z) + (Math.random() < 0.5 ? 7 : -7),
+    x: shortestDeg(e.x, pick.x) + (Math.random() < 0.5 ? 6 : -6),
+    y: shortestDeg(e.y, pick.y) + (Math.random() < 0.5 ? 8 : -8),
+    z: shortestDeg(e.z, pick.z) + (Math.random() < 0.5 ? 5 : -5),
   };
 
   el.style.transition = "none";
 
-  // ✅ ปรับ offset:
-  // - ช่วงต้นกินเวลามากขึ้น (ให้รู้สึก “กลิ้ง” ไม่ใช่ “spin”)
-  // - ช่วง prePick ใกล้จบขึ้น (ลดเวลารอจังหวะ 1 -> จังหวะ 2)
-  const oMid = 0.78;
-  const oPre = 0.97;
+  // ✅ timing:
+  // - ให้ช่วงกลางกินเวลาหลัก (เหมือนกลิ้ง)
+  // - prePick ใกล้จบขึ้น (ลดช่วงรอ “ก่อนจังหวะ 2”)
+  const oMid = 0.76;
+  const oPre = 0.965;
 
-  // ✅ easing ให้นุ่มขึ้น (ชะลอแบบธรรมชาติขึ้น)
   const anim = el.animate(
     [
       { transform: `rotateX(${s.x}deg) rotateY(${s.y}deg) rotateZ(${s.z}deg)` },
@@ -1196,14 +1195,14 @@ async function animateRollToPick(el, pick, rollMs){
     ],
     {
       duration: rollMs,
-      easing: "cubic-bezier(.12,.78,.18,1)", // นุ่มกว่าเดิมเล็กน้อย
+      easing: "cubic-bezier(.14,.82,.18,1)", // ชะลอเนียน ๆ
       fill: "forwards",
     }
   );
 
   await anim.finished;
 
-  // ตรึงเฟรมสุดท้าย
+  // ตรึงเฟรมสุดท้าย (กัน WAAPI ค้าง/ค่าเพี้ยน)
   el.getAnimations().forEach(a => a.cancel());
   el.style.transform = `rotateX(${e.x}deg) rotateY(${e.y}deg) rotateZ(${e.z}deg)`;
 
