@@ -156,7 +156,20 @@ const backToModeBtn2 = document.getElementById("backToModeBtn2");
 
 let selectedEntryMode = null; // "admin" | "player"
 
+console.log("[ENTRY] mode DOM", {
+  modeSelectPageEl: !!modeSelectPageEl,
+  adminEntryPageEl: !!adminEntryPageEl,
+  playerEntryPageEl: !!playerEntryPageEl,
+  pickAdminBtn: !!pickAdminBtn,
+  pickPlayerBtn: !!pickPlayerBtn,
+  modePlayBtn: !!modePlayBtn,
+  backToModeBtn1: !!backToModeBtn1,
+  backToModeBtn2: !!backToModeBtn2,
+});
+
 // ---------------- State ----------------
+let didRestoreSession = false;
+
 let currentRoomCode = null;
 let currentRole = null; // "host" | "player"
 let currentPlayerId = null;
@@ -448,6 +461,7 @@ function updateStartGameButton(roomData, players) {
 
     // host restore
     if (s.role === "host") {
+      didRestoreSession = true;
       currentRoomCode = roomCode;
       currentRole = "host";
       currentPlayerId = null;
@@ -461,6 +475,7 @@ function updateStartGameButton(roomData, players) {
     if (s.role === "player") {
       const pid = s.pid;
       if (pid && roomData.players?.[pid]) {
+        didRestoreSession = true;
         currentRoomCode = roomCode;
         currentRole = "player";
         currentPlayerId = pid;
@@ -474,6 +489,33 @@ function updateStartGameButton(roomData, players) {
     console.warn("restore session failed:", e);
   }
 })();
+
+// ---------------- Host: Step 0 – Choose your role ----------------
+pickAdminBtn?.addEventListener("click", () => {
+  selectedEntryMode = "admin";
+  pickAdminBtn.setAttribute("aria-pressed", "true");
+  pickPlayerBtn?.setAttribute("aria-pressed", "false");
+  if (modePlayBtn) modePlayBtn.disabled = false;
+});
+
+pickPlayerBtn?.addEventListener("click", () => {
+  selectedEntryMode = "player";
+  pickPlayerBtn.setAttribute("aria-pressed", "true");
+  pickAdminBtn?.setAttribute("aria-pressed", "false");
+  if (modePlayBtn) modePlayBtn.disabled = false;
+});
+
+modePlayBtn?.addEventListener("click", () => {
+  console.log("[ENTRY] PLAY clicked", { selectedEntryMode });
+
+  if (selectedEntryMode === "admin") return showAdminEntryPage();
+  if (selectedEntryMode === "player") return showPlayerEntryPage();
+
+  alert("กรุณาเลือกบทบาทก่อน (Admin หรือ Food Adventure)");
+});
+
+backToModeBtn1?.addEventListener("click", showModeSelectPage);
+backToModeBtn2?.addEventListener("click", showModeSelectPage);
 
 // ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
 createRoomBtn?.addEventListener("click", () => {
@@ -2160,8 +2202,12 @@ function renderEndGameSummary(roomData, players) {
   if (endGameSummaryEl) endGameSummaryEl.innerHTML = html;
 }
 
-// Start entry at mode select (new flow)
-showModeSelectPage();
+// Start entry at mode select only if not restored
+queueMicrotask(() => {
+  if (!didRestoreSession && !currentRoomCode && !currentRole) {
+    showModeSelectPage();
+  }
+});
 
 // ---------------- Init (when role set) ----------------
 function initUiIfReady() {
