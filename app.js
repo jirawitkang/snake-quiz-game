@@ -59,8 +59,66 @@ const PHASE = Object.freeze({
 // ---------------- Question Sets ----------------
 const QUESTION_SETS = {
   general: [
-    { text: "2 + 2 เท่ากับเท่าใด?", choices: { A: "3", B: "4", C: "5", D: "22" }, correctOption: "B", timeLimit: 10 },
-    { text: "เมืองหลวงของประเทศไทยคือเมืองใด?", choices: { A: "เชียงใหม่", B: "ขอนแก่น", C: "กรุงเทพมหานคร", D: "ภูเก็ต" }, correctOption: "C", timeLimit: 10 },
+    {
+      text: "ทำไมกาแฟถึงขม? (ตอบผิดไม่ดุ แต่อาจงอนนิดนึง)",
+      choices: { A: "เพราะชีวิต", B: "เพราะน้ำตาลหมด", C: "เพราะเมล็ดกาแฟ", D: "เพราะแก้วมันเศร้า" },
+      correctOption: "C",
+      timeLimit: 10,
+    },
+    {
+      text: "ถ้า Wi-Fi หลุดบ่อย เราควรทำอะไรก่อน?",
+      choices: { A: "รีสตาร์ทเราเตอร์", B: "โทษชะตา", C: "เดินไปใกล้ ๆ แล้วทำเนียน", D: "อธิษฐานกับเสาสัญญาณ" },
+      correctOption: "A",
+      timeLimit: 10,
+    },
+    {
+      text: "ข้อใดคือ ‘งานด่วน’ ที่แท้จริง?",
+      choices: { A: "งานที่ต้องเสร็จเมื่อวาน", B: "งานที่หัวหน้าบอกว่าไม่รีบ", C: "งานที่ส่งแล้วแต่ยังต้องแก้", D: "งานที่ยังไม่เริ่มแต่ใกล้เดดไลน์" },
+      correctOption: "A",
+      timeLimit: 10,
+    },
+    {
+      text: "ถ้าลืมรหัสผ่านบ่อย ควรตั้งรหัสใหม่ว่าอะไร?",
+      choices: { A: "123456", B: "password", C: "ForgetMeNot2025!", D: "ชื่อแมว+วันเกิด+OTP" },
+      correctOption: "C",
+      timeLimit: 10,
+    },
+    {
+      text: "เวลาพูดว่า ‘เดี๋ยวทำ’ โดยเฉลี่ยหมายถึง…",
+      choices: { A: "ภายใน 5 นาที", B: "หลังอาหาร", C: "พรุ่งนี้แหละ", D: "เมื่อโลกสงบ" },
+      correctOption: "C",
+      timeLimit: 10,
+    },
+    {
+      text: "ถ้าพบไฟล์ชื่อ final_v7_REALfinal จริง ๆ แล้วไฟล์ไหนคือไฟล์สุดท้าย?",
+      choices: { A: "final", B: "final_v7_REALfinal", C: "final_v7_REALfinal_2", D: "ไฟล์ที่เปิดล่าสุด" },
+      correctOption: "D",
+      timeLimit: 10,
+    },
+    {
+      text: "ข้อใดคือ ‘การออกกำลังกาย’ ของสายออฟฟิศ?",
+      choices: { A: "เดินไปเข้าห้องน้ำ", B: "ยืดเส้นยืดสาย", C: "เดินไปหาเครื่องปริ้นท์แล้วเครื่องพัง", D: "ทั้งหมดที่กล่าวมา" },
+      correctOption: "D",
+      timeLimit: 10,
+    },
+    {
+      text: "ถ้ากำลังจะชงมาม่า แต่หา ‘ซองพริก’ ไม่เจอ ควรทำยังไง?",
+      choices: { A: "โทรแจ้งตำรวจ", B: "ทำใจแล้วกินแบบคลีน", C: "เขียนรายงานสาเหตุราก (RCA)", D: "เปิดซองอีกอันอย่างสง่างาม" },
+      correctOption: "D",
+      timeLimit: 10,
+    },
+    {
+      text: "คำว่า ‘เดี๋ยวส่งให้ครับ/ค่ะ’ ในแชทงาน หมายถึงข้อใดมากที่สุด?",
+      choices: { A: "ส่งทันที", B: "ส่งหลังประชุม", C: "ส่งก่อนเลิกงานถ้านึกได้", D: "ส่งเมื่อคุณทักมาครั้งที่ 3" },
+      correctOption: "D",
+      timeLimit: 10,
+    },
+    {
+      text: "ถ้าตั้งนาฬิกาปลุก 10 อัน แต่ยังตื่นสาย สาเหตุคืออะไร?",
+      choices: { A: "นาฬิกาปลุกผิด", B: "หมอนดูดวิญญาณ", C: "มือปิดเองแบบอัตโนมัติ (สกิลลับ)", D: "ทั้ง B และ C" },
+      correctOption: "D",
+      timeLimit: 10,
+    },
   ],
   setA: [
     { text: "HTML ย่อมาจากข้อใด?", choices: { A: "HyperText Markup Language", B: "HighText Machine Language", C: "Hyperlinks and Text Markup Language", D: "Home Tool Markup Language" }, correctOption: "A", timeLimit: 10 },
