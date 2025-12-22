@@ -216,25 +216,6 @@ const playerEntryPageEl = document.getElementById("playerEntryPage");
 const backToLandingBtn1 = document.getElementById("backToLandingBtn1");
 const backToLandingBtn2 = document.getElementById("backToLandingBtn2");
 
-// ---- DEBUG: log ว่าเจอ element จริงไหม ----
-(function logEntryDomWiring() {
-  const items = {
-    adminTopBtn,
-    joinGameBtn,
-    entryLandingEl,
-    adminEntryPageEl,
-    playerEntryPageEl,
-    backToLandingBtn1,
-    backToLandingBtn2,
-  };
-
-  console.groupCollapsed("%c[ENTRY DOM] wiring check", "color:#5a4bb0;font-weight:900;");
-  for (const [k, el] of Object.entries(items)) {
-    console.log(k, el ? "✅ found" : "❌ MISSING", el || "");
-  }
-  console.groupEnd();
-})();
-
 // ---------------- Admin Password Gate ----------------
 const ADMIN_PIN = "8888";
 
@@ -322,6 +303,25 @@ adminPwInputEl?.addEventListener("input", () => {
 adminPwInputEl?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") e.preventDefault();
 });
+
+// ---- DEBUG: log ว่าเจอ element จริงไหม ----
+(function logEntryDomWiring() {
+  const items = {
+    adminTopBtn,
+    joinGameBtn,
+    entryLandingEl,
+    adminEntryPageEl,
+    playerEntryPageEl,
+    backToLandingBtn1,
+    backToLandingBtn2,
+  };
+
+  console.groupCollapsed("%c[ENTRY DOM] wiring check", "color:#5a4bb0;font-weight:900;");
+  for (const [k, el] of Object.entries(items)) {
+    console.log(k, el ? "✅ found" : "❌ MISSING", el || "");
+  }
+  console.groupEnd();
+})();
 
 // ---------------- State ----------------
 let didRestoreSession = false;
