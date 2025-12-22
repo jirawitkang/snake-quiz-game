@@ -64,59 +64,6 @@ button, input, select, textarea { font: inherit; }
   gap: 12px;
 }
 .brand{ display:flex; align-items:center; gap: 10px; }
-/* ===== Badge base ===== */
-/* ===== Badge base ===== */
-.brand-badge{
-  position: relative;
-  width: 104px;
-  height: 50px;
-  display: grid;
-  place-items: center;
-  padding: 8px;           /* เท่ากันทุกด้าน */
-  box-sizing: border-box;
-  overflow: visible;
-}
-
-.brand-badge.badge-v1{
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-/* ===== Flag cloth shape + check pattern (gray/white) ===== */
-.brand-badge.badge-v1::before{
-  content:"";
-  position:absolute;
-  inset: 6px;
-
-  /* ลายหมากรุก: เทา/ขาว (แทนดำ/ขาว) */
-  background:
-    conic-gradient(from 90deg,
-      #6a6a6a 0 25%, #ffffff 0 50%, #6a6a6a 0 75%, #ffffff 0 100%);
-  background-size: 12px 12px;
-
-  /* ธง: สี่เหลี่ยมคางหมู + ปลายแหลม (point) */
-  clip-path: polygon(
-    2% 16%,
-    86% 8%,
-    100% 50%,   /* ปลายแหลม */
-    86% 92%,
-    6% 86%,
-    0% 50%
-  );
-
-  /* เอียงนิด + ให้เหมือนปลิว */
-  transform: skewX(-10deg) rotate(-2deg);
-
-  /* เงาให้ลอยขึ้นจาก header */
-  filter: drop-shadow(0 8px 14px rgba(0,0,0,.28));
-}
-
-/* ===== Cloth shading: wave in the middle + folds ===== */
-.brand-badge.badge-v1::after{
-  content:"";
-  position:absolute;
-  inset:
 
 .brand-title{ display:flex; flex-direction:column; line-height:1.05; }
 .brand-title strong{ font-size: 16px; }
@@ -1079,29 +1026,122 @@ button:disabled{
   border-radius: 18px;
 }
 
-/* ตัวอักษร QR ด้านหน้าธง */
-.brand-badge.brand-flag .badge-text{
+/* ✅ SAFETY: อย่าให้แบดจ์ไปทำ layout เพี้ยน */
+.brand-badge{
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.18);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight: 900;
+  letter-spacing:.5px;
+}
+
+/* =========================
+   Quiz Runner Badge (safe)
+   ไม่ทับ .brand-badge เดิม
+   ========================= */
+
+.brand-badge.badge-v1{
+  /* ขยายเฉพาะตัวนี้ */
+  width: 108px;
+  height: 44px;
+  border-radius: 12px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+
+  /* ให้เนื้อด้านในห่างเท่ากัน */
+  padding: 6px;
+  box-sizing: border-box;
+
+  position: relative;
+  overflow: visible;
+
+  /* เอา flex เดิมมาใช้ต่อ แต่จัดให้อักษรอยู่กลาง */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ผืนธง (เทา/ขาว) + ทรงปลายแหลม + เฉียง */
+.brand-badge.badge-v1::before{
+  content:"";
+  position:absolute;
+  inset: 6px;
+
+  background:
+    conic-gradient(from 90deg,
+      #6a6a6a 0 25%, #ffffff 0 50%, #6a6a6a 0 75%, #ffffff 0 100%);
+  background-size: 12px 12px;
+
+  /* ปลายแหลม + คางหมู */
+  clip-path: polygon(
+    2% 16%,
+    84% 8%,
+    100% 50%,
+    84% 92%,
+    6% 86%,
+    0% 50%
+  );
+
+  transform: skewX(-10deg) rotate(-2deg);
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.26));
+}
+
+/* เพิ่มมิติผ้า: คลื่นกลาง + เงาพับ */
+.brand-badge.badge-v1::after{
+  content:"";
+  position:absolute;
+  inset: 6px;
+
+  clip-path: polygon(
+    2% 16%,
+    84% 8%,
+    100% 50%,
+    84% 92%,
+    6% 86%,
+    0% 50%
+  );
+
+  background:
+    radial-gradient(120% 90% at 18% 30%, rgba(255,255,255,.55), transparent 55%),
+    radial-gradient(100% 120% at 52% 48%, rgba(0,0,0,.22), transparent 60%),
+    linear-gradient(90deg,
+      rgba(0,0,0,.06) 0%,
+      rgba(255,255,255,.20) 28%,
+      rgba(0,0,0,.22) 52%,
+      rgba(255,255,255,.12) 74%,
+      rgba(0,0,0,.10) 100%);
+
+  mix-blend-mode: multiply;
+  opacity: .95;
+  pointer-events:none;
+}
+
+/* ตัวอักษร QR: ชัดขึ้น */
+.brand-badge.badge-v1 .badge-text{
   position: relative;
   z-index: 2;
 
-  font-weight: 900;
-  font-size: 18px;
-  letter-spacing: 1px;
-
-  color: var(--p-900);          /* ม่วงเข้มตามธีม */
-  background: rgba(255,255,255,0.85);
-  padding: 2px 6px;
-  border-radius: 6px;
-
+  font-weight: 1000;
+  font-size: 30px;
   line-height: 1;
+  letter-spacing: .4px;
+
+  color: #201a52;
+
+  /* ช่วยให้แยกจากลายธง */
+  text-shadow:
+    0 0 10px rgba(255,255,255,.45),
+    0 6px 14px rgba(0,0,0,.22);
 }
 
-.brand-badge.brand-flag{
-  clip-path: polygon(
-    0 0,
-    95% 0,
-    100% 50%,
-    95% 100%,
-    0 100%
-  );
+/* ขอบขาวเท่าเดิม */
+@supports (-webkit-text-stroke: 1px #fff){
+  .brand-badge.badge-v1 .badge-text{
+    -webkit-text-stroke: 1.6px rgba(255,255,255,.92);
+  }
 }
