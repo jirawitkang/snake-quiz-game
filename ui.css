@@ -65,92 +65,59 @@ button, input, select, textarea { font: inherit; }
 }
 .brand{ display:flex; align-items:center; gap: 10px; }
 /* ===== Badge base ===== */
+/* ===== Badge base ===== */
 .brand-badge{
   position: relative;
-  width: 92px;          /* กว้างขึ้น */
-  height: 48px;
+  width: 104px;
+  height: 50px;
   display: grid;
   place-items: center;
-  padding: 8px;         /* ระยะในเท่ากันทุกด้าน */
+  padding: 8px;           /* เท่ากันทุกด้าน */
   box-sizing: border-box;
-  overflow: visible;    /* ให้ปลายธงโผล่ได้ */
+  overflow: visible;
 }
 
-/* ===== V2: Black/White waving trapezoid flag ===== */
 .brand-badge.badge-v1{
-  background: transparent;   /* ไม่มีพื้นหลังม่วงจาง */
+  background: transparent;
   border: none;
   box-shadow: none;
 }
 
-/* ตัว “ผืนธง” */
+/* ===== Flag cloth shape + check pattern (gray/white) ===== */
 .brand-badge.badge-v1::before{
   content:"";
   position:absolute;
-  inset: 6px;                 /* กรอบในของธง */
+  inset: 6px;
+
+  /* ลายหมากรุก: เทา/ขาว (แทนดำ/ขาว) */
   background:
-    /* ลายหมากรุก */
     conic-gradient(from 90deg,
-      #000 0 25%, #fff 0 50%, #000 0 75%, #fff 0 100%);
+      #6a6a6a 0 25%, #ffffff 0 50%, #6a6a6a 0 75%, #ffffff 0 100%);
   background-size: 12px 12px;
 
-  /* ธงเป็นสี่เหลี่ยมคางหมู + เฉียง */
+  /* ธง: สี่เหลี่ยมคางหมู + ปลายแหลม (point) */
   clip-path: polygon(
-    2% 14%,
-    92% 6%,
-    98% 48%,
-    90% 92%,
+    2% 16%,
+    86% 8%,
+    100% 50%,   /* ปลายแหลม */
+    86% 92%,
     6% 86%,
     0% 50%
   );
 
-  /* ทำให้ดู “สะบัด/โค้ง” */
+  /* เอียงนิด + ให้เหมือนปลิว */
   transform: skewX(-10deg) rotate(-2deg);
-  filter: drop-shadow(0 8px 14px rgba(0,0,0,.25));
+
+  /* เงาให้ลอยขึ้นจาก header */
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.28));
 }
 
-/* เพิ่มเงาคลื่นบนผืนธงให้ดูเป็นผ้า */
-.brand-badge.badge-v2::after{
+/* ===== Cloth shading: wave in the middle + folds ===== */
+.brand-badge.badge-v1::after{
   content:"";
   position:absolute;
-  inset: 6px;
-  clip-path: polygon(
-    2% 14%,
-    92% 6%,
-    98% 48%,
-    90% 92%,
-    6% 86%,
-    0% 50%
-  );
-  background:
-    radial-gradient(120% 90% at 20% 30%, rgba(255,255,255,.35), transparent 55%),
-    radial-gradient(140% 100% at 85% 65%, rgba(0,0,0,.22), transparent 60%),
-    linear-gradient(90deg, rgba(0,0,0,.18), transparent 35%, rgba(0,0,0,.10));
-  mix-blend-mode: multiply;
-  pointer-events:none;
-}
+  inset:
 
-/* ===== QR text: ใหญ่ขึ้น/หนาขึ้น แต่ “ขอบขาวเท่าเดิม” ===== */
-.brand-badge .badge-text{
-  position: relative;
-  z-index: 2;
-
-  font-weight: 1000;     /* หนาขึ้น */
-  font-size: 28px;       /* ใหญ่ขึ้น */
-  letter-spacing: .6px;
-  line-height: 1;
-
-  color: var(--p-900);
-  text-shadow: 0 6px 14px rgba(0,0,0,.18);
-}
-
-/* ขอบขาว “เท่าเดิม” (ล็อกไว้ที่ 1.6px) */
-@supports (-webkit-text-stroke: 1px #fff){
-  .brand-badge .badge-text{
-    -webkit-text-stroke: 1.6px rgba(255,255,255,.90); /* เท่าเดิมตามที่ขอ */
-    text-shadow: 0 6px 14px rgba(0,0,0,.18);
-  }
-}
 .brand-title{ display:flex; flex-direction:column; line-height:1.05; }
 .brand-title strong{ font-size: 16px; }
 .brand-title span{ font-size: 12px; opacity:.9; }
