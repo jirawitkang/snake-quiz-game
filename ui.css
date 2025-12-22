@@ -1027,37 +1027,36 @@ button:disabled{
 }
 
 .brand-badge.badge-v1{
-  /* ✅ แคบลงให้พอดีกับ QR */
-  width: 88px;          /* ปรับได้: 84-96 */
+  width: 88px;
   height: 44px;
 
   background: transparent;
   border: none;
   box-shadow: none;
 
-  padding: 6px;         /* ระยะในเท่ากันทุกด้าน */
+  padding: 6px;
   box-sizing: border-box;
 
   position: relative;
-  overflow: hidden;     /* กันหลุดกรอบ */
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* ผืนธง: สี่เหลี่ยมด้านขนาน + ลายหมากรุก เทา/ขาว */
+/* ธง: สี่เหลี่ยมด้านขนาน + ลาย (ม่วง/เทา) */
 .brand-badge.badge-v1::before{
   content:"";
   position:absolute;
   inset: 6px;
 
+  /* ✅ ม่วง = โทนเดียวกับ header / เทาแทนขาว */
   background:
     conic-gradient(from 90deg,
-      #6a6a6a 0 25%, #ffffff 0 50%, #6a6a6a 0 75%, #ffffff 0 100%);
+      var(--p-600) 0 25%, #cfcfd9 0 50%, var(--p-600) 0 75%, #cfcfd9 0 100%);
   background-size: 12px 12px;
 
   clip-path: polygon(14% 0%, 100% 0%, 86% 100%, 0% 100%);
-
   filter: drop-shadow(0 8px 14px rgba(0,0,0,.22));
 }
 
@@ -1070,16 +1069,16 @@ button:disabled{
   clip-path: polygon(14% 0%, 100% 0%, 86% 100%, 0% 100%);
 
   background:
-    radial-gradient(120% 120% at 22% 30%, rgba(255,255,255,.38), transparent 55%),
-    radial-gradient(120% 120% at 78% 72%, rgba(0,0,0,.14), transparent 60%),
+    radial-gradient(120% 120% at 22% 30%, rgba(255,255,255,.20), transparent 55%),
+    radial-gradient(120% 120% at 78% 72%, rgba(0,0,0,.18), transparent 60%),
     linear-gradient(90deg, rgba(255,255,255,.10), rgba(0,0,0,.10));
 
-  mix-blend-mode: multiply;
+  mix-blend-mode: overlay;
   opacity: .9;
   pointer-events: none;
 }
 
-/* ✅ QR ไม่มีขอบขาวแล้ว */
+/* ✅ QR สีขาว (ไม่มีขอบขาว) */
 .brand-badge.badge-v1 .badge-text{
   position: relative;
   z-index: 2;
@@ -1089,19 +1088,17 @@ button:disabled{
   line-height: 1;
   letter-spacing: .6px;
 
-  color: #201a52;
+  color: #ffffff;
 
-  /* กันหลุดกรอบ */
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
 
   text-shadow:
-    0 0 10px rgba(255,255,255,.22),
-    0 6px 12px rgba(0,0,0,.16);
+    0 6px 14px rgba(0,0,0,.22);
 }
 
-/* ✅ ปิด stroke เดิมแบบชัวร์ */
+/* ปิด stroke เดิมแบบชัวร์ */
 .brand-badge.badge-v1 .badge-text{
   -webkit-text-stroke: 0 transparent !important;
 }
