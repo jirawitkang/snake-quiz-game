@@ -67,75 +67,90 @@ button, input, select, textarea { font: inherit; }
 /* ===== Badge base ===== */
 .brand-badge{
   position: relative;
-  width: 84px;           /* กว้างขึ้นได้ */
-  height: 44px;
-  border-radius: 14px;
+  width: 92px;          /* กว้างขึ้น */
+  height: 48px;
   display: grid;
   place-items: center;
-  overflow: hidden;
-  padding: 8px;          /* inner เท่ากันทุกด้าน */
+  padding: 8px;         /* ระยะในเท่ากันทุกด้าน */
   box-sizing: border-box;
+  overflow: visible;    /* ให้ปลายธงโผล่ได้ */
 }
 
-/* ===== V1: Checkered flag background ===== */
+/* ===== V2: Black/White waving trapezoid flag ===== */
 .brand-badge.badge-v1{
-  background: rgba(255,255,255,.16);
-  border: 1px solid rgba(255,255,255,.22);
-  box-shadow: 0 10px 22px rgba(0,0,0,.18);
+  background: transparent;   /* ไม่มีพื้นหลังม่วงจาง */
+  border: none;
+  box-shadow: none;
 }
 
+/* ตัว “ผืนธง” */
 .brand-badge.badge-v1::before{
   content:"";
   position:absolute;
-  inset: 8px;                 /* เท่ากับ padding */
-  border-radius: 12px;
+  inset: 6px;                 /* กรอบในของธง */
   background:
-    linear-gradient(45deg, rgba(0,0,0,.95) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(0,0,0,.95) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(0,0,0,.95) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(0,0,0,.95) 75%);
-  background-size: 10px 10px;
-  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+    /* ลายหมากรุก */
+    conic-gradient(from 90deg,
+      #000 0 25%, #fff 0 50%, #000 0 75%, #fff 0 100%);
+  background-size: 12px 12px;
 
-  /* ให้ดูเป็นผ้า */
-  filter: drop-shadow(0 10px 14px rgba(0,0,0,.18));
-  opacity: .95;
+  /* ธงเป็นสี่เหลี่ยมคางหมู + เฉียง */
+  clip-path: polygon(
+    2% 14%,
+    92% 6%,
+    98% 48%,
+    90% 92%,
+    6% 86%,
+    0% 50%
+  );
+
+  /* ทำให้ดู “สะบัด/โค้ง” */
+  transform: skewX(-10deg) rotate(-2deg);
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.25));
 }
 
-/* highlight บาง ๆ ให้มีมิติ */
-.brand-badge.badge-v1::after{
+/* เพิ่มเงาคลื่นบนผืนธงให้ดูเป็นผ้า */
+.brand-badge.badge-v2::after{
   content:"";
   position:absolute;
-  inset:0;
-  background: linear-gradient(135deg, rgba(255,255,255,.18), transparent 45%);
+  inset: 6px;
+  clip-path: polygon(
+    2% 14%,
+    92% 6%,
+    98% 48%,
+    90% 92%,
+    6% 86%,
+    0% 50%
+  );
+  background:
+    radial-gradient(120% 90% at 20% 30%, rgba(255,255,255,.35), transparent 55%),
+    radial-gradient(140% 100% at 85% 65%, rgba(0,0,0,.22), transparent 60%),
+    linear-gradient(90deg, rgba(0,0,0,.18), transparent 35%, rgba(0,0,0,.10));
+  mix-blend-mode: multiply;
   pointer-events:none;
 }
 
-/* ===== QR text: ไม่มีพื้นหลังแล้ว ===== */
+/* ===== QR text: ใหญ่ขึ้น/หนาขึ้น แต่ “ขอบขาวเท่าเดิม” ===== */
 .brand-badge .badge-text{
   position: relative;
   z-index: 2;
-  font-weight: 1000;
-  font-size: 22px;
+
+  font-weight: 1000;     /* หนาขึ้น */
+  font-size: 28px;       /* ใหญ่ขึ้น */
   letter-spacing: .6px;
   line-height: 1;
-  color: var(--p-900);
 
-  /* ทำให้ “อ่านชัด” โดยไม่ต้องมีพื้นหลัง */
-  text-shadow:
-    0 2px 0 rgba(255,255,255,.85),
-    0 0 10px rgba(255,255,255,.55),
-    0 6px 14px rgba(0,0,0,.18);
+  color: var(--p-900);
+  text-shadow: 0 6px 14px rgba(0,0,0,.18);
 }
 
-/* ถ้าอยากให้ QR ดู “หนา/มีขอบ” มากขึ้น ใช้อันนี้แทน text-shadow ด้านบนได้ */
+/* ขอบขาว “เท่าเดิม” (ล็อกไว้ที่ 1.6px) */
 @supports (-webkit-text-stroke: 1px #fff){
   .brand-badge .badge-text{
-    -webkit-text-stroke: 1.6px rgba(255,255,255,.85);
+    -webkit-text-stroke: 1.6px rgba(255,255,255,.90); /* เท่าเดิมตามที่ขอ */
     text-shadow: 0 6px 14px rgba(0,0,0,.18);
   }
 }
-
 .brand-title{ display:flex; flex-direction:column; line-height:1.05; }
 .brand-title strong{ font-size: 16px; }
 .brand-title span{ font-size: 12px; opacity:.9; }
