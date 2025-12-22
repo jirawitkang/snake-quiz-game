@@ -561,8 +561,6 @@ function updateStartGameButton(roomData, players) {
 }
 
 // ---------------- Restore Session ----------------
-let didRestoreSession = false;
-
 (async function attemptRestoreSession() {
   try {
     const raw = STORAGE.getItem(STORAGE_KEY);
