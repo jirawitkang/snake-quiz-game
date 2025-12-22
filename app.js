@@ -207,7 +207,6 @@ const raf = () => new Promise((r) => requestAnimationFrame(r));
 const rand360 = () => Math.floor(Math.random() * 360);
 const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
-const adminTopBtn = document.getElementById("adminTopBtn");
 const joinGameBtn = document.getElementById("joinGameBtn");
 
 const entryLandingEl = document.getElementById("entryLanding");   // หน้าแรกปุ่ม Join Game
