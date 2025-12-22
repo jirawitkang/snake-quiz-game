@@ -514,6 +514,120 @@ function enterLobbyView() {
   setHeaderPills();
 }
 
+function subscribeRoom(roomCode) {
+  if (roomUnsub) { try { roomUnsub(); } catch {} roomUnsub = null; }
+
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  roomUnsub = onValue(roomRef, (snapshot) => {
+    try {
+      if (!snapshot.exists()) {
+        resetToHome("ห้องนี้ถูกยกเลิก/ปิดแล้ว");
+        return;
+      }
+
+      const roomData = snapshot.val();
+      const players = roomData.players || {};
+
+      console.log("[ROOM UPDATE]", {
+        roomCode,
+        status: roomData.status,
+        phase: roomData.phase,
+        playerCount: Object.keys(players).length,
+        currentRole,
+      });
+
+      renderLobbyBadges(roomData);
+      renderPlayerList(roomData, players);
+      updateGameView(roomData, players);
+      updateStartGameButton(roomData, players);
+    } catch (e) {
+      console.error("[subscribeRoom] crashed:", e);
+    }
+  });
+}
+
+function updateStartGameButton(roomData, players) {
+  if (!startGameBtn) return;
+
+  const totalPlayers = Object.keys(players || {}).length;
+  const shouldShow =
+    currentRole === "host" &&
+    currentRoomCode &&
+    roomData?.status === "lobby" &&
+    totalPlayers > 0;
+
+  startGameBtn.style.display = shouldShow ? "inline-flex" : "none";
+  startGameBtn.disabled = !shouldShow;
+}
+
+// ---------------- Restore Session ----------------
+let didRestoreSession = false;
+
+(async function attemptRestoreSession() {
+  try {
+    const raw = STORAGE.getItem(STORAGE_KEY);
+    if (!raw) return;
+
+    let s = null;
+    try {
+      s = JSON.parse(raw);
+    } catch {
+      // session เสีย/ไม่ใช่ JSON -> เคลียร์ทิ้ง
+      STORAGE.removeItem(STORAGE_KEY);
+      return;
+    }
+
+    if (!s?.room || !s?.role) return;
+
+    const roomCode = String(s.room).trim().toUpperCase();
+    if (!roomCode) return;
+
+    const roomRef = ref(db, `rooms/${roomCode}`);
+    const snap = await get(roomRef);
+    if (!snap.exists()) return;
+
+    const roomData = snap.val();
+    const players = roomData.players || {};
+
+    // --- Host restore ---
+    if (s.role === "host") {
+      didRestoreSession = true;
+      currentRoomCode = roomCode;
+      currentRole = "host";
+      currentPlayerId = null;
+
+      console.log("[RESTORE] host", { roomCode });
+
+      enterLobbyView();
+      subscribeRoom(currentRoomCode);
+      lockEntryUIForRole("host");
+      return;
+    }
+
+    // --- Player restore ---
+    if (s.role === "player") {
+      const pid = s.pid ? String(s.pid) : null;
+
+      // ถ้าไม่มี pid หรือ pid ไม่อยู่แล้ว -> ไม่ restore
+      if (!pid || !players[pid]) return;
+
+      didRestoreSession = true;
+      currentRoomCode = roomCode;
+      currentRole = "player";
+      currentPlayerId = pid;
+
+      console.log("[RESTORE] player", { roomCode, pid, name: players[pid]?.name });
+
+      enterLobbyView();
+      subscribeRoom(currentRoomCode);
+      lockEntryUIForRole("player");
+      return;
+    }
+  } catch (e) {
+    console.warn("restore session failed:", e);
+  }
+})();
+
 // ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
 createRoomBtn?.addEventListener("click", () => {
   const hostName = (hostNameInput?.value || "").trim();
