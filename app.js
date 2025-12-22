@@ -236,6 +236,94 @@ const backToLandingBtn2 = document.getElementById("backToLandingBtn2");
   console.groupEnd();
 })();
 
+// ---------------- Admin Password Gate ----------------
+const ADMIN_PIN = "8888";
+
+const adminTopBtn = document.getElementById("adminTopBtn");
+const adminPwOverlayEl = document.getElementById("adminPwOverlay");
+const adminPwInputEl = document.getElementById("adminPwInput");
+const adminPwErrorEl = document.getElementById("adminPwError");
+const adminPwCancelBtn = document.getElementById("adminPwCancelBtn");
+
+// ต้องมีฟังก์ชันนี้อยู่แล้วจากระบบหน้า entry ของคุณ
+// function showAdminEntryPage() { ... }
+
+function openAdminPwOverlay() {
+  if (!adminPwOverlayEl || !adminPwInputEl) {
+    alert("ไม่พบหน้ากรอกรหัส Admin (#adminPwOverlay / #adminPwInput) กรุณาตรวจสอบ index.html");
+    return;
+  }
+
+  // reset
+  adminPwInputEl.value = "";
+  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
+
+  adminPwOverlayEl.style.display = "flex";
+
+  // โฟกัสทันที
+  setTimeout(() => adminPwInputEl.focus(), 0);
+}
+
+function closeAdminPwOverlay() {
+  if (adminPwOverlayEl) adminPwOverlayEl.style.display = "none";
+  if (adminPwInputEl) adminPwInputEl.value = "";
+  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
+}
+
+function failPin() {
+  if (adminPwErrorEl) adminPwErrorEl.style.display = "block";
+  if (adminPwInputEl) {
+    adminPwInputEl.value = "";
+    adminPwInputEl.focus();
+  }
+}
+
+adminTopBtn?.addEventListener("click", () => {
+  // ถ้าอยู่ในห้องแล้ว/เป็น host แล้ว ก็ไม่ต้องถามรหัสซ้ำ (ปรับได้ตามต้องการ)
+  if (currentRole === "host" && currentRoomCode) return;
+
+  openAdminPwOverlay();
+});
+
+adminPwCancelBtn?.addEventListener("click", closeAdminPwOverlay);
+
+// กดพื้นที่มืดนอกการ์ด = ปิด
+adminPwOverlayEl?.addEventListener("click", (e) => {
+  if (e.target === adminPwOverlayEl) closeAdminPwOverlay();
+});
+
+// พิมพ์ครบ 4 หลักแล้วปลดล็อกทันที (ไม่ต้องกด Enter)
+adminPwInputEl?.addEventListener("input", () => {
+  let v = String(adminPwInputEl.value || "");
+
+  // ให้เป็นตัวเลขล้วน
+  v = v.replace(/\D/g, "").slice(0, 4);
+  adminPwInputEl.value = v;
+
+  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
+
+  if (v.length === 4) {
+    if (v === ADMIN_PIN) {
+      closeAdminPwOverlay();
+
+      // เข้าหน้า Admin entry ทันที
+      if (typeof showAdminEntryPage === "function") {
+        showAdminEntryPage();
+      } else {
+        console.warn("[ADMIN] showAdminEntryPage() not found");
+        alert("ไม่พบฟังก์ชัน showAdminEntryPage() ใน app.js");
+      }
+    } else {
+      failPin();
+    }
+  }
+});
+
+// กัน Enter ทำอะไรแปลก ๆ (optional)
+adminPwInputEl?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") e.preventDefault();
+});
+
 // ---------------- State ----------------
 let didRestoreSession = false;
 
@@ -458,19 +546,6 @@ function showPlayerEntryPage() {
 
   playerEntryPageEl?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
-
-// ---- Handlers (NEW) ----
-
-// Admin top button: go admin page immediately
-adminTopBtn?.addEventListener("click", () => {
-  console.log("[ENTRY] Admin clicked -> adminEntryPage");
-  // Guard + fallback: ถ้า element หาย ให้แจ้งชัด
-  if (!adminEntryPageEl) {
-    alert("ไม่พบหน้า Admin (#adminEntryPage) กรุณาตรวจสอบ id ใน index.html");
-    return;
-  }
-  showAdminEntryPage();
-});
 
 // Join Game button: go player page immediately
 joinGameBtn?.addEventListener("click", () => {
