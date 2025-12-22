@@ -207,39 +207,34 @@ const raf = () => new Promise((r) => requestAnimationFrame(r));
 const rand360 = () => Math.floor(Math.random() * 360);
 const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
-// ---- Mode select DOM (new entry flow) ----
-const modeSelectPageEl = document.getElementById("modeSelectPage");
+const adminTopBtn = document.getElementById("adminTopBtn");
+const joinGameBtn = document.getElementById("joinGameBtn");
+
+const entryLandingEl = document.getElementById("entryLanding");   // หน้าแรกปุ่ม Join Game
 const adminEntryPageEl = document.getElementById("adminEntryPage");
 const playerEntryPageEl = document.getElementById("playerEntryPage");
 
-const pickAdminBtn = document.getElementById("pickAdminBtn");
-const pickPlayerBtn = document.getElementById("pickPlayerBtn");
-const modePlayBtn = document.getElementById("modePlayBtn");
+const backToLandingBtn1 = document.getElementById("backToLandingBtn1");
+const backToLandingBtn2 = document.getElementById("backToLandingBtn2");
 
-const backToModeBtn1 = document.getElementById("backToModeBtn1");
-const backToModeBtn2 = document.getElementById("backToModeBtn2");
+// ---- DEBUG: log ว่าเจอ element จริงไหม ----
+(function logEntryDomWiring() {
+  const items = {
+    adminTopBtn,
+    joinGameBtn,
+    entryLandingEl,
+    adminEntryPageEl,
+    playerEntryPageEl,
+    backToLandingBtn1,
+    backToLandingBtn2,
+  };
 
-console.log("[ENTRY DOM CHECK]", {
-  pickAdminBtn: !!document.getElementById("pickAdminBtn"),
-  pickPlayerBtn: !!document.getElementById("pickPlayerBtn"),
-  modePlayBtn: !!document.getElementById("modePlayBtn"),
-  modeSelectPage: !!document.getElementById("modeSelectPage"),
-  adminEntryPage: !!document.getElementById("adminEntryPage"),
-  playerEntryPage: !!document.getElementById("playerEntryPage"),
-});
-
-let selectedEntryMode = null; // "admin" | "player"
-
-console.log("[ENTRY] mode DOM", {
-  modeSelectPageEl: !!modeSelectPageEl,
-  adminEntryPageEl: !!adminEntryPageEl,
-  playerEntryPageEl: !!playerEntryPageEl,
-  pickAdminBtn: !!pickAdminBtn,
-  pickPlayerBtn: !!pickPlayerBtn,
-  modePlayBtn: !!modePlayBtn,
-  backToModeBtn1: !!backToModeBtn1,
-  backToModeBtn2: !!backToModeBtn2,
-});
+  console.groupCollapsed("%c[ENTRY DOM] wiring check", "color:#5a4bb0;font-weight:900;");
+  for (const [k, el] of Object.entries(items)) {
+    console.log(k, el ? "✅ found" : "❌ MISSING", el || "");
+  }
+  console.groupEnd();
+})();
 
 // ---------------- State ----------------
 let didRestoreSession = false;
@@ -421,17 +416,14 @@ closeDiceOverlayBtn?.addEventListener("click", () => {
   document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-// ---------------- Lobby View ----------------
-function showModeSelectPage() {
-  selectedEntryMode = null;
+// ENTRY NAV (NEW): Landing -> Admin/Player
 
-  if (modeSelectPageEl) modeSelectPageEl.style.display = "block";
+// ---- Show/Hide helpers ----
+function showEntryLanding() {
+  // หน้าแรก: โชว์ landing, ซ่อนหน้า admin/player
+  if (entryLandingEl) entryLandingEl.style.display = "block";
   if (adminEntryPageEl) adminEntryPageEl.style.display = "none";
   if (playerEntryPageEl) playerEntryPageEl.style.display = "none";
-
-  if (pickAdminBtn) pickAdminBtn.setAttribute("aria-pressed", "false");
-  if (pickPlayerBtn) pickPlayerBtn.setAttribute("aria-pressed", "false");
-  if (modePlayBtn) modePlayBtn.disabled = true;
 
   // รีเซ็ต host options panel เผื่อค้าง
   if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
@@ -444,152 +436,83 @@ function showModeSelectPage() {
   if (roomCodeInput) roomCodeInput.disabled = false;
   if (playerNameInput) playerNameInput.disabled = false;
   if (joinRoomBtn) joinRoomBtn.disabled = false;
+
+  // scroll ให้แน่นอนว่าอยู่บนสุด
+  entryLandingEl?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function showAdminEntryPage() {
-  if (modeSelectPageEl) modeSelectPageEl.style.display = "none";
-  if (adminEntryPageEl) adminEntryPageEl.style.display = "grid";
+  // หน้า admin: ซ่อน landing/player, โชว์ admin
+  if (entryLandingEl) entryLandingEl.style.display = "none";
+  if (adminEntryPageEl) adminEntryPageEl.style.display = "grid";  // เพราะใช้ grid-2
   if (playerEntryPageEl) playerEntryPageEl.style.display = "none";
+
   adminEntryPageEl?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function showPlayerEntryPage() {
-  if (modeSelectPageEl) modeSelectPageEl.style.display = "none";
+  // หน้า player: ซ่อน landing/admin, โชว์ player
+  if (entryLandingEl) entryLandingEl.style.display = "none";
   if (adminEntryPageEl) adminEntryPageEl.style.display = "none";
-  if (playerEntryPageEl) playerEntryPageEl.style.display = "grid";
+  if (playerEntryPageEl) playerEntryPageEl.style.display = "grid"; // เพราะใช้ grid-2
+
   playerEntryPageEl?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// ---- Handlers (NEW) ----
+
+// Admin top button: go admin page immediately
+adminTopBtn?.addEventListener("click", () => {
+  console.log("[ENTRY] Admin clicked -> adminEntryPage");
+  // Guard + fallback: ถ้า element หาย ให้แจ้งชัด
+  if (!adminEntryPageEl) {
+    alert("ไม่พบหน้า Admin (#adminEntryPage) กรุณาตรวจสอบ id ใน index.html");
+    return;
+  }
+  showAdminEntryPage();
+});
+
+// Join Game button: go player page immediately
+joinGameBtn?.addEventListener("click", () => {
+  console.log("[ENTRY] Join Game clicked -> playerEntryPage");
+  if (!playerEntryPageEl) {
+    alert("ไม่พบหน้า Player (#playerEntryPage) กรุณาตรวจสอบ id ใน index.html");
+    return;
+  }
+  showPlayerEntryPage();
+});
+
+// Back buttons: return landing
+backToLandingBtn1?.addEventListener("click", () => {
+  console.log("[ENTRY] Back(1) -> landing");
+  showEntryLanding();
+});
+backToLandingBtn2?.addEventListener("click", () => {
+  console.log("[ENTRY] Back(2) -> landing");
+  showEntryLanding();
+});
+
+// ---- Initial entry view ----
+// ถ้ายังไม่ restore session ให้แสดง landing เป็นค่าเริ่มต้น
+// (คุณมี didRestoreSession อยู่แล้วในโค้ดเดิม)
+try {
+  if (!didRestoreSession) showEntryLanding();
+} catch {
+  // ถ้าคุณยังไม่มี didRestoreSession ให้แสดง landing ไปเลย
+  showEntryLanding();
+}
+
+// LOBBY VIEW (unchanged but keep)
 function enterLobbyView() {
   if (lobbyEl) lobbyEl.style.display = "block";
   setEntryVisible(false);
 
-  // ปุ่มขวาสุดบนแถบ LOBBY
   if (cancelRoomBtn) cancelRoomBtn.style.display = currentRole === "host" ? "inline-flex" : "none";
   if (leaveRoomBtn) leaveRoomBtn.style.display = currentRole === "player" ? "inline-flex" : "none";
 
   if (roleInfoEl) roleInfoEl.textContent = "";
   setHeaderPills();
 }
-
-// ---------------- Subscribe Room ----------------
-function subscribeRoom(roomCode) {
-  if (roomUnsub) {
-    try { roomUnsub(); } catch {}
-    roomUnsub = null;
-  }
-
-  const roomRef = ref(db, `rooms/${roomCode}`);
-  roomUnsub = onValue(roomRef, (snapshot) => {
-    if (!snapshot.exists()) {
-      resetToHome("ห้องนี้ถูกยกเลิก/ปิดแล้ว");
-      return;
-    }
-
-    const roomData = snapshot.val();
-    const players = roomData.players || {};
-
-    // update lobby badges
-    renderLobbyBadges(roomData);
-
-    try { renderPlayerList(roomData, players); }
-    catch (e) { console.error("renderPlayerList failed:", e); }
-
-    try { updateGameView(roomData, players); }
-    catch (e) { console.error("updateGameView failed:", e); }
-
-    try { updateStartGameButton(roomData, players); }
-    catch (e) { console.error("updateStartGameButton failed:", e); }
-  });
-}
-
-function updateStartGameButton(roomData, players) {
-  if (!startGameBtn) return;
-
-  const totalPlayers = Object.keys(players || {}).length;
-
-  const shouldShow =
-    currentRole === "host" &&
-    currentRoomCode &&
-    roomData?.status === STATUS.LOBBY &&
-    totalPlayers > 0;
-
-  startGameBtn.style.display = shouldShow ? "inline-flex" : "none";
-  startGameBtn.disabled = !shouldShow;
-}
-
-// ---------------- Restore Session ----------------
-(async function attemptRestoreSession() {
-  try {
-    const raw = STORAGE.getItem(STORAGE_KEY);
-    if (!raw) return;
-
-    const s = JSON.parse(raw);
-    if (!s?.room || !s?.role) return;
-
-    const roomCode = String(s.room).toUpperCase();
-    const snap = await get(ref(db, `rooms/${roomCode}`));
-    if (!snap.exists()) return;
-
-    const roomData = snap.val();
-
-    // host restore
-    if (s.role === "host") {
-      didRestoreSession = true;
-      currentRoomCode = roomCode;
-      currentRole = "host";
-      currentPlayerId = null;
-      enterLobbyView();
-      subscribeRoom(currentRoomCode);
-      lockEntryUIForRole("host");
-      return;
-    }
-
-    // player restore
-    if (s.role === "player") {
-      const pid = s.pid;
-      if (pid && roomData.players?.[pid]) {
-        didRestoreSession = true;
-        currentRoomCode = roomCode;
-        currentRole = "player";
-        currentPlayerId = pid;
-        enterLobbyView();
-        subscribeRoom(currentRoomCode);
-        lockEntryUIForRole("player");
-        return;
-      }
-    }
-  } catch (e) {
-    console.warn("restore session failed:", e);
-  }
-})();
-
-// ---------------- Host: Step 0 – Choose your role ----------------
-pickAdminBtn?.addEventListener("click", () => {
-  selectedEntryMode = "admin";
-  pickAdminBtn.setAttribute("aria-pressed", "true");
-  pickPlayerBtn?.setAttribute("aria-pressed", "false");
-  if (modePlayBtn) modePlayBtn.disabled = false;
-});
-
-pickPlayerBtn?.addEventListener("click", () => {
-  selectedEntryMode = "player";
-  pickPlayerBtn.setAttribute("aria-pressed", "true");
-  pickAdminBtn?.setAttribute("aria-pressed", "false");
-  if (modePlayBtn) modePlayBtn.disabled = false;
-});
-
-modePlayBtn?.addEventListener("click", () => {
-  console.log("[ENTRY] PLAY clicked", { selectedEntryMode });
-
-  if (selectedEntryMode === "admin") return showAdminEntryPage();
-  if (selectedEntryMode === "player") return showPlayerEntryPage();
-
-  alert("กรุณาเลือกบทบาทก่อน (Admin หรือ Food Adventure)");
-});
-
-backToModeBtn1?.addEventListener("click", showModeSelectPage);
-backToModeBtn2?.addEventListener("click", showModeSelectPage);
 
 // ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
 createRoomBtn?.addEventListener("click", () => {
@@ -2275,13 +2198,6 @@ function renderEndGameSummary(roomData, players) {
   html += `</tbody></table>`;
   if (endGameSummaryEl) endGameSummaryEl.innerHTML = html;
 }
-
-// Start entry at mode select only if not restored
-queueMicrotask(() => {
-  if (!didRestoreSession && !currentRoomCode && !currentRole) {
-    showModeSelectPage();
-  }
-});
 
 // ---------------- Init (when role set) ----------------
 function initUiIfReady() {
