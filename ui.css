@@ -1017,3 +1017,21 @@ button:disabled{
 .mode-desc{
   font-weight: 700;
 }
+
+.entry-landing{
+  min-height: calc(100vh - 88px);
+  display: grid;
+  place-items: center;
+}
+
+.entry-landing-inner{
+  width: 100%;
+  text-align: center;
+}
+
+.entry-join-btn{
+  width: min(520px, 92vw);
+  height: 78px;
+  font-size: 24px;
+  border-radius: 18px;
+}
