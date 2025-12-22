@@ -310,6 +310,32 @@
     </main>
 
   <noscript>เกมนี้ต้องเปิดใช้งาน JavaScript</noscript>
+  <!-- Admin Password Overlay -->
+  <div id="adminPwOverlay" class="overlay" style="display:none;">
+    <div class="overlay-card">
+      <div class="overlay-title">Admin Access</div>
+      <div class="overlay-hint">กรอกรหัส 4 หลักเพื่อเข้าสู่หน้า Admin</div>
+  
+      <input
+        id="adminPwInput"
+        type="password"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="4"
+        placeholder="••••"
+        style="margin-top:12px; text-align:center; font-size:22px; letter-spacing:10px; font-weight:900;"
+      />
+  
+      <div id="adminPwError" class="muted" style="margin-top:10px; color:#c62828; font-weight:900; display:none;">
+        รหัสไม่ถูกต้อง
+      </div>
+  
+      <button id="adminPwCancelBtn" class="btn-ghost mt-14" type="button">
+        ยกเลิก
+      </button>
+    </div>
+  </div>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>
