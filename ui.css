@@ -64,30 +64,136 @@ button, input, select, textarea { font: inherit; }
   gap: 12px;
 }
 .brand{ display:flex; align-items:center; gap: 10px; }
-/* ===== Brand Badge : Checkered Flag ===== */
-.brand-badge.brand-flag{
-  width: 64px;
-  height: 40px;
-  border-radius: 10px;
+/* ===== Badge Base ===== */
+.brand-badge{
   position: relative;
+  width: 74px;           /* ไม่ต้องเป็นสี่เหลี่ยม */
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 8px;          /* inner เท่ากันทุกด้าน */
   box-sizing: border-box;
+}
 
-  /* พื้นหลังธงตราหมากรุก */
-  background-color: #fff;
-  background-image:
-    linear-gradient(45deg, #000 25%, transparent 25%),
-    linear-gradient(-45deg, #000 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #000 75%),
-    linear-gradient(-45deg, transparent 75%, #000 75%);
+/* ตัวอักษร */
+.brand-badge .badge-text{
+  position: relative;
+  z-index: 3;
+  font-weight: 1000;
+  font-size: 20px;
+  letter-spacing: .8px;
+  line-height: 1;
+  color: var(--p-900);
+  background: rgba(255,255,255,.82);
+  padding: 4px 8px;
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgba(0,0,0,.12);
+}
+
+/* ===== V1: Premium Checkered Flag ===== */
+.brand-badge.badge-v1{
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: 0 10px 22px rgba(0,0,0,.18);
+}
+
+.brand-badge.badge-v1::before{
+  content:"";
+  position:absolute;
+  inset: 8px;                 /* ระยะเท่ากับ padding */
+  border-radius: 12px;
+  background:
+    linear-gradient(45deg, rgba(0,0,0,.95) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(0,0,0,.95) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(0,0,0,.95) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(0,0,0,.95) 75%);
   background-size: 10px 10px;
   background-position: 0 0, 0 5px, 5px -5px, -5px 0;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  overflow: hidden;
+  /* ทำให้เหมือน “ผ้าธง” นิด ๆ */
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,.18));
+  opacity: .95;
 }
+
+/* ไฮไลต์มุมบนซ้ายให้มีมิติ */
+.brand-badge.badge-v1::after{
+  content:"";
+  position:absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.22), transparent 40%);
+  pointer-events:none;
+}
+.brand-badge.badge-v2{
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: 0 10px 22px rgba(0,0,0,.18);
+}
+
+.brand-badge.badge-v2::before{
+  content:"";
+  position:absolute;
+  inset: 8px;
+  border-radius: 12px;
+
+  /* ลายหมากรุก */
+  background:
+    linear-gradient(45deg, rgba(0,0,0,.92) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(0,0,0,.92) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(0,0,0,.92) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(0,0,0,.92) 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+
+  /* ทำ wave ด้วย mask */
+  -webkit-mask-image: radial-gradient(18px 24px at 18% 50%, transparent 55%, #000 56%),
+                      radial-gradient(18px 24px at 50% 50%, transparent 55%, #000 56%),
+                      radial-gradient(18px 24px at 82% 50%, transparent 55%, #000 56%);
+  -webkit-mask-composite: source-over;
+  mask-image: radial-gradient(18px 24px at 18% 50%, transparent 55%, #000 56%),
+              radial-gradient(18px 24px at 50% 50%, transparent 55%, #000 56%),
+              radial-gradient(18px 24px at 82% 50%, transparent 55%, #000 56%);
+
+  /* ความรู้สึกโค้ง */
+  transform: perspective(220px) rotateY(-10deg);
+  filter: drop-shadow(0 12px 14px rgba(0,0,0,.18));
+}
+.brand-badge.badge-v3{
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: 0 10px 22px rgba(0,0,0,.18);
+}
+
+.brand-badge.badge-v3::before{
+  content:"";
+  position:absolute;
+  inset: 8px;
+  border-radius: 12px;
+
+  /* ลายหมากรุกแบบเนียน (เล็กลง) */
+  background:
+    conic-gradient(from 90deg, #000 0 25%, #fff 0 50%, #000 0 75%, #fff 0) 0 0 / 12px 12px;
+  opacity: .95;
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,.18));
+}
+
+/* เส้น finish line สองเส้นด้านขวา */
+.brand-badge.badge-v3::after{
+  content:"";
+  position:absolute;
+  top: 8px;
+  bottom: 8px;
+  right: 12px;
+  width: 10px;
+  border-radius: 8px;
+  background: linear-gradient(#fff, #fff);
+  box-shadow:
+    -6px 0 0 rgba(255,255,255,.9),
+    0 0 0 2px rgba(0,0,0,.12);
+  opacity: .9;
+}
+
 .brand-title{ display:flex; flex-direction:column; line-height:1.05; }
 .brand-title strong{ font-size: 16px; }
 .brand-title span{ font-size: 12px; opacity:.9; }
