@@ -1102,3 +1102,21 @@ button:disabled{
 .brand-badge.badge-v1 .badge-text{
   -webkit-text-stroke: 0 transparent !important;
 }
+
+/* ===== Fix: Host setup button not shifting ===== */
+#hostGameOptions{
+  display: block !important;     /* จองพื้นที่ไว้เสมอ */
+  max-height: 0;                 /* ซ่อนด้วยความสูง */
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: max-height .25s ease, opacity .2s ease, transform .2s ease;
+}
+
+#hostGameOptions.is-open{
+  max-height: 520px;             /* ปรับได้ตามความสูงจริงของ panel */
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
