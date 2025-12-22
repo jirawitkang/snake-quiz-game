@@ -65,20 +65,21 @@ button, input, select, textarea { font: inherit; }
 }
 .brand{ display:flex; align-items:center; gap: 10px; }
 .brand-badge{
-  width: 38px;
-  height: 38px;
+  width: 56px;                 /* ✅ กว้างขึ้น (ไม่ต้องสี่เหลี่ยมจตุรัส) */
+  height: 38px;                /* สูงเท่าเดิมหรือจะเพิ่มเป็น 40 ก็ได้ */
+  padding: 6px;                /* ✅ inner top/bot/left/right เท่ากัน */
   border-radius: 12px;
   background: rgba(255,255,255,.18);
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 6px;
 
   font-weight: 900;
-  letter-spacing: 0;   /* ปิด letter-spacing เดิม กัน Q/A ห่าง */
+  letter-spacing: 0;
   line-height: 1;
-  padding: 0;          /* กันตัวอักษรล้น */
+  box-sizing: border-box;      /* ✅ ให้ padding นับรวมใน width/height */
 }
 .brand-title{ display:flex; flex-direction:column; line-height:1.05; }
 .brand-title strong{ font-size: 16px; }
@@ -1043,12 +1044,13 @@ button:disabled{
 
 .brand-badge .badge-q,
 .brand-badge .badge-a{
-  font-size: 14px;     /* Q/A */
+  font-size: 18px;     /* ✅ เพิ่มให้สูงขึ้น */
   line-height: 1;
 }
 
 .brand-badge .badge-sword{
-  font-size: 16px;     /* ⚔ ให้ใหญ่กว่า Q/A นิด */
+  font-size: 20px;     /* ✅ ให้ดาบใหญ่กว่า Q/A นิด */
   line-height: 1;
-  transform: translateY(-0.5px); /* ดันขึ้นนิดให้บาลานซ์สายตา */
+  transform: translateY(-0.5px);
 }
+
