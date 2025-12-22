@@ -513,7 +513,7 @@ function showEntryLanding() {
   if (playerEntryPageEl) playerEntryPageEl.style.display = "none";
 
   // รีเซ็ต host options panel เผื่อค้าง
-  if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
+  if (hostGameOptionsEl) hostGameOptionsEl.classList.remove("is-open");
 
   // ปลดล็อคช่องกรอกในหน้า entry (ยังไม่เลือก role จริง)
   if (hostNameInput) hostNameInput.disabled = false;
@@ -720,7 +720,10 @@ createRoomBtn?.addEventListener("click", () => {
     return;
   }
 
-  hostGameOptionsEl.style.setProperty("display", "block", "important");
+  hostGameOptionsEl.classList.add("is-open");
+  // ✅ ถ้าไม่อยากให้หน้ากระตุก/เลื่อน ให้ “ไม่ต้อง” scroll
+  // hostGameOptionsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+
   hostGameOptionsEl.scrollIntoView({ behavior: "smooth", block: "start" });
   console.log("[UI] open hostGameOptions");
 });
@@ -792,7 +795,7 @@ confirmCreateRoomBtn?.addEventListener("click", async () => {
       },
     });
 
-    if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
+    if (hostGameOptionsEl) hostGameOptionsEl.classList.remove("is-open");
     enterLobbyView();
     subscribeRoom(roomCode);
     lockEntryUIForRole("host");
@@ -2427,7 +2430,7 @@ function resetToHome(message) {
 
   setEntryVisible(true);
 
-  if (hostGameOptionsEl) hostGameOptionsEl.style.display = "none";
+  if (hostGameOptionsEl) hostGameOptionsEl.classList.remove("is-open");
 
   if (hostNameInput) hostNameInput.disabled = false;
   if (createRoomBtn) createRoomBtn.disabled = false;
