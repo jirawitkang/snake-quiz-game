@@ -73,6 +73,7 @@
       </button>
     </div>
   </div>
+  
   <header class="app-header">
     <div class="header-inner">
       <div class="brand" aria-label="Snake Quiz – Multiplayer">
@@ -82,48 +83,47 @@
           <span>Library Purple Theme</span>
         </div>
       </div>
+  
       <div class="header-meta" aria-label="สถานะห้องและบทบาท">
         <div class="pill" id="uiRoomPill">Room: -</div>
         <div class="pill" id="uiRolePill">Role: -</div>
+  
+        <!-- Admin button (top-right) -->
+        <button id="adminTopBtn" class="btn-ghost pill" type="button">
+          Admin
+        </button>
       </div>
     </div>
   </header>
-
+  
   <main class="container">
+    <!-- ENTRY (Landing + Admin/Player entry) -->
     <div id="entrySection">
       <div class="section-title">FOOD QUEST</div>
-    
-      <!-- หน้าเลือกโหมด (Page 1) -->
-      <div id="modeSelectPage" class="card entry-hero">
-        <h2 class="entry-title">Choose your role</h2>
-        <p class="muted entry-sub">
-          เลือกบทบาทก่อน จากนั้นกด <strong>PLAY</strong> เพื่อไปหน้ากรอกข้อมูล
-        </p>
-    
-        <div class="mode-grid">
-          <button id="pickAdminBtn" class="mode-card" type="button" aria-pressed="false">
-            <div class="mode-badge">ADMIN</div>
-            <div class="mode-name">Admin</div>
-            <div class="mode-desc muted">สร้างห้อง + ตั้งค่าเกม</div>
+  
+      <!-- Landing: Everyone sees this -->
+      <div id="entryLanding" class="card entry-landing">
+        <div class="entry-landing-inner">
+          <h2 class="entry-title">Food Quest</h2>
+          <p class="muted entry-sub">
+            กดปุ่มด้านล่างเพื่อเข้าร่วมเกมด้วย Room Code
+          </p>
+  
+          <button id="joinGameBtn" class="btn-primary entry-join-btn" type="button">
+            Join Game
           </button>
-    
-          <button id="pickPlayerBtn" class="mode-card" type="button" aria-pressed="false">
-            <div class="mode-badge">PLAY</div>
-            <div class="mode-name">Food Adventure</div>
-            <div class="mode-desc muted">เข้าห้อง + ตั้งชื่อผู้เล่น</div>
-          </button>
+  
+          <p class="muted" style="margin-top:10px; font-size:12px;">
+            * สำหรับผู้ดูแลระบบให้กดปุ่ม <strong>Admin</strong> มุมขวาบน
+          </p>
         </div>
-    
-        <button id="modePlayBtn" class="btn-primary mt-14" type="button" disabled>
-          PLAY
-        </button>
       </div>
-    
-      <!-- หน้าถัดไป: Admin (Host เดิม) -->
+  
+      <!-- Admin Entry Page -->
       <div id="adminEntryPage" class="grid-2" style="display:none;">
         <div class="card">
           <h2>Admin (Host)</h2>
-    
+  
           <label for="hostNameInput">ชื่อของคุณ (Admin)</label>
           <input
             id="hostNameInput"
@@ -132,14 +132,14 @@
             autocomplete="name"
             spellcheck="false"
           />
-    
+  
           <button id="createRoomBtn" class="btn-primary" type="button">
             ถัดไป: ตั้งค่าเกม
           </button>
-    
+  
           <div id="hostGameOptions" class="mt-14" style="display:none;">
             <div class="section-title">GAME SETTINGS</div>
-    
+  
             <div class="card-split">
               <div class="split-col">
                 <label for="questionSetSelect">ชุดคำถามที่ใช้ในเกม</label>
@@ -148,33 +148,33 @@
                   <option value="setA">ชุดคำถามตัวอย่าง A</option>
                   <option value="setB">ชุดคำถามตัวอย่าง B</option>
                 </select>
-    
+  
                 <label for="maxRoundsInput">จำนวนรอบสูงสุดของเกม</label>
                 <input id="maxRoundsInput" type="number" min="1" step="1" value="10" inputmode="numeric" />
               </div>
-    
+  
               <div class="split-col">
                 <label for="maxWinnersInput">จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อครบ)</label>
                 <input id="maxWinnersInput" type="number" min="1" step="1" value="5" inputmode="numeric" />
-    
+  
                 <label for="rewardCorrectInput">ได้เดินเพิ่มเมื่อตอบถูก</label>
                 <input id="rewardCorrectInput" type="number" step="1" value="1" inputmode="numeric" />
-    
+  
                 <label for="penaltyWrongInput">ถอยเมื่อตอบผิด/ไม่ทัน</label>
                 <input id="penaltyWrongInput" type="number" step="1" value="-1" inputmode="numeric" />
               </div>
             </div>
-    
+  
             <button id="confirmCreateRoomBtn" class="btn-primary mt-14" type="button">
               ยืนยันสร้างห้อง
             </button>
           </div>
-    
-          <button id="backToModeBtn1" class="btn-ghost mt-14" type="button">
-            ← กลับไปเลือกโหมด
+  
+          <button id="backToLandingBtn1" class="btn-ghost mt-14" type="button">
+            ← กลับหน้าแรก
           </button>
         </div>
-    
+  
         <div class="card" aria-hidden="true">
           <h2>How to play</h2>
           <p class="muted">
@@ -182,12 +182,12 @@
           </p>
         </div>
       </div>
-    
-      <!-- หน้าถัดไป: Player (Player เดิม) -->
+  
+      <!-- Player Entry Page -->
       <div id="playerEntryPage" class="grid-2" style="display:none;">
         <div class="card">
           <h2>Food Adventure (Player)</h2>
-    
+  
           <label for="roomCodeInput">Room Code</label>
           <input
             id="roomCodeInput"
@@ -197,7 +197,7 @@
             autocomplete="off"
             spellcheck="false"
           />
-    
+  
           <label for="playerNameInput">Adventure name</label>
           <input
             id="playerNameInput"
@@ -206,14 +206,16 @@
             autocomplete="name"
             spellcheck="false"
           />
-    
-          <button id="joinRoomBtn" class="btn-primary" type="button">Join ห้อง</button>
-    
-          <button id="backToModeBtn2" class="btn-ghost mt-14" type="button">
-            ← กลับไปเลือกโหมด
+  
+          <button id="joinRoomBtn" class="btn-primary" type="button">
+            Join ห้อง
+          </button>
+  
+          <button id="backToLandingBtn2" class="btn-ghost mt-14" type="button">
+            ← กลับหน้าแรก
           </button>
         </div>
-    
+  
         <div class="card" aria-hidden="true">
           <h2>Tip</h2>
           <p class="muted">
@@ -222,78 +224,90 @@
         </div>
       </div>
     </div>
-
-    <!-- Lobby -->
+  
+    <!-- LOBBY -->
     <div id="lobby" style="display:none;">
       <div class="lobby-bar mt-14">
         <div class="section-title">LOBBY</div>
-
+  
         <div id="lobbyBadges" class="lobby-badges" aria-label="สถานะห้อง"></div>
-
+  
         <div class="lobby-actions">
           <button id="cancelRoomBtn" class="btn-ghost" type="button" style="display:none;">ยกเลิกห้อง</button>
           <button id="leaveRoomBtn" class="btn-ghost" type="button" style="display:none;">ออกจากห้อง</button>
         </div>
       </div>
-
+  
       <div class="card lobby-card">
         <div class="lobby-card-head">
           <div id="roleInfo" class="muted role-line" aria-live="polite"></div>
         </div>
-
+  
         <div class="lobby-list-head">
           <div class="lobby-list-title"><strong>รายชื่อผู้เล่นในห้อง:</strong></div>
-
+  
           <div class="lobby-list-actions">
             <button id="startGameBtn" class="btn-primary" type="button" style="display:none;">
               เริ่มเล่น
             </button>
           </div>
         </div>
-
+  
         <ul id="playerList" aria-label="รายชื่อผู้เล่น"></ul>
       </div>
     </div>
-
-    <!-- Game header bar (เหมือน LOBBY) -->
+  
+    <!-- GAME BAR -->
     <div id="gameBar" class="lobby-bar mt-14" style="display:none;">
       <div class="section-title">GAME BOARD</div>
-    
+  
       <div class="lobby-badges">
         <div class="lobby-badge" id="roundInfo">รอบที่: -</div>
         <div class="lobby-badge" id="phaseInfo">[สถานะรอบ: -]</div>
       </div>
-    
-      <!-- Host controls -->
+  
       <div id="hostGameControls" class="lobby-actions" style="display:none;">
         <button id="startRoundBtn" class="btn-primary" type="button">เริ่มรอบใหม่</button>
         <button id="startQuestionBtn" class="btn-ghost" type="button">เริ่มคำถาม</button>
         <button id="revealAnswerBtn" class="btn-ghost" type="button">เฉลยคำถาม</button>
       </div>
-    
-      <!-- Player controls (ตำแหน่งเดียวกับ host controls) -->
+  
       <div id="playerGameControls" class="lobby-actions" style="display:none;">
         <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
       </div>
     </div>
-    
-    <!-- Game card -->
+  
+    <!-- GAME AREA -->
     <div id="gameArea" class="card" style="display:none;">
       <div id="board"></div>
-    
+  
       <div id="endGameArea" style="display:none; margin-top:1rem;">
         <h3>สรุปผลเกม</h3>
         <div id="endGameSummary"></div>
       </div>
     </div>
-
-    <!-- Question Card -->
+  
+    <!-- QUESTION AREA -->
     <div id="questionArea" class="card mt-14" style="display:none;">
       <div id="countdownDisplay" aria-live="assertive"></div>
       <div id="questionText"></div>
       <div id="choicesContainer"></div>
     </div>
-  </main>
+      
+        <!-- Host controls -->
+        <div id="hostGameControls" class="lobby-actions" style="display:none;">
+          <button id="startRoundBtn" class="btn-primary" type="button">เริ่มรอบใหม่</button>
+          <button id="startQuestionBtn" class="btn-ghost" type="button">เริ่มคำถาม</button>
+          <button id="revealAnswerBtn" class="btn-ghost" type="button">เฉลยคำถาม</button>
+        </div>
+      
+        <!-- Player controls (ตำแหน่งเดียวกับ host controls) -->
+        <div id="playerGameControls" class="lobby-actions" style="display:none;">
+          <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
+        </div>
+      </div>
+  
+    </main>
 
   <noscript>เกมนี้ต้องเปิดใช้งาน JavaScript</noscript>
   <script type="module" src="app.js"></script>
