@@ -1027,9 +1027,8 @@ button:disabled{
 }
 
 .brand-badge.badge-v1{
-  width: 92px;          /* ปรับได้ */
-  height: 44px;         /* ปรับได้ */
-  border-radius: 12px;  /* ไม่ได้ใช้กับตัวธง แต่ช่วยกรณี fallback */
+  width: 132px;         /* ✅ กว้างขึ้นเยอะ ๆ */
+  height: 44px;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -1038,14 +1037,13 @@ button:disabled{
   box-sizing: border-box;
 
   position: relative;
-  overflow: visible;
-
+  overflow: hidden;     /* ✅ กันทุกอย่างหลุดกรอบ */
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* ผืนธงเป็น “ขนมเปียกปูน” + ลายหมากรุก เทา/ขาว */
+/* ผืนธง: สี่เหลี่ยมด้านขนาน + ลายหมากรุก เทา/ขาว */
 .brand-badge.badge-v1::before{
   content:"";
   position:absolute;
@@ -1056,50 +1054,52 @@ button:disabled{
       #6a6a6a 0 25%, #ffffff 0 50%, #6a6a6a 0 75%, #ffffff 0 100%);
   background-size: 12px 12px;
 
-  /* ขนมเปียกปูน (diamond) */
-  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  /* ✅ สี่เหลี่ยมด้านขนาน (เอียงไปทางขวา) */
+  clip-path: polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%);
 
-  /* เฉียงนิดเดียวให้ดู dynamic */
-  transform: rotate(-8deg);
-
-  /* เงาให้ลอยจากพื้น */
   filter: drop-shadow(0 8px 14px rgba(0,0,0,.22));
 }
 
-/* เงา/ไฮไลต์บาง ๆ ให้ดูมีมิติโดยไม่ “สะบัด” */
+/* มิติเล็กน้อยให้ดูมี depth แต่ไม่ “สะบัด” */
 .brand-badge.badge-v1::after{
   content:"";
   position:absolute;
   inset: 6px;
 
-  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  transform: rotate(-8deg);
+  clip-path: polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%);
 
   background:
-    radial-gradient(120% 120% at 25% 25%, rgba(255,255,255,.50), transparent 55%),
-    radial-gradient(120% 120% at 70% 75%, rgba(0,0,0,.16), transparent 60%),
-    linear-gradient(135deg, rgba(255,255,255,.18), rgba(0,0,0,.08));
+    radial-gradient(120% 120% at 22% 30%, rgba(255,255,255,.45), transparent 55%),
+    radial-gradient(120% 120% at 78% 72%, rgba(0,0,0,.16), transparent 60%),
+    linear-gradient(90deg, rgba(255,255,255,.12), rgba(0,0,0,.10));
 
   mix-blend-mode: multiply;
   opacity: .9;
-  pointer-events:none;
+  pointer-events: none;
 }
 
-/* QR ชัดขึ้น */
+/* QR: ใหญ่ขึ้น + หนาขึ้น + ขอบขาวคงเดิม และ “ไม่หลุดแน่นอน” */
 .brand-badge.badge-v1 .badge-text{
   position: relative;
   z-index: 2;
 
   font-weight: 1000;
-  font-size: 30px;
+  font-size: 32px;
   line-height: 1;
-  letter-spacing: .4px;
+  letter-spacing: .6px;
 
   color: #201a52;
 
+  /* ✅ กันหลุดกรอบจริง ๆ */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+
+  /* ช่วยให้อ่านชัดบนลายธง */
   text-shadow:
-    0 0 10px rgba(255,255,255,.45),
-    0 6px 14px rgba(0,0,0,.18);
+    0 0 10px rgba(255,255,255,.40),
+    0 6px 12px rgba(0,0,0,.16);
 }
 
 @supports (-webkit-text-stroke: 1px #fff){
@@ -1107,4 +1107,3 @@ button:disabled{
     -webkit-text-stroke: 1.6px rgba(255,255,255,.92); /* ขอบขาวเท่าเดิม */
   }
 }
-
