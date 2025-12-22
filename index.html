@@ -79,12 +79,11 @@
       <div class="brand" aria-label="Snake Quiz – Multiplayer">
         <div class="brand-badge" aria-hidden="true">
           <span class="badge-q">Q</span>
-          <span class="badge-sword">⚔</span>
-          <span class="badge-a">A</span>
+          <span class="badge-r">A</span>
         </div>
 
         <div class="brand-title">
-          <strong>Quest Arena</strong>
+          <strong>Quiz Runner</strong>
           <span>Office of Academic Resources</span>
         </div>
       </div>
@@ -107,13 +106,13 @@
       <!-- Landing: Everyone sees this -->
       <div id="entryLanding" class="card entry-landing">
         <div class="entry-landing-inner">
-          <h2 class="entry-title">Quest Arena</h2>
+          <h2 class="entry-title">Ready to Run?</h2>
           <p class="muted entry-sub">
-            กดปุ่มด้านล่างเพื่อเข้า Arena
+            Join a race and test your speed, strategy, and knowledge.
           </p>
-  
+
           <button id="joinGameBtn" class="btn-primary entry-join-btn" type="button">
-            Join Arena
+            Join the Race
           </button>
   
         </div>
@@ -122,63 +121,63 @@
       <!-- Admin Entry Page -->
       <div id="adminEntryPage" class="grid-2" style="display:none;">
         <div class="card">
-          <h2>Admin (Host)</h2>
+          <h2>Race Organizer</h2>
   
-          <label for="hostNameInput">ชื่อของคุณ (Admin)</label>
+          <label for="hostNameInput">Organizer Name</label>
           <input
             id="hostNameInput"
-            placeholder="เช่น Teacher A"
+            placeholder="e.g. Coach P'Fon"
             maxlength="40"
             autocomplete="name"
             spellcheck="false"
           />
   
           <button id="createRoomBtn" class="btn-primary" type="button">
-            ถัดไป: ตั้งค่าเกม
+            Set Up the Race
           </button>
   
           <div id="hostGameOptions" class="mt-14" style="display:none;">
-            <div class="section-title">GAME SETTINGS</div>
+            <div class="section-title">RACE SETUP</div>
   
             <div class="card-split">
               <div class="split-col">
-                <label for="questionSetSelect">ชุดคำถามที่ใช้ในเกม</label>
+                <label for="questionSetSelect">Select Track (Race Theme)</label>
                 <select id="questionSetSelect">
                   <option value="general">ชุดคำถามทั่วไป</option>
                   <option value="setA">ชุดคำถามตัวอย่าง A</option>
                   <option value="setB">ชุดคำถามตัวอย่าง B</option>
                 </select>
   
-                <label for="maxRoundsInput">จำนวนรอบสูงสุดของเกม</label>
+                <label for="maxRoundsInput">Maximum Laps</label>
                 <input id="maxRoundsInput" type="number" min="1" step="1" value="10" inputmode="numeric" />
               </div>
   
               <div class="split-col">
-                <label for="maxWinnersInput">จำนวนผู้เข้าเส้นชัย (เกมจบเมื่อครบ)</label>
+                <label for="maxWinnersInput">Number of Winners</label>
                 <input id="maxWinnersInput" type="number" min="1" step="1" value="5" inputmode="numeric" />
   
-                <label for="rewardCorrectInput">ได้เดินเพิ่มเมื่อตอบถูก</label>
+                <label for="rewardCorrectInput">Speed Boost (Correct Answer)</label>
                 <input id="rewardCorrectInput" type="number" step="1" value="1" inputmode="numeric" />
   
-                <label for="penaltyWrongInput">ถอยเมื่อตอบผิด/ไม่ทัน</label>
+                <label for="penaltyWrongInput">Slow Down (Wrong / Timeout)</label>
                 <input id="penaltyWrongInput" type="number" step="1" value="-1" inputmode="numeric" />
               </div>
             </div>
   
             <button id="confirmCreateRoomBtn" class="btn-primary mt-14" type="button">
-              ยืนยันสร้างห้อง
+              Create Race
             </button>
           </div>
   
           <button id="backToLandingBtn1" class="btn-ghost mt-14" type="button">
-            ← กลับหน้าแรก
+            ← Home
           </button>
         </div>
   
         <div class="card" aria-hidden="true">
           <h2>How to play</h2>
           <p class="muted">
-            Admin สร้างห้องและแชร์ Room Code ให้ผู้เล่น จากนั้นเริ่มเกมใน Lobby
+            Admin สร้างห้องและแชร์ Race Code ให้ผู้เล่น จากนั้นเริ่มเกมใน Lobby
           </p>
         </div>
       </div>
@@ -186,40 +185,40 @@
       <!-- Player Entry Page -->
       <div id="playerEntryPage" class="grid-2" style="display:none;">
         <div class="card">
-          <h2>Food Adventure (Player)</h2>
+          <h2>Runner Registration</h2>
   
-          <label for="roomCodeInput">Room Code</label>
+          <label for="roomCodeInput">Race Code</label>
           <input
             id="roomCodeInput"
-            placeholder="เช่น ABC123"
+            placeholder="Enter Race Code"
             maxlength="12"
             autocapitalize="characters"
             autocomplete="off"
             spellcheck="false"
           />
   
-          <label for="playerNameInput">Adventure name</label>
+          <label for="playerNameInput">Runner name</label>
           <input
             id="playerNameInput"
-            placeholder="เช่น Team01, นร.ภูมิ"
+            placeholder="e.g. Runner A"
             maxlength="40"
             autocomplete="name"
             spellcheck="false"
           />
   
           <button id="joinRoomBtn" class="btn-primary" type="button">
-            Join ห้อง
+            Join the Race
           </button>
   
           <button id="backToLandingBtn2" class="btn-ghost mt-14" type="button">
-            ← กลับหน้าแรก
+            ← Home
           </button>
         </div>
   
         <div class="card" aria-hidden="true">
-          <h2>Tip</h2>
+          <h2>Race Tip</h2>
           <p class="muted">
-            กรุณาตรวจสอบ Room Code ให้ถูกต้อง และตั้งชื่อไม่ซ้ำกับเพื่อนในห้อง
+            Make sure your race code is correct and your runner name is unique.
           </p>
         </div>
       </div>
