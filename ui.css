@@ -69,11 +69,16 @@ button, input, select, textarea { font: inherit; }
   height: 38px;
   border-radius: 12px;
   background: rgba(255,255,255,.18);
-  display:flex;
-  align-items:center;
-  justify-content:center;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+
   font-weight: 900;
-  letter-spacing:.5px;
+  letter-spacing: 0;   /* ปิด letter-spacing เดิม กัน Q/A ห่าง */
+  line-height: 1;
+  padding: 0;          /* กันตัวอักษรล้น */
 }
 .brand-title{ display:flex; flex-direction:column; line-height:1.05; }
 .brand-title strong{ font-size: 16px; }
@@ -1034,4 +1039,16 @@ button:disabled{
   height: 78px;
   font-size: 24px;
   border-radius: 18px;
+}
+
+.brand-badge .badge-q,
+.brand-badge .badge-a{
+  font-size: 14px;     /* Q/A */
+  line-height: 1;
+}
+
+.brand-badge .badge-sword{
+  font-size: 16px;     /* ⚔ ให้ใหญ่กว่า Q/A นิด */
+  line-height: 1;
+  transform: translateY(-0.5px); /* ดันขึ้นนิดให้บาลานซ์สายตา */
 }
