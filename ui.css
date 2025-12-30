@@ -1,5 +1,15 @@
-/* ui.css — Purple Library Theme (global UI) */
+/* ui.css — Purple Library Theme (refactored)
+   Goals:
+   - Single source of truth per component
+   - Remove duplicate overlay/overlay-card blocks
+   - Keep final BOARD GRID layout as the only truth
+   - Remove/neutralize legacy selectors that are no longer used by current index.html/app.js
+   - Preserve existing look & behavior (no game logic changes)
+*/
 
+/* =========================
+   1) TOKENS / THEME
+   ========================= */
 :root{
   --p-900:#2f2a66;
   --p-800:#3a3178;
@@ -20,21 +30,24 @@
   --radius: 14px;
   --radius-sm: 10px;
 
-  --lobby-chip-h: 28px; /* ความสูง badge/ปุ่ม */
+  --lobby-chip-h: 28px; /* height of badge/buttons in bars */
 
+  /* Board sizing (single source of truth) */
   --track-gap: 4px;
   --cell-h: 20px;
-
-  /* ตั้งค่าความกว้างที่ต้องการจริง ๆ ที่นี่ที่เดียว */
   --start-w: 140px;
   --finish-w: 88px;
 
+  /* Dice */
   --dice-size: 110px;
   --dice-half: calc(var(--dice-size) / 2);
   --pip: 14px;
-  --pip-color: #1f2330; /* สีจุด */
+  --pip-color: #1f2330;
 }
 
+/* =========================
+   2) BASE / RESET
+   ========================= */
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
 body{
@@ -45,7 +58,17 @@ body{
 }
 button, input, select, textarea { font: inherit; }
 
-/* ===== Header ===== */
+/* Accessibility: prefer reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =========================
+   3) HEADER
+   ========================= */
 .app-header{
   background: linear-gradient(90deg, var(--p-600), var(--p-800));
   color:#fff;
@@ -64,10 +87,10 @@ button, input, select, textarea { font: inherit; }
   gap: 12px;
 }
 .brand{ display:flex; align-items:center; gap: 10px; }
-
 .brand-title{ display:flex; flex-direction:column; line-height:1.05; }
 .brand-title strong{ font-size: 16px; }
 .brand-title span{ font-size: 12px; opacity:.9; }
+
 .header-meta{
   display:flex;
   gap: 10px;
@@ -83,14 +106,78 @@ button, input, select, textarea { font: inherit; }
   white-space: nowrap;
 }
 
-/* ===== Container ===== */
+/* Brand badge (QR) */
+.brand-badge.badge-v1{
+  width: 88px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 6px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.brand-badge.badge-v1::before{
+  content:"";
+  position:absolute;
+  inset: 6px;
+  background:
+    conic-gradient(from 90deg,
+      var(--p-600) 0 25%, #cfcfd9 0 50%, var(--p-600) 0 75%, #cfcfd9 0 100%);
+  background-size: 12px 12px;
+  clip-path: polygon(14% 0%, 100% 0%, 86% 100%, 0% 100%);
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.22));
+}
+.brand-badge.badge-v1::after{
+  content:"";
+  position:absolute;
+  inset: 6px;
+  clip-path: polygon(14% 0%, 100% 0%, 86% 100%, 0% 100%);
+  background:
+    radial-gradient(120% 120% at 22% 30%, rgba(255,255,255,.20), transparent 55%),
+    radial-gradient(120% 120% at 78% 72%, rgba(0,0,0,.18), transparent 60%),
+    linear-gradient(90deg, rgba(255,255,255,.10), rgba(0,0,0,.10));
+  mix-blend-mode: overlay;
+  opacity: .9;
+  pointer-events: none;
+}
+.brand-badge.badge-v1 .badge-text{
+  position: relative;
+  z-index: 2;
+  font-weight: 1000;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: .6px;
+  color: #ffffff;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-shadow: 0 6px 14px rgba(0,0,0,.22);
+  -webkit-text-stroke: 0 transparent !important;
+}
+
+/* =========================
+   4) LAYOUT / CONTAINER / GRID
+   ========================= */
 .container{
   max-width: 1060px;
   margin: 18px auto 28px;
   padding: 0 14px;
 }
+.grid-2{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 900px){
+  .grid-2{ grid-template-columns: 1fr; }
+}
 
-/* ===== Section title ===== */
+/* Section title */
 .section-title{
   display:flex;
   align-items:center;
@@ -108,7 +195,9 @@ button, input, select, textarea { font: inherit; }
   background: var(--p-600);
 }
 
-/* ===== Cards ===== */
+/* =========================
+   5) CARDS / FORMS / BUTTONS
+   ========================= */
 .card{
   background: var(--card);
   border: 1px solid var(--line);
@@ -122,7 +211,7 @@ button, input, select, textarea { font: inherit; }
 }
 .card p{ color: var(--muted); }
 
-/* ===== Form ===== */
+/* Form */
 label{
   display:block;
   font-weight: 700;
@@ -148,7 +237,7 @@ button:focus-visible, input:focus-visible, select:focus-visible{
   outline-offset: 2px;
 }
 
-/* ===== Buttons ===== */
+/* Buttons */
 button{
   border: none;
   border-radius: 12px;
@@ -158,34 +247,54 @@ button{
   transition: transform .06s ease, box-shadow .12s ease, opacity .12s ease;
 }
 button:active{ transform: translateY(1px); }
+
 .btn-primary{
   background: var(--p-600);
   color: #fff;
   box-shadow: 0 10px 18px rgba(75,60,140,.22);
 }
 .btn-primary:hover{ box-shadow: 0 14px 24px rgba(75,60,140,.28); }
+
 .btn-ghost{
   background: var(--p-100);
   color: var(--p-800);
   border: 1px solid rgba(75,60,140,.20);
 }
+.btn-ghost:hover{
+  box-shadow: 0 10px 18px rgba(75,60,140,.12);
+  transform: translateY(-1px);
+}
+
 button:disabled{
   opacity: .55;
   cursor: not-allowed;
   box-shadow:none;
 }
 
-/* ===== Grid layout ===== */
-.grid-2{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+/* =========================
+   6) HOST OPTIONS PANEL (no jump)
+   ========================= */
+#createRoomBtn{ margin-top: 12px; }
+.card.lock-height{ overflow: hidden; }
+
+/* Use height/opacity to hide/show, while allowing JS to toggle class .is-open */
+#hostGameOptions{
+  display: block !important;     /* keep layout reserved even if inline display:none existed */
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: max-height .25s ease, opacity .2s ease, transform .2s ease;
 }
-@media (max-width: 900px){
-  .grid-2{ grid-template-columns: 1fr; }
+#hostGameOptions.is-open{
+  max-height: 520px;             /* adjust if panel grows */
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
-/* ===== Dotted split ===== */
+/* Dotted split */
 .card-split{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -208,8 +317,196 @@ button:disabled{
   }
 }
 
-/* ===== Tables ===== */
-.table-wrap{ overflow-x:auto; }
+/* =========================
+   7) ENTRY LANDING
+   ========================= */
+.entry-landing{
+  min-height: calc(100vh - 88px);
+  display: grid;
+  place-items: center;
+}
+.entry-landing-inner{
+  width: 100%;
+  text-align: center;
+}
+.entry-title{
+  margin: 0 0 6px;
+}
+.entry-sub{
+  margin: 0 0 14px;
+}
+.entry-join-btn{
+  width: min(520px, 92vw);
+  height: 78px;
+  font-size: 24px;
+  border-radius: 18px;
+}
+
+/* =========================
+   8) LOBBY / GAME BAR (single source of truth)
+   ========================= */
+.lobby-bar{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: nowrap;   /* do not wrap */
+}
+.lobby-bar .section-title{
+  margin: 0 !important;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* badges: no wrap; scroll-x */
+.lobby-badges{
+  flex: 1 1 auto;
+  min-width: 0;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.lobby-badges::-webkit-scrollbar{ display:none; }
+
+.lobby-badge{
+  height: var(--lobby-chip-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  line-height: 1;
+  font-size: 12px;
+  font-weight: 900;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--p-800);
+  box-shadow: 0 6px 14px rgba(31,35,48,.08);
+}
+
+/* actions: right side always single line */
+.lobby-actions{
+  flex: 0 0 auto;
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.lobby-actions button{
+  height: var(--lobby-chip-h);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: none;
+}
+
+/* Lobby card head */
+.lobby-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.role-line{
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 520px){
+  .lobby-card-head{ flex-wrap: wrap; }
+  .role-line{ flex: 1 1 100%; }
+}
+
+/* List head row */
+.lobby-list-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin: 2px 0 8px;
+}
+.lobby-list-title{
+  color: var(--p-800);
+  font-weight: 900;
+  white-space: nowrap;
+}
+.lobby-list-actions button,
+.lobby-list-actions #startGameBtn{
+  height: var(--lobby-chip-h, 28px) !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+/* Lobby card spacing */
+.lobby-card{
+  padding-top: 10px !important;
+  padding-bottom: 12px !important;
+}
+
+/* Round/phase pills in game bar */
+#roundInfo{
+  white-space: nowrap;
+  font-weight: 900;
+}
+#phaseInfo{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================
+   9) TABLES (playerList + endGameSummary)
+   ========================= */
+#playerList,
+#endGameSummary{
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* If #playerList is a DIV, list-style has no effect; keep only margin/padding reset */
+#playerList{
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* table styling */
+#playerList table,
+#endGameSummary table{
+  width: 100%;
+  margin: 0 !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+
+  /* keep readable on mobile: allow horizontal scroll */
+  min-width: 640px;
+}
+@media (max-width: 520px){
+  #playerList table,
+  #endGameSummary table{
+    min-width: 560px;
+  }
+}
+
 #playerList th, #playerList td,
 #endGameSummary th, #endGameSummary td{
   border: 1px solid var(--line);
@@ -228,25 +525,22 @@ button:disabled{
   color: var(--p-800);
 }
 
-/* ===== Game shell ===== */
-/* GameBar อยู่แล้ว ไม่ต้องมี margin-top ซ้ำที่การ์ด */
-#gameArea{
-  margin-top: 0 !important;
-}
-.game-shell{
-  display:grid;
-  grid-template-columns: 1.2fr .8fr;
-  gap: 14px;
-  align-items:start;
-}
-@media (max-width: 980px){
-  .game-shell{ grid-template-columns: 1fr; }
-}
+/* Rounded corners */
+#playerList thead tr th:first-child,
+#endGameSummary thead tr th:first-child{ border-top-left-radius: var(--radius-sm); }
+#playerList thead tr th:last-child,
+#endGameSummary thead tr th:last-child{ border-top-right-radius: var(--radius-sm); }
+#playerList tbody tr:last-child td:first-child,
+#endGameSummary tbody tr:last-child td:first-child{ border-bottom-left-radius: var(--radius-sm); }
+#playerList tbody tr:last-child td:last-child,
+#endGameSummary tbody tr:last-child td:last-child{ border-bottom-right-radius: var(--radius-sm); }
 
-/* Question Card under Game Board */
-#questionArea.card{
-  background: var(--p-050);
-}
+/* =========================
+   10) GAME AREA / QUESTION AREA
+   ========================= */
+#gameArea{ margin-top: 0 !important; }
+
+#questionArea.card{ background: var(--p-050); }
 #countdownDisplay{
   font-weight: 900;
   color: var(--p-800);
@@ -256,6 +550,10 @@ button:disabled{
   font-weight: 900;
   color: var(--p-800);
   margin-bottom: 10px;
+}
+#choicesContainer{
+  display: grid;
+  gap: 8px;
 }
 
 /* Choice buttons */
@@ -275,40 +573,52 @@ button:disabled{
 .choice-btn.correct{ background:#2e7d32; color:#fff; }
 .choice-btn.wrong{ background:#c62828; color:#fff; }
 
-/* ===== Board / Tokens (ย้ายจาก inline มาไว้ที่นี่) ===== */
+/* =========================
+   11) BOARD (GRID ONLY — single source of truth)
+   ========================= */
+
+/* Board container scroll */
+#board{
+  width: 100%;
+  margin-top: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+}
+
+/* Rows */
 .board-label-row,
 .player-row{
   display:flex;
   align-items:center;
   gap: 8px;
   margin-bottom: 4px;
-}
-.player-row-name{
-  flex: 0 0 120px;
-  max-width: 120px;
-  text-align: right;
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: var(--p-800);
-  padding-right: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  width: 100%;
 }
 
-/* base */
+/* Track = grid, with fixed columns (Start + 30 cells + Finish) */
+.board-track{
+  display: grid !important;
+  grid-template-columns: var(--start-w) repeat(30, var(--cell-h)) var(--finish-w);
+  column-gap: var(--track-gap);
+  align-items: center;
+
+  width: max-content;  /* track width based on columns */
+  min-width: 100%;     /* but not smaller than container */
+}
+
+/* Base cell */
 .cell-card{
   position: relative;
   overflow: visible;
   border-radius: 4px;
 }
 
-/* 1..30 cells */
+/* Cells 1..30 */
 .board-track .cell-card:not(.start-cell):not(.finish-cell),
 .board-label-row .cell-card:not(.start-cell):not(.finish-cell){
-  width: 20px !important;
-  height: 20px !important;
-  flex: 0 0 20px !important;
+  height: var(--cell-h) !important;
   padding: 0 !important;
   line-height: 1 !important;
   box-sizing: border-box;
@@ -317,6 +627,9 @@ button:disabled{
   display:flex;
   align-items:center;
   justify-content:center;
+
+  width: auto !important;
+  flex: none !important;
 }
 .board-label-row .cell-card:not(.start-cell):not(.finish-cell){ background:#fff; }
 
@@ -326,19 +639,10 @@ button:disabled{
 .cell-card.play-cell.cell-wrong{ background:#ef5350 !important; }
 .cell-card.play-cell.cell-past{ background:#9e9e9e !important; }
 
-/* Start/Finish */
-.start-cell{
-  height: 20px !important;
-  border-radius: 4px !important;
-  background:#fff;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.18);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  box-sizing:border-box;
-}
+/* Start/Finish cells */
+.start-cell,
 .finish-cell{
-  height: 20px !important;
+  height: var(--cell-h) !important;
   border-radius: 4px !important;
   background:#fff;
   box-shadow: 0 3px 6px rgba(0,0,0,0.18);
@@ -346,25 +650,33 @@ button:disabled{
   align-items:center;
   justify-content:center;
   box-sizing:border-box;
-}
-.start-cell{ border-right: 3px solid var(--p-600) !important; }
-.finish-cell{ border-left: 3px solid #43a047 !important; }
-.cell-label{
-  font-size: 12px;      /* ขนาดตัวเลข/Start/Finish */
-  color: var(--p-800);  /* สีข้อความ */
-  font-weight: 900;     /* ถ้าต้องการให้เข้ม */
+  min-width: 0 !important;
 }
 
-/* ===== Player name inside Start cell ===== */
-.player-row .start-cell{
-  font-size: 12px;
-  color: var(--p-800);
+/* Start = player name on player rows */
+.start-cell{
+  width: var(--start-w) !important;
+  border-right: 3px solid var(--p-600) !important;
   font-weight: 900;
-  justify-content: flex-start !important;
+  color: var(--p-800);
   padding: 0 10px !important;
+  justify-content: flex-start !important;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* Finish marker */
+.finish-cell{
+  width: var(--finish-w) !important;
+  border-left: 3px solid #43a047 !important;
+}
+
+/* Cell label (numbers / Start / Finish label row) */
+.cell-label{
+  font-size: 12px;
+  color: var(--p-800);
+  font-weight: 900;
 }
 
 /* Token (droplet) */
@@ -398,424 +710,13 @@ button:disabled{
   transform: rotate(45deg);
 }
 
-/* ===== Utility ===== */
-.muted{ color: var(--muted); }
-.mt-10{ margin-top:10px; }
-.mt-14{ margin-top:14px; }
-
-/* ================================
-   LOBBY BAR (single source of truth)
-   ================================ */
-
-.lobby-bar{
-  display:flex;
-  align-items:center;
-  gap: 10px;
-  margin-bottom: 4px;
-  flex-wrap: nowrap;   /* ✅ ห้ามขึ้นบรรทัดใหม่ */
-}
-
-/* section-title ในแถบ LOBBY */
-.lobby-bar .section-title{
-  margin: 0 !important;   /* กัน inline style/เดิม */
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-/* badges: ไม่ wrap ลงบรรทัดใหม่ ให้ scroll-x แทน */
-.lobby-badges{
-  flex: 1 1 auto;
-  min-width: 0;
-  display:flex;
-  align-items:center;
-  gap: 8px;
-  flex-wrap: nowrap;      /* ✅ สำคัญ */
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-}
-.lobby-badges::-webkit-scrollbar{ display:none; }
-
-/* badge appearance + equal height */
-.lobby-badge{
-  height: var(--lobby-chip-h);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 10px;
-  line-height: 1;
-  font-size: 12px;
-  font-weight: 900;
-  border-radius: 999px;
-  white-space: nowrap;
-
-  background: #fff;
-  border: 1px solid var(--line);
-  color: var(--p-800);
-  box-shadow: 0 6px 14px rgba(31,35,48,.08);
-}
-
-/* actions: ปุ่มขวาอยู่บรรทัดเดียวเสมอ */
-.lobby-actions{
-  flex: 0 0 auto;
-  display:flex;
-  align-items:center;
-  gap: 8px;
-  flex-wrap: nowrap;
-}
-
-/* actions buttons = chip height */
-.lobby-actions button{
-  height: var(--lobby-chip-h);
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding: 0 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: none;
-}
-
-/* ================================
-   LOBBY CARD HEAD (role line + controls)
-   ================================ */
-
-.lobby-card-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
-/* แถว "รายชื่อผู้เล่น" + ปุ่มเริ่มเล่น */
-.lobby-list-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 10px;
-  margin: 2px 0 8px;    /* คุมระยะให้สวย ไม่ห่างจากขอบบนเกิน */
-}
-
-.lobby-list-title{
-  color: var(--p-800);
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-/* ปุ่มเริ่มเล่นให้เป็นชิปสูงเท่ากับ badge */
-.lobby-list-actions button{
-  height: var(--lobby-chip-h, 28px);
-  padding: 0 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: none;
-}
-
-.role-line{
-  flex: 1 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lobby-top-controls{
-  flex: 0 0 auto;
-  display:flex;
-  align-items:center;
-  gap: 8px;
-  flex-wrap: nowrap;
-}
-
-.lobby-top-controls button{
-  height: var(--lobby-chip-h);
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding: 0 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: none;
-}
-
-@media (max-width: 520px){
-  .lobby-card-head{ flex-wrap: wrap; }
-  .role-line{ flex: 1 1 100%; }
-}
-
-/* ================================
-   TABLE rounded corners + spacing inside lobby card
-   ================================ */
-
-#playerList{
-  padding: 0 !important;
-  margin: 0 !important;
-  list-style: none;
-}
-
-#playerList table,
-#endGameSummary table{
-  width: 100%;
-  margin: 0 !important;
-  border-collapse: separate !important;
-  border-spacing: 0 !important;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-#playerList thead tr th:first-child,
-#endGameSummary thead tr th:first-child{
-  border-top-left-radius: var(--radius-sm);
-}
-#playerList thead tr th:last-child,
-#endGameSummary thead tr th:last-child{
-  border-top-right-radius: var(--radius-sm);
-}
-#playerList tbody tr:last-child td:first-child,
-#endGameSummary tbody tr:last-child td:first-child{
-  border-bottom-left-radius: var(--radius-sm);
-}
-#playerList tbody tr:last-child td:last-child,
-#endGameSummary tbody tr:last-child td:last-child{
-  border-bottom-right-radius: var(--radius-sm);
-}
-
-/* ================================
-   GAME BOARD HEAD (round text + host controls)
-   ================================ */
-
-.game-head-row{
-  width: 100%;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 10px;
-}
-
-.game-host-controls{
-  flex: 0 0 auto;
-  display:flex;
-  align-items:center;
-  gap: 8px;
-  flex-wrap: nowrap;
-}
-
-.game-host-controls button{
-  height: var(--lobby-chip-h);
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding: 0 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: none;
-}
-
-/* === FIX: StartGame button center text === */
-.lobby-list-actions #startGameBtn{
-  height: var(--lobby-chip-h, 28px) !important;
-  padding: 0 12px !important;
-
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  line-height: 1 !important;
-  border-radius: 999px !important;
-  box-shadow: none !important;
-}
-
-/* === FIX: Lobby card spacing tighter === */
-.lobby-card{
-  padding-top: 10px !important;   /* ลดจากเดิม 14px */
-  padding-bottom: 12px !important;
-}
-
-.round-phase{
-  display:flex;
-  align-items:center;
-  gap: 8px;
-  min-width: 0;
-}
-
-#roundInfo{
-  white-space: nowrap;
-  font-weight: 900;
-}
-
-#phaseInfo{
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ===== PATCH: maintainability / responsive / UX ===== */
-
-/* 1) Tables: make container scroll without needing .table-wrap in HTML */
-#playerList,
-#endGameSummary{
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ลดการบังคับ min-width หนักเกินไปบนมือถือ */
-#playerList table,
-#endGameSummary table{
-  min-width: 640px;
-}
-
-/* มือถือเล็กมาก: อนุโลมให้ตารางยืดได้มากขึ้น */
-@media (max-width: 520px){
-  #playerList table,
-  #endGameSummary table{
-    min-width: 560px;
-  }
-}
-
-/* 2) Ghost button hover (ให้รู้สึกว่ากดได้) */
-.btn-ghost:hover{
-  box-shadow: 0 10px 18px rgba(75,60,140,.12);
-  transform: translateY(-1px);
-}
-
-/* track ไม่บีบจนช่องแบน */
-.board-track{
-  flex-wrap: nowrap;
-}
-
-/* 4) Choice buttons: spacing for readability */
-#choicesContainer{
-  display: grid;
-  gap: 8px;
-}
-
-/* 5) Prefer reduced motion */
-@media (prefers-reduced-motion: reduce){
-  *{
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* === FINAL BOARD LAYOUT (override legacy flex) === */
-
-/* ให้ #board กว้างเต็มการ์ด */
-#board{
-  width: 100%;
-  margin-top: 10px;
-}
-
-/* แต่ละแถวให้กินเต็ม */
-.board-label-row,
-.player-row{
-  width: 100%;
-}
-
-/* ชื่อผู้เล่น: ลดการกินพื้นที่แบบคงที่ ให้ยืดหดได้ */
-.player-row-name{
-  flex: 0 0 92px;      /* จาก 120px -> 92px (ปรับได้) */
-  max-width: 92px;
-}
-
-/* track ให้ยืดเต็มพื้นที่ที่เหลือ */
-.board-track{
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0;        /* สำคัญมากสำหรับ flex ไม่ให้ล้นแล้วดัน */
-}
-
-/* ถ้าพื้นที่ไม่พอ ให้เลื่อนแนวนอนแทน */
-.player-row .board-track,
-.board-label-row .board-track{
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.player-row .board-track::-webkit-scrollbar,
-.board-label-row .board-track::-webkit-scrollbar{
-  display:none;
-}
-
-/* มือถือ: ลดชื่อผู้เล่นให้สั้นลงอีก เพื่อให้ track ได้พื้นที่มากขึ้น */
-@media (max-width: 520px){
-  .player-row-name{
-    flex: 0 0 72px;
-    max-width: 72px;
-    font-size: 0.8rem;
-  }
-}
-
-.start-cell{
-  font-weight: 900;
-  color: var(--p-800);
-  padding: 0 10px !important;
-  justify-content: flex-start !important; /* ชิดซ้ายในช่อง */
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-/* ===== Board track: single source of truth (GRID only) ===== */
-.board-track{
-  display: grid !important;
-  grid-template-columns: var(--start-w) repeat(30, var(--cell-h)) var(--finish-w);
-  column-gap: var(--track-gap);
-  align-items: center;
-
-  width: max-content;     /* ✅ ทำให้ track กว้างตามคอลัมน์จริง */
-  min-width: 100%;        /* ✅ แต่ไม่เล็กกว่า container */
-}
-
-/* แถว board เป็นตัวเลื่อนแนวนอน */
-#board{
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 6px;
-}
-
-/* ไม่ต้องให้ .board-track มี overflow-x ซ้ำ (ลด bug) */
-.player-row .board-track,
-.board-label-row .board-track{
-  overflow: visible;
-}
-
-/* cells 1-30 */
-.board-track .cell-card:not(.start-cell):not(.finish-cell),
-.board-label-row .cell-card:not(.start-cell):not(.finish-cell){
-  width: auto !important;
-  flex: none !important;
-  height: var(--cell-h) !important;
-}
-
-/* Start/Finish (ห้ามมี min-width ตัวเลขชนกับ width) */
-.start-cell{
-  width: var(--start-w) !important;
-  min-width: 0 !important;
-  height: var(--cell-h) !important;
-}
-
-.finish-cell{
-  width: var(--finish-w) !important;
-  min-width: 0 !important;
-  height: var(--cell-h) !important;
-}
-
-/* ===== Dice Overlay ===== */
+/* =========================
+   12) OVERLAYS (Admin + Dice) — unified (no duplicates)
+   ========================= */
 .overlay{
   position: fixed;
   inset: 0;
-  z-index: 999;
+  z-index: 9999;
   display: none;
   align-items: center;
   justify-content: center;
@@ -823,13 +724,19 @@ button:disabled{
   background: rgba(20, 18, 40, .42);
   backdrop-filter: blur(6px);
 }
+@media (prefers-reduced-motion: reduce){
+  .overlay{ backdrop-filter: none; }
+}
+
 .overlay-card{
-  width: min(520px, 92vw);
+  width: min(420px, 92vw);
+  max-height: min(78vh, 640px);
+  overflow: auto;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 18px;
   box-shadow: var(--shadow2);
-  padding: 18px;
+  padding: 16px;
   text-align: center;
 }
 .overlay-title{
@@ -842,46 +749,12 @@ button:disabled{
   color: var(--muted);
   font-weight: 800;
 }
-
-/* เคารพคนที่ตั้ง reduce motion */
-@media (prefers-reduced-motion: reduce){
-  .overlay{ backdrop-filter: none; }
-}
-
-/* --- Dice overlay: perspective stage --- */
-/* Base overlay */
-.overlay{
-  position: fixed;
-  inset: 0;
-  z-index: 9999; /* ✅ ยกให้สูงพอไปเลย */
-  display: none;
-  align-items: center;
+#closeDiceOverlayBtn{
+  width: 100%;
   justify-content: center;
-  padding: 16px;
-  background: rgba(20, 18, 40, .42);
-  backdrop-filter: blur(6px);
 }
 
-/* Dice overlay uses base overlay */
-#diceOverlay{
-  /* ไม่ต้องประกาศซ้ำ */
-}
-
-/* card */
-.overlay-card{
-  width: min(420px, 92vw);
-  max-height: min(78vh, 640px);   /* ✅ กันมือถือเตี้ยแล้ว card ล้น */
-  overflow: auto;                /* ✅ ถ้าล้นให้เลื่อนใน card */
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  box-shadow: var(--shadow2);
-  padding: 16px;
-  text-align: center;
-}
-
-/* ===== Dice 3D (pips + perspective) ===== */
-/* Stage = ใส่ perspective ที่นี่ */
+/* Dice 3D stage */
 .dice-scene{
   perspective: 900px;
   perspective-origin: 50% 40%;
@@ -889,22 +762,16 @@ button:disabled{
   place-items: center;
   margin: 14px 0 10px;
 }
-
-/* กล้อง: ทำให้เห็น 3 ด้าน (บน/หน้า/ข้าง) */
 .dice-cam{
   transform-style: preserve-3d;
-  transform: rotateX(55deg) rotateZ(45deg); /* ✅ ห้ามเป็น -55 และห้ามมี rotateX(180) ซ้อน */
+  transform: rotateX(55deg) rotateZ(45deg);
 }
-
-/* ตัวลูกเต๋า (หมุนด้วย JS) */
 #dice3d.dice{
   width: var(--dice-size);
   height: var(--dice-size);
   position: relative;
   transform-style: preserve-3d;
 }
-
-/* หน้าเต๋า */
 #dice3d .face{
   position: absolute;
   inset: 0;
@@ -914,8 +781,6 @@ button:disabled{
   box-shadow: 0 14px 26px rgba(0,0,0,.18);
   backface-visibility: hidden;
 }
-
-/* ตำแหน่งแต่ละหน้า (จัด cube) — มาตรฐาน */
 #dice3d .face-1{ transform: rotateY(0deg)   translateZ(var(--dice-half)); }   /* front */
 #dice3d .face-2{ transform: rotateY(90deg)  translateZ(var(--dice-half)); }   /* right */
 #dice3d .face-6{ transform: rotateY(180deg) translateZ(var(--dice-half)); }   /* back */
@@ -923,7 +788,6 @@ button:disabled{
 #dice3d .face-3{ transform: rotateX(-90deg) translateZ(var(--dice-half)); }  /* top */
 #dice3d .face-4{ transform: rotateX(90deg)  translateZ(var(--dice-half)); }  /* bottom */
 
-/* จุด (pip) */
 #dice3d .pip{
   position: absolute;
   width: var(--pip);
@@ -932,8 +796,6 @@ button:disabled{
   background: var(--pip-color);
   box-shadow: inset 0 2px 0 rgba(255,255,255,.35);
 }
-
-/* ตำแหน่ง 3x3 */
 #dice3d .pip.tl{ left: 22%; top: 22%; }
 #dice3d .pip.tr{ right: 22%; top: 22%; }
 #dice3d .pip.ml{ left: 22%; top: 50%; transform: translateY(-50%); }
@@ -942,195 +804,9 @@ button:disabled{
 #dice3d .pip.br{ right: 22%; bottom: 22%; }
 #dice3d .pip.c{ left: 50%; top: 50%; transform: translate(-50%,-50%); }
 
-#closeDiceOverlayBtn{
-  width: 100%;
-  justify-content: center;
-}
-
-/* ===== Entry Mode Select (Page 1) ===== */
-.entry-hero{
-  text-align: center;
-  padding: 18px;
-}
-.entry-title{
-  margin: 0 0 6px;
-}
-.entry-sub{
-  margin: 0 0 14px;
-}
-
-.mode-grid{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-@media (max-width: 760px){
-  .mode-grid{ grid-template-columns: 1fr; }
-}
-
-.mode-card{
-  text-align: left;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 14px;
-  box-shadow: var(--shadow);
-  transition: transform .08s ease, box-shadow .12s ease, border-color .12s ease;
-}
-.mode-card:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 14px 24px rgba(31,35,48,.10);
-}
-.mode-card[aria-pressed="true"]{
-  border-color: rgba(75,60,140,.65);
-  box-shadow: 0 0 0 4px rgba(75,60,140,.12), var(--shadow);
-}
-.mode-badge{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--p-100);
-  color: var(--p-800);
-  font-weight: 900;
-  font-size: 12px;
-  margin-bottom: 10px;
-}
-.mode-name{
-  font-weight: 1000;
-  color: var(--p-800);
-  font-size: 16px;
-  margin-bottom: 4px;
-}
-.mode-desc{
-  font-weight: 700;
-}
-
-.entry-landing{
-  min-height: calc(100vh - 88px);
-  display: grid;
-  place-items: center;
-}
-
-.entry-landing-inner{
-  width: 100%;
-  text-align: center;
-}
-
-.entry-join-btn{
-  width: min(520px, 92vw);
-  height: 78px;
-  font-size: 24px;
-  border-radius: 18px;
-}
-
-.brand-badge.badge-v1{
-  width: 88px;
-  height: 44px;
-
-  background: transparent;
-  border: none;
-  box-shadow: none;
-
-  padding: 6px;
-  box-sizing: border-box;
-
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ธง: สี่เหลี่ยมด้านขนาน + ลาย (ม่วง/เทา) */
-.brand-badge.badge-v1::before{
-  content:"";
-  position:absolute;
-  inset: 6px;
-
-  /* ✅ ม่วง = โทนเดียวกับ header / เทาแทนขาว */
-  background:
-    conic-gradient(from 90deg,
-      var(--p-600) 0 25%, #cfcfd9 0 50%, var(--p-600) 0 75%, #cfcfd9 0 100%);
-  background-size: 12px 12px;
-
-  clip-path: polygon(14% 0%, 100% 0%, 86% 100%, 0% 100%);
-  filter: drop-shadow(0 8px 14px rgba(0,0,0,.22));
-}
-
-/* มิติเล็กน้อย */
-.brand-badge.badge-v1::after{
-  content:"";
-  position:absolute;
-  inset: 6px;
-
-  clip-path: polygon(14% 0%, 100% 0%, 86% 100%, 0% 100%);
-
-  background:
-    radial-gradient(120% 120% at 22% 30%, rgba(255,255,255,.20), transparent 55%),
-    radial-gradient(120% 120% at 78% 72%, rgba(0,0,0,.18), transparent 60%),
-    linear-gradient(90deg, rgba(255,255,255,.10), rgba(0,0,0,.10));
-
-  mix-blend-mode: overlay;
-  opacity: .9;
-  pointer-events: none;
-}
-
-/* ✅ QR สีขาว (ไม่มีขอบขาว) */
-.brand-badge.badge-v1 .badge-text{
-  position: relative;
-  z-index: 2;
-
-  font-weight: 1000;
-  font-size: 32px;
-  line-height: 1;
-  letter-spacing: .6px;
-
-  color: #ffffff;
-
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-
-  text-shadow:
-    0 6px 14px rgba(0,0,0,.22);
-}
-
-/* ปิด stroke เดิมแบบชัวร์ */
-.brand-badge.badge-v1 .badge-text{
-  -webkit-text-stroke: 0 transparent !important;
-}
-
-/* ===== Fix: Host setup button not shifting ===== */
-#hostGameOptions{
-  display: block !important;     /* จองพื้นที่ไว้เสมอ */
-  max-height: 0;                 /* ซ่อนด้วยความสูง */
-  overflow: hidden;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-4px);
-  transition: max-height .25s ease, opacity .2s ease, transform .2s ease;
-}
-
-#hostGameOptions.is-open{
-  max-height: 520px;             /* ปรับได้ตามความสูงจริงของ panel */
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-/* กันการกระชากของ layout ตอนเปิด host options */
-.card.lock-height{
-  overflow: hidden;
-}
-
-#createRoomBtn{
-  margin-top: 12px;
-}
-
-#backToModeBtn1{
-  margin-top: 10px;
-}
-
+/* =========================
+   13) UTILITIES
+   ========================= */
+.muted{ color: var(--muted); }
+.mt-10{ margin-top:10px; }
+.mt-14{ margin-top:14px; }
