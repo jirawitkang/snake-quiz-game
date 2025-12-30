@@ -839,3 +839,46 @@ body.in-game #startGameBtn{
 .muted{ color: var(--muted); }
 .mt-10{ margin-top:10px; }
 .mt-14{ margin-top:14px; }
+
+/* ===== PATCH: Player list table spacing + compact rows ===== */
+
+/* ทำให้พื้นที่รอบตารางเท่ากันทุกด้านภายใน lobby-card */
+#playerList{
+  padding: 14px !important;   /* ✅ ระยะเท่ากันทุกด้าน */
+  margin: 0 !important;
+}
+
+/* ตารางไม่ต้องมี margin แปลก ๆ */
+#playerList table{
+  margin: 0 !important;
+}
+
+/* ลดขนาดตัวอักษรในตารางรายชื่อผู้เล่น */
+#playerList table{
+  font-size: 11px;           /* ✅ เล็กลง (เดิม ~14px) */
+  line-height: 1.15;         /* ✅ ลดความสูงบรรทัด */
+}
+
+/* ลด padding ของหัวตารางและข้อมูล (ทำให้แถวเตี้ยลงมาก) */
+#playerList th,
+#playerList td{
+  padding: 4px 6px !important;  /* ✅ จาก 8px -> 4/6px */
+}
+
+/* หัวตารางให้กระชับ */
+#playerList th{
+  font-size: 11px;
+}
+
+/* ชื่อผู้เล่น (name-col) ไม่ต้องใหญ่เกิน */
+#playerList td.name-col{
+  font-weight: 800;
+}
+
+#playerList th, #playerList td{
+  white-space: nowrap;      /* กันขึ้นบรรทัดใหม่ ทำให้แถวเตี้ย */
+}
+#playerList{
+  max-height: 52vh;         /* ให้ card scroll ได้ถ้าผู้เล่นเยอะ */
+  overflow: auto;
+}
