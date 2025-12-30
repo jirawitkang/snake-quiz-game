@@ -183,6 +183,14 @@ const joinRoomBtn = document.getElementById("joinRoomBtn");
 const roomCodeInput = document.getElementById("roomCodeInput");
 const playerNameInput = document.getElementById("playerNameInput");
 
+const MAX_NAME_LEN = 12;
+
+function normalizeName(raw) {
+  const s = String(raw || "").trim().replace(/\s+/g, " ");
+  // ตัดความยาวเสมอ (กันกรณี paste/แก้ DOM)
+  return s.slice(0, MAX_NAME_LEN);
+}
+
 const lobbyEl = document.getElementById("lobby");
 // NOTE: roomInfo ไม่มีใน index.html ล่าสุด → ไม่ใช้งาน
 const roleInfoEl = document.getElementById("roleInfo");
@@ -776,12 +784,9 @@ boot();
 ========================= */
 // Host: Step 1 – เปิด panel ตั้งค่าเกม
 createRoomBtn?.addEventListener("click", () => {
-  const hostName = (hostNameInput?.value || "").trim();
-
-  if (!hostName) {
-    alert("กรุณากรอกชื่อของ Host ก่อน");
-    return;
-  }
+  const hostName = normalizeName(hostNameInput?.value);
+  if (!hostName) { alert("กรุณากรอกชื่อของ Host ก่อน"); return; }
+  if (hostNameInput) hostNameInput.value = hostName; // sync กลับเข้าช่อง (optional)
 
   if (hostNameInput) hostNameInput.disabled = true;
   if (createRoomBtn) createRoomBtn.disabled = true;
@@ -817,11 +822,9 @@ createRoomBtn?.addEventListener("click", () => {
 
 // Host Step 2: create room
 confirmCreateRoomBtn?.addEventListener("click", async () => {
-  const hostName = (hostNameInput?.value || "").trim();
-  if (!hostName) {
-    alert("กรุณากรอกชื่อของ Host");
-    return;
-  }
+  const hostName = normalizeName(hostNameInput?.value);
+  if (!hostName) { alert("กรุณากรอกชื่อของ Host ก่อน"); return; }
+  if (hostNameInput) hostNameInput.value = hostName; // sync กลับเข้าช่อง (optional)
 
   const questionSetId = questionSetSelect?.value || "general";
   const maxRounds = Math.max(1, parseInt(maxRoundsInput?.value, 10) || 10);
@@ -1210,12 +1213,13 @@ window.__SQ_rollDiceWithOverlay = rollDiceWithOverlay;
 // Player: Join Room
 joinRoomBtn?.addEventListener("click", async () => {
   const roomCode = (roomCodeInput?.value || "").trim().toUpperCase();
-  const playerNameRaw = (playerNameInput?.value || "").trim();
-
-  if (!roomCode || !playerNameRaw) {
+  const playerName = normalizeName(playerNameInput?.value);
+  if (!roomCode || !playerName) {
     alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
     return;
   }
+  if (playerNameInput) playerNameInput.value = playerName; // optional
+  const playerNameKey = playerName.toLowerCase();
 
   const playerName = playerNameRaw;
   const playerNameKey = playerNameRaw.toLowerCase();
@@ -1788,7 +1792,7 @@ function renderPlayerList(roomData, playersObj) {
   for (const [pid, p] of entries) {
     perPlayer[pid] = {
       id: pid,
-      name: p.name || pid,
+      name: normalizeName(p.name || pid),
       position: clampPos(p.position),
       hasRolled: !!p.hasRolled,
       answered: !!p.answered,
