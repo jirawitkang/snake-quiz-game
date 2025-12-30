@@ -834,6 +834,24 @@ body.in-game #startGameBtn{
   text-align: center;
 }
 
+/* Highlight my track (player only) */
+.player-row.is-me .start-cell{
+  background: var(--p-800) !important;
+  color: #fff !important;
+  border-right-color: var(--p-800) !important; /* ให้เส้นขวากลืนด้วย */
+}
+
+/* ถ้าข้อความเป็นตัวอักษรธรรมดาใน start-cell */
+.player-row.is-me .start-cell{
+  justify-content: center !important; /* ให้ชื่ออยู่กลางเหมือนที่คุณต้องการ */
+}
+
+/* เผื่อกรณีมี element ย่อยใน start-cell */
+.player-row.is-me .start-cell .cell-label,
+.player-row.is-me .start-cell span{
+  color: #fff !important;
+}
+
 /* Token (droplet) */
 .token{
   position:absolute;
