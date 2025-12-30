@@ -1832,8 +1832,13 @@ function renderPlayerList(roomData, playersObj) {
     for (const [pid, s] of Object.entries(perPlayer)) {
       // 1) ถ้าเข้าเส้นชัยแล้ว -> รอบถัดไปทั้งหมดเป็น ☐ และ ➖ (รวมถึงรอบปัจจุบันถ้า rn > finishRound)
       if (s.finishRound != null && rn > s.finishRound) {
+        // ✅ ผลทอย: โชว์ ☐ ทันทีเมื่อเริ่มรอบใหม่
         s.rollsByRound[idx] = "☐";
-        s.ansByRound[idx] = "➖";
+      
+        // ✅ ผลคำตอบ: โชว์ ➖ เฉพาะเมื่อ host "เฉลยคำถาม" แล้ว (มี answers ใน history)
+        const hasAnswers = rd.answers && Object.keys(rd.answers).length > 0;
+        if (hasAnswers) s.ansByRound[idx] = "➖";
+      
         continue;
       }
 
