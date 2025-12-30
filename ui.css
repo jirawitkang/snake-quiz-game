@@ -541,7 +541,7 @@ body.in-game #startGameBtn{
 #endGameSummary th, #endGameSummary td{
   border: 1px solid var(--line);
   padding: 0px 6px;
-  height: 34px;
+  height: 20px;
   text-align: center;
 }
 #playerList th, #endGameSummary th{
