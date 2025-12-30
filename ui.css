@@ -35,9 +35,10 @@
   /* Board sizing (single source of truth) */
   --track-gap: 4px;
   --cell-h: 20px;
-  --start-w: 140px;
+  --start-w: 180px;
   --finish-w: 88px;
-
+  /* Player List*/
+  --name-col-ch: 16ch;
   /* Dice */
   --dice-size: 110px;
   --dice-half: calc(var(--dice-size) / 2);
@@ -547,11 +548,32 @@ body.in-game #startGameBtn{
   color: var(--p-800);
   font-weight: 900;
 }
+
+/* ทำให้ตารางคุมคอลัมน์ตาม width ที่กำหนดจริง */
+#playerList table{
+  table-layout: fixed;
+}
+
+/* name column: style + lock width */
+#playerList th.name-col,
 #playerList td.name-col,
+#endGameSummary th.name-col,
 #endGameSummary td.name-col{
   text-align:left;
   font-weight: 800;
   color: var(--p-800);
+
+  /* lock width only for playerList (end summary ปล่อยยืดได้ตามเดิม ถ้าต้องการ) */
+}
+
+/* ล็อกความกว้างเฉพาะ playerList */
+#playerList th.name-col,
+#playerList td.name-col{
+  width: var(--name-col-ch);
+  max-width: var(--name-col-ch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Rounded corners */
