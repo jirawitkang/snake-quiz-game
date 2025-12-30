@@ -589,7 +589,6 @@ body.in-game #startGameBtn{
 /* 6) ผลทอย */
 #playerList td:nth-child(6){
   font-variant-numeric: tabular-nums;
-  letter-spacing: 1px;        /* ให้ emoji ไม่ชิดกันเกิน */
 }
 
 /* 6-7) ผลทอย + ผลคำตอบ ให้กว้างเท่ากัน */
@@ -666,6 +665,15 @@ body.in-game #startGameBtn{
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Bigger dice glyphs (⚀⚁⚂⚃⚄⚅ / ☐) */
+#playerList td.rolls-col,
+#endGameSummary td.rolls-col{
+  font-size: 18px;       /* ปรับได้ เช่น 18-22 */
+  line-height: 1.1;      /* กันแถวสูงเกินไป */
+  letter-spacing: 1px;   /* ช่วยให้อ่านง่ายขึ้น */
+  white-space: nowrap;
 }
 
 /* Rounded corners */
