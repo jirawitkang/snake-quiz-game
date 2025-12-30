@@ -702,7 +702,7 @@ body.in-game #startGameBtn{
   font-size: 24px;     /* ✅ คง 24px ตามที่ต้องการ */
   line-height: 1;      /* ✅ ลดช่องว่างบน/ล่างจาก line box */
   letter-spacing: 1px;
-  transform: translateY(-2px); /* ปรับจูนให้กึ่งกลาง (ลอง 0..2px) */
+  transform: translateY(-4px); /* ปรับจูนให้กึ่งกลาง (ลอง 0..2px) */
   white-space: nowrap;
 }
 
