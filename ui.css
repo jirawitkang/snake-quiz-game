@@ -670,9 +670,9 @@ body.in-game #startGameBtn{
 /* Bigger dice glyphs (⚀⚁⚂⚃⚄⚅ / ☐) */
 #playerList td.rolls-col,
 #endGameSummary td.rolls-col{
-  font-size: 18px;       /* ปรับได้ เช่น 18-22 */
-  line-height: 1.1;      /* กันแถวสูงเกินไป */
-  letter-spacing: 1px;   /* ช่วยให้อ่านง่ายขึ้น */
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
