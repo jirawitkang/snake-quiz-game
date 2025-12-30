@@ -844,7 +844,7 @@ body.in-game #startGameBtn{
 
 /* ทำให้พื้นที่รอบตารางเท่ากันทุกด้านภายใน lobby-card */
 #playerList{
-  padding: 14px !important;   /* ✅ ระยะเท่ากันทุกด้าน */
+  padding: 6px !important;   /* ✅ ระยะเท่ากันทุกด้าน */
   margin: 0 !important;
 }
 
