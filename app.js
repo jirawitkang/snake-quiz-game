@@ -2298,6 +2298,10 @@ function renderBoard(roomData, players) {
   for (const [pid, p] of sorted) {
     const row = document.createElement("div");
     row.className = "player-row";
+    
+    if (currentRole === "player" && currentPlayerId && pid === currentPlayerId) {
+      row.classList.add("is-me");
+    }
 
     const track = document.createElement("div");
     track.className = "board-track";
