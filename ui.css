@@ -1126,3 +1126,11 @@ button:disabled{
   overflow: hidden;
 }
 
+#createRoomBtn{
+  margin-top: 12px;
+}
+
+#backToModeBtn1{
+  margin-top: 10px;
+}
+
