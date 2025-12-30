@@ -503,37 +503,39 @@ body.in-game #startGameBtn{
 }
 
 /* =========================
-   9) TABLES (playerList + endGameSummary) — CLEAN VERSION
+   9) TABLES (playerList + endGameSummary) — CLEAN + MERGED
    ========================= */
 
-/* wrapper */
+/* ---- wrappers (scroll container) ---- */
 #playerList,
 #endGameSummary{
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* reset container */
+/* playerList wrapper: ให้เลื่อนในแนวตั้งได้ถ้าผู้เล่นเยอะ */
 #playerList{
   padding: 0 !important;
   margin: 0 !important;
+  max-height: 52vh;
+  overflow: auto; /* x+y */
 }
 
-/* =========================
-   TABLE BASE
-   ========================= */
+/* ---- base table ---- */
 #playerList table,
 #endGameSummary table{
   width: 100%;
   margin: 0 !important;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
   border-radius: var(--radius-sm);
+  overflow: hidden;
   table-layout: fixed;
+
+  /* keep readable on mobile: allow horizontal scroll */
   min-width: max-content;
 }
 
-/* mobile */
 @media (max-width: 520px){
   #playerList table,
   #endGameSummary table{
@@ -541,21 +543,29 @@ body.in-game #startGameBtn{
   }
 }
 
-/* =========================
-   CELL BASE (HEADER + BODY)
-   ========================= */
+/* ---- shared cell style (header + body) ---- */
+:root{
+  --tbl-font: 16px;     /* ปรับขนาดตัวอักษรหลักที่นี่ */
+  --tbl-row-h: 24px;    /* ความสูงแถวที่ต้องการ */
+  --tbl-pad-x: 6px;     /* padding ซ้าย/ขวา */
+}
+
 #playerList th, #playerList td,
 #endGameSummary th, #endGameSummary td{
   border: 1px solid var(--line);
-  padding: 0 6px;
-  height: 30px;
-  line-height: 30px;
+  padding: 0 var(--tbl-pad-x);
+  height: var(--tbl-row-h);
+  line-height: var(--tbl-row-h);
   text-align: center;
   vertical-align: middle;
-  font-size: 18px;
+
+  font-size: var(--tbl-font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* header */
+/* header look */
 #playerList th,
 #endGameSummary th{
   background: var(--p-100);
@@ -563,116 +573,115 @@ body.in-game #startGameBtn{
   font-weight: 900;
 }
 
-/* =========================
-   NAME COLUMN (shared)
-   ========================= */
+/* name column shared */
 #playerList th.name-col, #playerList td.name-col,
 #endGameSummary th.name-col, #endGameSummary td.name-col{
   width: var(--name-col-ch);
   max-width: var(--name-col-ch);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* name cell weight (ตาม PATCH เดิม) */
+#playerList td.name-col{
+  font-weight: 800;
 }
 
 /* =========================
-   PLAYER LIST COLUMN WIDTHS (8 cols)
+   PlayerList: 8 columns
    ========================= */
+
+/* 1) # */
 #playerList th:nth-child(1),
-#playerList td:nth-child(1){ width: 4ch; }   /* # */
+#playerList td:nth-child(1){ width: 4ch; }
 
+/* 3) ตำแหน่ง */
 #playerList th:nth-child(3),
-#playerList td:nth-child(3){ width: 6ch; }   /* ตำแหน่ง */
+#playerList td:nth-child(3){ width: 6ch; }
 
+/* 4) ทอยแล้ว */
 #playerList th:nth-child(4),
-#playerList td:nth-child(4){ width: 7ch; }   /* ทอยแล้ว */
+#playerList td:nth-child(4){ width: 7ch; }
 
+/* 5) ตอบแล้ว */
 #playerList th:nth-child(5),
-#playerList td:nth-child(5){ width: 7ch; }   /* ตอบแล้ว */
+#playerList td:nth-child(5){ width: 7ch; }
 
-/* ผลทอย + ผลคำตอบ */
+/* 6-7) ผลทอย + ผลคำตอบ ให้กว้างเท่ากัน */
 #playerList th:nth-child(6),
 #playerList td:nth-child(6),
 #playerList th:nth-child(7),
 #playerList td:nth-child(7){
   width: 16ch;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-/* สถานะผู้เล่น */
+/* 8) สถานะผู้เล่น */
 #playerList th:nth-child(8),
 #playerList td:nth-child(8){
   width: 9ch;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* =========================
-   END GAME SUMMARY (12 cols)
+   EndGameSummary: 12 columns
    ========================= */
+
+/* 1) อันดับ */
 #endGameSummary th:nth-child(1),
 #endGameSummary td:nth-child(1){ width: 5ch; }
 
+/* 3) ตำแหน่งสุดท้าย */
 #endGameSummary th:nth-child(3),
 #endGameSummary td:nth-child(3){ width: 10ch; }
 
+/* 4) ถึงเส้นชัย? */
 #endGameSummary th:nth-child(4),
 #endGameSummary td:nth-child(4){ width: 10ch; }
 
+/* 5) รอบที่ถึง */
 #endGameSummary th:nth-child(5),
 #endGameSummary td:nth-child(5){ width: 8ch; }
 
+/* 6) วิธีถึง */
 #endGameSummary th:nth-child(6),
-#endGameSummary td:nth-child(6){
-  width: 10ch;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+#endGameSummary td:nth-child(6){ width: 10ch; }
 
+/* 7-9) ถูก/ผิด/ไม่ทัน */
 #endGameSummary th:nth-child(7),
 #endGameSummary td:nth-child(7),
 #endGameSummary th:nth-child(8),
 #endGameSummary td:nth-child(8),
 #endGameSummary th:nth-child(9),
-#endGameSummary td:nth-child(9){
-  width: 6ch;
-}
+#endGameSummary td:nth-child(9){ width: 6ch; }
 
+/* 10) % ถูก */
 #endGameSummary th:nth-child(10),
 #endGameSummary td:nth-child(10){ width: 7ch; }
 
+/* 11-12) ทอยลูกเต๋า + ผลคำถาม */
 #endGameSummary th:nth-child(11),
 #endGameSummary td:nth-child(11),
 #endGameSummary th:nth-child(12),
 #endGameSummary td:nth-child(12){
   width: 18ch;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* =========================
-   ROLLS TEXT (⚀⚁⚂⚃⚄⚅ / ☐) — BODY ONLY
+   Dice glyph column (ผลทอย) — ใหญ่ขึ้น แต่แถวยังคุมด้วย row-h
+   ใช้ span ภายใน cell จะคุมตำแหน่งได้ดีที่สุด
    ========================= */
-#playerList tbody td.rolls-col,
-#endGameSummary tbody td.rolls-col{
-  padding: 0 6px;
-  overflow: visible;
+
+/* td ผลทอย: ตัด line-height ของ td ไม่ให้บังคับ glyph */
+#playerList td.rolls-col,
+#endGameSummary td.rolls-col{
+  line-height: var(--tbl-row-h); /* คง row-h */
 }
 
-/* glyph wrapper */
-#playerList tbody td.rolls-col .rolls-text,
-#endGameSummary tbody td.rolls-col .rolls-text{
+/* ตัว glyph ภายใน (แนะนำให้คุณ render เป็น <span class="rolls-text">...</span>) */
+#playerList td.rolls-col .rolls-text,
+#endGameSummary td.rolls-col .rolls-text{
   display: inline-block;
-  font-size: 26px;
-  line-height: 1;
+  font-size: 24px;      /* dice ใหญ่ */
+  line-height: 1;       /* ลดช่องว่างบน/ล่างของ line box */
   letter-spacing: 1px;
-  transform: translateY(-2px); /* ⭐ ขยับขึ้น */
-  white-space: nowrap;
+  transform: translateY(-2px); /* ปรับจูนตำแหน่ง (อยากดันเพิ่มค่อยเพิ่ม) */
 }
 
 /* Rounded corners */
@@ -960,49 +969,6 @@ body.in-game #startGameBtn{
 .muted{ color: var(--muted); }
 .mt-10{ margin-top:10px; }
 .mt-14{ margin-top:14px; }
-
-/* ===== PATCH: Player list table spacing + compact rows ===== */
-
-/* ทำให้พื้นที่รอบตารางเท่ากันทุกด้านภายใน lobby-card */
-#playerList{
-  padding: 0px !important;   /* ✅ ระยะเท่ากันทุกด้าน */
-  margin: 0 !important;
-}
-
-/* ตารางไม่ต้องมี margin แปลก ๆ */
-#playerList table{
-  margin: 0 !important;
-}
-
-/* ลดขนาดตัวอักษรในตารางรายชื่อผู้เล่น */
-#playerList table{
-  font-size: 11px;           /* ✅ เล็กลง (เดิม ~14px) */
-  line-height: 1.15;         /* ✅ ลดความสูงบรรทัด */
-}
-
-/* ลด padding ของหัวตารางและข้อมูล (ทำให้แถวเตี้ยลงมาก) */
-#playerList th,
-#playerList td{
-  padding: 4px 6px !important;  /* ✅ จาก 8px -> 4/6px */
-}
-
-/* หัวตารางให้กระชับ */
-#playerList th{
-  font-size: 11px;
-}
-
-/* ชื่อผู้เล่น (name-col) ไม่ต้องใหญ่เกิน */
-#playerList td.name-col{
-  font-weight: 800;
-}
-
-#playerList th, #playerList td{
-  white-space: nowrap;      /* กันขึ้นบรรทัดใหม่ ทำให้แถวเตี้ย */
-}
-#playerList{
-  max-height: 52vh;         /* ให้ card scroll ได้ถ้าผู้เล่นเยอะ */
-  overflow: auto;
-}
 
 /* Header action buttons: keep compact */
 .header-meta button.pill{
