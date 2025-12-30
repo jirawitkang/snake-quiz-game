@@ -2536,7 +2536,7 @@ function renderEndGameSummary(roomData, players) {
         <td>${s.wrong}</td>
         <td>${s.timeout}</td>
         <td>${pctText}</td>
-        <td>${rollsText}</td>
+        <td class="rolls-col">${rollsText}</td>
         <td>${ansText}</td>
       </tr>
     `;
