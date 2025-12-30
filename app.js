@@ -421,20 +421,11 @@ function diceToGlyph(n) {
   const map = ["", "⚀","⚁","⚂","⚃","⚄","⚅"];
   return map[n] || "";
 }
-/*
-const DICE_UNICODE = ["", "⚀","⚁","⚂","⚃","⚄","⚅"];
 
-function toDiceGlyph(n){
-  const x = Number(n);
-  return Number.isFinite(x) && x >= 1 && x <= 6 ? DICE_UNICODE[x] : "?";
+function rollTextToGlyphs(rolls) {
+  if (!Array.isArray(rolls) || rolls.length === 0) return "";
+  return rolls.map(n => diceToGlyph(Number(n))).join("");
 }
-
-function rollTextToGlyphs(rolls){
-  // rolls อาจเป็น [1,2,3] หรือ ["1","2"] หรือ null
-  if (!Array.isArray(rolls) || rolls.length === 0) return "-";
-  return rolls.map(toDiceGlyph).join("");
-}
-*/
 
 /* =========================
    7) Entry Navigation (SPA)
@@ -1389,17 +1380,17 @@ async function finalizeRollTransaction(roll) {
   const tx = await runTransaction(roomRef, (room) => {
     if (!room) return room;
 
-    if (room.phase !== PHASE.ROLLING) return;
-    if ((room.currentRound || 0) <= 0) return;
+    if (room.phase !== PHASE.ROLLING) return room;
+    if ((room.currentRound || 0) <= 0) return room;
 
     const players = room.players || {};
     const me = players[currentPlayerId];
-    if (!me) return;
+    if (!me) return room;
 
     const pos = clampPos(me.position);
     const finished = !!me.finished || pos >= BOARD_SIZE;
-    if (finished) return;
-    if (me.hasRolled) return;
+    if (finished) return room;
+    if (me.hasRolled) return room;
 
     const startPos = pos;
     const newPos = clampPos(startPos + roll);
@@ -1416,7 +1407,7 @@ async function finalizeRollTransaction(roll) {
 
     const r = room.currentRound || 0;
     room.history = room.history || {};
-    const roundKey = `round_${r}`;
+    const roundKey = `round_${r}`;renderPlayerL
     room.history[roundKey] = room.history[roundKey] || {};
     room.history[roundKey].diceMoves = room.history[roundKey].diceMoves || {};
     room.history[roundKey].diceMoves[currentPlayerId] = {
@@ -1809,74 +1800,73 @@ function renderPlayerList(roomData, playersObj) {
   }
 
   const history = roomData.history || {};
-  const currentRound = roomData.currentRound || 0;
+  const currentRound = Number(roomData.currentRound || 0);
 
-  // จำนวนรอบที่มี history แล้ว (รอบที่ "ปิดจบ" แล้ว)
+  // round_1, round_2, ...
   const roundKeys = Object.keys(history)
     .filter((k) => k.startsWith("round_"))
     .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
 
+  // จำนวนรอบที่ "มีคำตอบแล้ว" (หลัง host เฉลย) = roundKeys.length
   const historyRounds = roundKeys.length;
 
-  // ระหว่างเล่น: ให้แสดง timeline เท่ากับ currentRound (เพื่อให้รอบปัจจุบันโผล่ทันที)
-  // ก่อนเริ่มเกม (currentRound=0) ก็ยังแสดงตารางเดิมได้ แต่ timeline จะว่าง
+  // ระหว่างเล่น ให้ timeline ยาวเท่ากับ currentRound (เพื่อให้รอบปัจจุบันโผล่ทันที)
   const roundsToShow = Math.max(0, currentRound);
 
-  // เตรียมข้อมูลต่อผู้เล่น (timeline ต่อรอบ)
+  // สร้าง state ต่อผู้เล่น
   const perPlayer = {};
   for (const [pid, p] of entries) {
+    const pos = clampPos(p.position);
     perPlayer[pid] = {
       id: pid,
       name: normalizeName(p.name || pid),
-      position: clampPos(p.position),
+      position: pos,
       hasRolled: !!p.hasRolled,
       answered: !!p.answered,
-      finished: !!p.finished || clampPos(p.position) >= BOARD_SIZE,
+      finished: !!p.finished || pos >= BOARD_SIZE,
+      finishRound: Number.isFinite(p.finishedRound) ? Number(p.finishedRound) : null,
 
-      // ใช้ของใน DB ถ้ามี (ดีที่สุด)
-      finishRound: Number.isFinite(p.finishedRound) ? p.finishedRound : null,
-
-      // timeline ต่อรอบ (1..roundsToShow)
-      rollsByRound: Array(roundsToShow).fill(null),   // number | "☐" | null
-      ansByRound: Array(roundsToShow).fill(null),     // "✅"/"❌"/"➖" | null
+      // timeline ต่อรอบ (index 0 = รอบ 1)
+      rollsByRound: Array(roundsToShow).fill(null), // number | "☐" | null
+      ansByRound: Array(roundsToShow).fill(null),   // "✅" | "❌" | "➖" | null
     };
   }
 
-  // 1) เติมจาก history (เฉพาะรอบที่มีจริง)
+  // 1) เติมจาก history.answers (รอบที่เฉลยแล้วเท่านั้น)
   for (const rk of roundKeys) {
     const rn = parseInt(rk.split("_")[1] || "0", 10);
+    const idx = rn - 1;
+    if (idx < 0 || idx >= roundsToShow) continue;
 
-    if (!perPlayer[pid]) continue;
-    const s = perPlayer[pid];
-    
-    // เก็บผลทอยจาก history (เฉพาะรอบที่ยังไม่หลังเข้าเส้นชัย)
-    const finalPos = rec.finalPosition ?? null;
-    if (s.finishRound == null && Number.isFinite(finalPos) && finalPos >= BOARD_SIZE) {
-      s.finishRound = rn; // จำรอบแรกที่เข้าเส้นชัย
+    const roundData = history[rk] || {};
+    const answers = roundData.answers || {};
+
+    for (const [pid, rec] of Object.entries(answers)) {
+      const s = perPlayer[pid];
+      if (!s) continue;
+
+      // จำรอบเข้าเส้นชัยจาก history ถ้าใน player ยังไม่มี
+      const finalPos = Number(rec.finalPosition);
+      if (s.finishRound == null && Number.isFinite(finalPos) && finalPos >= BOARD_SIZE) {
+        s.finishRound = rn;
+      }
+
+      // รอบหลังเข้าเส้นชัย: ไม่ให้ history มาทับ (กัน “ซ้ำผลทอยรอบที่เข้าเส้นชัย”)
+      if (s.finishRound != null && rn > s.finishRound) continue;
+
+      // ผลทอยของรอบนั้น
+      const dr = Number(rec.diceRoll);
+      if (Number.isFinite(dr) && dr >= 1 && dr <= 6) s.rollsByRound[idx] = dr;
+
+      // ผลคำตอบของรอบนั้น
+      if (rec.correct === true) s.ansByRound[idx] = "✅";
+      else if (rec.correct === false) s.ansByRound[idx] = "❌";
+      // ถ้า correct เป็น null (เช่น neutral) ให้ปล่อยว่าง
     }
-    
-    // ✅ lock: รอบหลังเข้าเส้นชัย ห้ามเอา history มาทับ
-    if (s.finishRound != null && rn > s.finishRound) {
-      continue;
-    }
-    
-    if (rec.diceRoll != null) s.rolls.push(Number(rec.diceRoll));
-    
-    const basePos = rec.basePosition ?? finalPos;
-    const neutralFinishByDice =
-      rec.correct == null &&
-      rec.answered === false &&
-      basePos >= BOARD_SIZE &&
-      (finalPos ?? 0) >= BOARD_SIZE;
-    
-    if (neutralFinishByDice) continue;
-    
-    if (rec.correct === true) s.answerSymbols.push("✅");
-    else s.answerSymbols.push("❌");
   }
 
-  // 2) เติม "รอบปัจจุบัน" แบบ realtime (ไม่รอ history)
-  // เงื่อนไข: currentRound = historyRounds + 1 แปลว่าอยู่ในรอบใหม่ที่ยังไม่ถูกปิดจบ
+  // 2) เติม “รอบปัจจุบัน” แบบ realtime (ไม่ต้องรอ host เฉลย)
+  // เงื่อนไข: currentRound = historyRounds + 1 แปลว่ารอบนี้ยังไม่ถูกเฉลย/ยังไม่ถูกเขียน answers
   const isRoundInProgress = (currentRound > 0 && currentRound === historyRounds + 1);
   if (isRoundInProgress && roundsToShow > 0) {
     const curIdx = currentRound - 1;
@@ -1885,49 +1875,48 @@ function renderPlayerList(roomData, playersObj) {
       const s = perPlayer[pid];
       if (!s) continue;
 
-      // 2.1 ถ้าเข้าเส้นชัยแล้ว -> รอบถัด ๆ ไปให้ ☐ และ ➖ ทันที (รวมรอบปัจจุบันด้วยถ้าเกิน finishRound)
+      // 2.1 เข้าเส้นชัยแล้ว -> รอบถัดๆไป (รวมรอบปัจจุบันถ้าเกิน finishRound) เติม ☐/➖ ทันที
       if (s.finishRound != null && currentRound > s.finishRound) {
         s.rollsByRound[curIdx] = "☐";
         s.ansByRound[curIdx] = "➖";
         continue;
       }
 
-      // 2.2 ถ้ายังไม่เข้าเส้นชัย -> ทอยเสร็จให้แสดงผลทันที
+      // 2.2 ยังไม่เข้าเส้นชัย -> ทอยเสร็จให้แสดงทันทีจาก lastRoll
       const lr = Number(p.lastRoll);
-      if (!s.finished && Number.isFinite(lr) && s.rollsByRound[curIdx] == null) {
-        s.rollsByRound[curIdx] = lr; // ✅ ทอยเสร็จเห็นทันที
+      if (!s.finished && Number.isFinite(lr) && lr >= 1 && lr <= 6) {
+        s.rollsByRound[curIdx] = lr;
       }
-      // (ผลคำตอบ realtime ยังไม่ต้องทำตอนนี้ เพราะคุณอยากแสดงหลังเฉลย/หลังตัดสิน)
+      // ผลคำตอบรอบปัจจุบันยังไม่เติมจนกว่าจะเฉลย (ตรงตาม flow)
     }
   }
 
-  // 3) เติม placeholder สำหรับ "ทุก r > finishRound" ให้คงอยู่เสมอ (ไม่หายตอนมีคนทอย)
+  // 3) บังคับ “หลังเข้าเส้นชัย” ให้คง ☐/➖ เสมอ ทุกครั้งที่ render (กันหาย)
   for (const s of Object.values(perPlayer)) {
     if (s.finishRound == null) continue;
-  
+
     for (let rn = s.finishRound + 1; rn <= roundsToShow; rn++) {
       const idx = rn - 1;
       if (idx < 0 || idx >= roundsToShow) continue;
-  
-      s.rollsByRound[idx] = "☐"; // ✅ บังคับทับเสมอ
-      s.ansByRound[idx] = "➖";   // ✅ บังคับทับเสมอ
+      s.rollsByRound[idx] = "☐";
+      s.ansByRound[idx] = "➖";
     }
   }
 
-  // 4) แปลง timeline เป็น string
-  function rollsToText(arr) {
+  // helpers -> string
+  const rollsToText = (arr) => {
     const out = arr.map(v => {
       if (v === "☐") return "☐";
       if (Number.isFinite(v)) return diceToGlyph(v);
-      return ""; // ยังไม่มี
+      return "";
     }).join("");
     return out || "-";
-  }
+  };
 
-  function ansToText(arr) {
+  const ansToText = (arr) => {
     const out = arr.map(v => (v ? v : "")).join("");
     return out || "-";
-  }
+  };
 
   const list = Object.values(perPlayer).sort((a, b) =>
     String(a.name || "").localeCompare(String(b.name || ""))
