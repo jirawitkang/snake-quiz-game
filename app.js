@@ -1823,6 +1823,10 @@ function renderPlayerList(roomData, playersObj) {
     .filter((k) => k.startsWith("round_"))
     .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
 
+  const currentRound = roomData.currentRound || 0;
+  const historyRounds = roundKeys.length;            // จำนวนรอบที่มี history แล้ว (รอบที่ปิดจบ)
+  const isRoundInProgress = currentRound > 0 && historyRounds === currentRound - 1;
+
   for (const rk of roundKeys) {
     const roundData = history[rk] || {};
     const answers = roundData.answers || {};
@@ -1879,24 +1883,28 @@ function renderPlayerList(roomData, playersObj) {
   `;
 
   list.forEach((p, index) => {
-    const currentRound = roomData.currentRound || 0;
-
-    // ✅ ผลทอย: แปลงเป็น glyph แล้ว “หลังเข้าเส้นชัย” ให้เป็น ☐
-    const rollsUntilFinish = p.finishRound != null ? p.rolls.slice(0, p.finishRound) : p.rolls;
-    let rollsText = rollTextToGlyphs(rollsUntilFinish);
-    if (p.finishRound != null && currentRound > p.finishRound) {
-      rollsText += "☐".repeat(currentRound - p.finishRound);
+    const live = players?.[p.id] || {};  // state ล่าสุดใน rooms/.../players
+  
+    // 1) base จาก history (รอบที่ปิดจบแล้ว)
+    let rollsText = rollTextToGlyphs(p.rolls);
+    let ansText = p.answerSymbols.length ? p.answerSymbols.join("") : "";
+  
+    // 2) รอบปัจจุบัน (กำลังเล่นอยู่) แสดงผลทันที
+    if (isRoundInProgress) {
+      // 2.1 ผู้เล่น "เข้าเส้นชัยแล้ว" -> เริ่มรอบใหม่ปุ๊บเติม ☐ และ ➖ ทันที
+      if (p.finishRound != null && currentRound > p.finishRound) {
+        rollsText += "☐";
+        ansText += "➖";
+      }
+      // 2.2 ผู้เล่น "ยังไม่เข้าเส้นชัย" -> ทอยเสร็จให้โชว์ทันที (ไม่รอ host เริ่มคำถาม)
+      else if (!p.finished && live.hasRolled && Number.isFinite(live.lastRoll)) {
+        rollsText += rollTextToGlyphs([live.lastRoll]); // เติม glyph ของรอบนี้ทันที
+      }
     }
+  
     if (!rollsText) rollsText = "-";
-
-    // ✅ ผลคำตอบ: หลังเข้าเส้นชัยให้เป็น ➖
-    const ansUntilFinish = p.finishRound != null ? p.answerSymbols.slice(0, p.finishRound) : p.answerSymbols;
-    let ansText = ansUntilFinish.length ? ansUntilFinish.join("") : "";
-    if (p.finishRound != null && currentRound > p.finishRound) {
-      ansText += "➖".repeat(currentRound - p.finishRound);
-    }
     if (!ansText) ansText = "-";
-
+  
     html += `
       <tr>
         <td>${index + 1}</td>
@@ -2367,7 +2375,7 @@ function renderEndGameSummary(roomData, players) {
       name: p.name || pid,
       finalPosition: p.position ?? 1,
       finished: !!p.finished || (p.position ?? 1) >= BOARD_SIZE,
-      finishRound: p.finishedRound ?? null,
+      finishRound: (p.finishedRound ?? null),
       finishBy: p.finishedBy ?? null,
       correct: 0,
       wrong: 0,
