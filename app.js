@@ -1,5 +1,6 @@
 // app.js
 // Stable Multiplayer: transactions for dice/answer/host actions (patched)
+// Refactor: grouped + ordered by flow (no core game logic changes)
 
 import { initializeApp as firebaseInitializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -13,7 +14,9 @@ import {
   runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// ---------------- Firebase Config ----------------
+/* =========================
+   1) Firebase Config + Boot logs
+========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyCOT002ZBTw_roNiN_9npuGJZpuFg3TB5s",
   authDomain: "snake-quiz-cdf1c.firebaseapp.com",
@@ -26,6 +29,7 @@ const firebaseConfig = {
 };
 
 console.log("app.js loaded (Stable Transactions - patched)");
+
 window.addEventListener("error", (e) => {
   console.error("[GLOBAL ERROR]", e.message, e.filename, e.lineno, e.colno);
 });
@@ -36,8 +40,11 @@ window.addEventListener("unhandledrejection", (e) => {
 const app = firebaseInitializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ---------------- Constants ----------------
+/* =========================
+   2) Constants / Enums / Storage
+========================= */
 const BOARD_SIZE = 30;
+
 const STORAGE_KEY = "SQ_SESSION_V1";
 const STORAGE = sessionStorage; // ✅ แยกต่อแท็บ
 
@@ -56,7 +63,9 @@ const PHASE = Object.freeze({
   ENDED: "ended",
 });
 
-// ---------------- Question Sets ----------------
+/* =========================
+   3) Question Sets
+========================= */
 const QUESTION_SETS = {
   general: [
     {
@@ -146,7 +155,9 @@ function getQuestionFromRoom(roomData, index) {
   return set[i];
 }
 
-// ---------------- DOM ----------------
+/* =========================
+   4) DOM Cache
+========================= */
 const createRoomBtn = document.getElementById("createRoomBtn");
 const hostNameInput = document.getElementById("hostNameInput");
 const hostGameOptionsEl = document.getElementById("hostGameOptions");
@@ -202,128 +213,24 @@ const choicesContainerEl = document.getElementById("choicesContainer");
 const endGameAreaEl = document.getElementById("endGameArea");
 const endGameSummaryEl = document.getElementById("endGameSummary");
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const raf = () => new Promise((r) => requestAnimationFrame(r));
-const rand360 = () => Math.floor(Math.random() * 360);
-const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
-
 const joinGameBtn = document.getElementById("joinGameBtn");
-
 const entryLandingEl = document.getElementById("entryLanding");   // หน้าแรกปุ่ม Join Game
 const adminEntryPageEl = document.getElementById("adminEntryPage");
 const playerEntryPageEl = document.getElementById("playerEntryPage");
-
 const backToLandingBtn1 = document.getElementById("backToLandingBtn1");
 const backToLandingBtn2 = document.getElementById("backToLandingBtn2");
 
 // ---------------- Admin Password Gate ----------------
 const ADMIN_PIN = "8888";
-
 const adminTopBtn = document.getElementById("adminTopBtn");
 const adminPwOverlayEl = document.getElementById("adminPwOverlay");
 const adminPwInputEl = document.getElementById("adminPwInput");
 const adminPwErrorEl = document.getElementById("adminPwError");
 const adminPwCancelBtn = document.getElementById("adminPwCancelBtn");
 
-// ต้องมีฟังก์ชันนี้อยู่แล้วจากระบบหน้า entry ของคุณ
-// function showAdminEntryPage() { ... }
-
-function openAdminPwOverlay() {
-  if (!adminPwOverlayEl || !adminPwInputEl) {
-    alert("ไม่พบหน้ากรอกรหัส Admin (#adminPwOverlay / #adminPwInput) กรุณาตรวจสอบ index.html");
-    return;
-  }
-
-  // reset
-  adminPwInputEl.value = "";
-  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
-
-  adminPwOverlayEl.style.display = "flex";
-
-  // โฟกัสทันที
-  setTimeout(() => adminPwInputEl.focus(), 0);
-}
-
-function closeAdminPwOverlay() {
-  if (adminPwOverlayEl) adminPwOverlayEl.style.display = "none";
-  if (adminPwInputEl) adminPwInputEl.value = "";
-  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
-}
-
-function failPin() {
-  if (adminPwErrorEl) adminPwErrorEl.style.display = "block";
-  if (adminPwInputEl) {
-    adminPwInputEl.value = "";
-    adminPwInputEl.focus();
-  }
-}
-
-adminTopBtn?.addEventListener("click", () => {
-  // ถ้าอยู่ในห้องแล้ว/เป็น host แล้ว ก็ไม่ต้องถามรหัสซ้ำ (ปรับได้ตามต้องการ)
-  if (currentRole === "host" && currentRoomCode) return;
-
-  openAdminPwOverlay();
-});
-
-adminPwCancelBtn?.addEventListener("click", closeAdminPwOverlay);
-
-// กดพื้นที่มืดนอกการ์ด = ปิด
-adminPwOverlayEl?.addEventListener("click", (e) => {
-  if (e.target === adminPwOverlayEl) closeAdminPwOverlay();
-});
-
-// พิมพ์ครบ 4 หลักแล้วปลดล็อกทันที (ไม่ต้องกด Enter)
-adminPwInputEl?.addEventListener("input", () => {
-  let v = String(adminPwInputEl.value || "");
-
-  // ให้เป็นตัวเลขล้วน
-  v = v.replace(/\D/g, "").slice(0, 4);
-  adminPwInputEl.value = v;
-
-  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
-
-  if (v.length === 4) {
-    if (v === ADMIN_PIN) {
-      closeAdminPwOverlay();
-
-      // เข้าหน้า Admin entry ทันที
-      if (typeof showAdminEntryPage === "function") {
-        showAdminEntryPage();
-      } else {
-        console.warn("[ADMIN] showAdminEntryPage() not found");
-        alert("ไม่พบฟังก์ชัน showAdminEntryPage() ใน app.js");
-      }
-    } else {
-      failPin();
-    }
-  }
-});
-
-// กัน Enter ทำอะไรแปลก ๆ (optional)
-adminPwInputEl?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") e.preventDefault();
-});
-
-// ---- DEBUG: log ว่าเจอ element จริงไหม ----
-(function logEntryDomWiring() {
-  const items = {
-    adminTopBtn,
-    joinGameBtn,
-    entryLandingEl,
-    adminEntryPageEl,
-    playerEntryPageEl,
-    backToLandingBtn1,
-    backToLandingBtn2,
-  };
-
-  console.groupCollapsed("%c[ENTRY DOM] wiring check", "color:#5a4bb0;font-weight:900;");
-  for (const [k, el] of Object.entries(items)) {
-    console.log(k, el ? "✅ found" : "❌ MISSING", el || "");
-  }
-  console.groupEnd();
-})();
-
-// ---------------- State ----------------
+/* =========================
+   5) Runtime State
+========================= */
 let didRestoreSession = false;
 
 let currentRoomCode = null;
@@ -335,6 +242,7 @@ let roomUnsub = null;
 let timerInterval = null;
 let timerPhase = null;
 let timerRound = 0;
+// (refactor) ให้ timer เป็นตัวขับ countdown → ไม่ใช้ autoTimeout ซ้ำ
 let countdownAutoTimeout = null;
 
 let rollPending = false; // ✅ กันกดทอยซ้ำระหว่างรอ DB sync
@@ -343,7 +251,13 @@ let answerPending = false;
 // Dice overlay state
 let diceOverlayState = "hidden"; // hidden | rolling | committing | done
 
-// ---------------- Utils ----------------
+/* =========================
+   6) Utils
+========================= */
+const raf = () => new Promise((r) => requestAnimationFrame(r));
+const rand360 = () => Math.floor(Math.random() * 360);
+const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+
 function escapeHtml(str) {
   return String(str ?? "")
     .replaceAll("&", "&amp;")
@@ -462,60 +376,17 @@ function renderLobbyBadges(roomData) {
   }
 }
 
-// ---------------- Dice Overlay (single state machine) ----------------
-function setDiceOverlayState(state, rollValue = null, hint = null) {
-  diceOverlayState = state;
-
-  if (!diceOverlayEl) return;
-
-  if (state === "hidden") {
-    diceOverlayEl.style.display = "none";
-    if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
-    return;
-  }
-
-  diceOverlayEl.style.display = "flex";
-
-  // default hint
-  if (diceHintEl) {
-    if (hint != null) diceHintEl.textContent = hint;
-    else {
-      if (state === "rolling") diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
-      else if (state === "committing") diceHintEl.textContent = `ได้แต้ม: ${rollValue ?? "-"} (กำลังบันทึกผล…)`;
-      else if (state === "done") diceHintEl.textContent = rollValue != null ? `ได้แต้ม: ${rollValue}` : "เสร็จแล้ว";
-    }
-  }
-
-  if (!closeDiceOverlayBtn) return;
-
-  if (state === "rolling" || state === "committing") {
-    closeDiceOverlayBtn.style.display = "inline-flex";
-    closeDiceOverlayBtn.disabled = true; // ห้ามปิดก่อนบันทึกสำเร็จ/จบขั้นตอน
-  } else if (state === "done") {
-    closeDiceOverlayBtn.style.display = "inline-flex";
-    closeDiceOverlayBtn.disabled = false;
-  }
-}
-
-closeDiceOverlayBtn?.addEventListener("click", () => {
-  if (diceOverlayState !== "done") return;
-  setDiceOverlayState("hidden");
-  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
-});
-
-// ENTRY NAV (NEW): Landing -> Admin/Player
-
-// ---- Show/Hide helpers ----
+/* =========================
+   7) Entry Navigation (SPA)
+========================= */
 function showEntryLanding() {
-  // หน้าแรก: โชว์ landing, ซ่อนหน้า admin/player
   if (entryLandingEl) entryLandingEl.style.display = "block";
   if (adminEntryPageEl) adminEntryPageEl.style.display = "none";
   if (playerEntryPageEl) playerEntryPageEl.style.display = "none";
 
-  // รีเซ็ต host options panel เผื่อค้าง
   if (hostGameOptionsEl) hostGameOptionsEl.classList.remove("is-open");
 
-  // ปลดล็อคช่องกรอกในหน้า entry (ยังไม่เลือก role จริง)
+  // enable entry inputs
   if (hostNameInput) hostNameInput.disabled = false;
   if (createRoomBtn) createRoomBtn.disabled = false;
   if (confirmCreateRoomBtn) confirmCreateRoomBtn.disabled = false;
@@ -524,29 +395,104 @@ function showEntryLanding() {
   if (playerNameInput) playerNameInput.disabled = false;
   if (joinRoomBtn) joinRoomBtn.disabled = false;
 
-  // scroll ให้แน่นอนว่าอยู่บนสุด
   entryLandingEl?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function showAdminEntryPage() {
-  // หน้า admin: ซ่อน landing/player, โชว์ admin
   if (entryLandingEl) entryLandingEl.style.display = "none";
-  if (adminEntryPageEl) adminEntryPageEl.style.display = "grid";  // เพราะใช้ grid-2
+  if (adminEntryPageEl) adminEntryPageEl.style.display = "grid";
   if (playerEntryPageEl) playerEntryPageEl.style.display = "none";
 
   adminEntryPageEl?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function showPlayerEntryPage() {
-  // หน้า player: ซ่อน landing/admin, โชว์ player
   if (entryLandingEl) entryLandingEl.style.display = "none";
   if (adminEntryPageEl) adminEntryPageEl.style.display = "none";
-  if (playerEntryPageEl) playerEntryPageEl.style.display = "grid"; // เพราะใช้ grid-2
+  if (playerEntryPageEl) playerEntryPageEl.style.display = "grid";
 
   playerEntryPageEl?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// Join Game button: go player page immediately
+/* =========================
+   8) Admin PIN Overlay
+========================= */
+function openAdminPwOverlay() {
+  if (!adminPwOverlayEl || !adminPwInputEl) {
+    alert("ไม่พบหน้ากรอกรหัส Admin (#adminPwOverlay / #adminPwInput) กรุณาตรวจสอบ index.html");
+    return;
+  }
+
+  adminPwInputEl.value = "";
+  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
+
+  adminPwOverlayEl.style.display = "flex";
+  setTimeout(() => adminPwInputEl.focus(), 0);
+}
+
+function closeAdminPwOverlay() {
+  if (adminPwOverlayEl) adminPwOverlayEl.style.display = "none";
+  if (adminPwInputEl) adminPwInputEl.value = "";
+  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
+}
+
+function failPin() {
+  if (adminPwErrorEl) adminPwErrorEl.style.display = "block";
+  if (adminPwInputEl) {
+    adminPwInputEl.value = "";
+    adminPwInputEl.focus();
+  }
+}
+
+// Bind admin pin
+adminTopBtn?.addEventListener("click", () => {
+  if (currentRole === "host" && currentRoomCode) return;
+  openAdminPwOverlay();
+});
+adminPwCancelBtn?.addEventListener("click", closeAdminPwOverlay);
+adminPwOverlayEl?.addEventListener("click", (e) => {
+  if (e.target === adminPwOverlayEl) closeAdminPwOverlay();
+});
+adminPwInputEl?.addEventListener("input", () => {
+  let v = String(adminPwInputEl.value || "");
+  v = v.replace(/\D/g, "").slice(0, 4);
+  adminPwInputEl.value = v;
+
+  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
+
+  if (v.length === 4) {
+    if (v === ADMIN_PIN) {
+      closeAdminPwOverlay();
+      showAdminEntryPage();
+    } else {
+      failPin();
+    }
+  }
+});
+adminPwInputEl?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") e.preventDefault();
+});
+
+// ---- DEBUG DOM wiring ----
+(function logEntryDomWiring() {
+  const items = {
+    adminTopBtn,
+    joinGameBtn,
+    entryLandingEl,
+    adminEntryPageEl,
+    playerEntryPageEl,
+    backToLandingBtn1,
+    backToLandingBtn2,
+  };
+
+  console.groupCollapsed("%c[ENTRY DOM] wiring check", "color:#5a4bb0;font-weight:900;");
+  for (const [k, el] of Object.entries(items)) {
+    console.log(k, el ? "✅ found" : "❌ MISSING", el || "");
+  }
+  console.groupEnd();
+})();
+
+// Landing events
 joinGameBtn?.addEventListener("click", () => {
   console.log("[ENTRY] Join Game clicked -> playerEntryPage");
   if (!playerEntryPageEl) {
@@ -555,28 +501,12 @@ joinGameBtn?.addEventListener("click", () => {
   }
   showPlayerEntryPage();
 });
+backToLandingBtn1?.addEventListener("click", () => showEntryLanding());
+backToLandingBtn2?.addEventListener("click", () => showEntryLanding());
 
-// Back buttons: return landing
-backToLandingBtn1?.addEventListener("click", () => {
-  console.log("[ENTRY] Back(1) -> landing");
-  showEntryLanding();
-});
-backToLandingBtn2?.addEventListener("click", () => {
-  console.log("[ENTRY] Back(2) -> landing");
-  showEntryLanding();
-});
-
-// ---- Initial entry view ----
-// ถ้ายังไม่ restore session ให้แสดง landing เป็นค่าเริ่มต้น
-// (คุณมี didRestoreSession อยู่แล้วในโค้ดเดิม)
-try {
-  if (!didRestoreSession) showEntryLanding();
-} catch {
-  // ถ้าคุณยังไม่มี didRestoreSession ให้แสดง landing ไปเลย
-  showEntryLanding();
-}
-
-// LOBBY VIEW (unchanged but keep)
+/* =========================
+   9) Lobby View + Subscribe
+========================= */
 function enterLobbyView() {
   if (lobbyEl) lobbyEl.style.display = "block";
   setEntryVisible(false);
@@ -589,7 +519,10 @@ function enterLobbyView() {
 }
 
 function subscribeRoom(roomCode) {
-  if (roomUnsub) { try { roomUnsub(); } catch {} roomUnsub = null; }
+  if (roomUnsub) {
+    try { roomUnsub(); } catch {}
+    roomUnsub = null;
+  }
 
   const roomRef = ref(db, `rooms/${roomCode}`);
   roomUnsub = onValue(roomRef, (snapshot) => {
@@ -634,34 +567,76 @@ function updateStartGameButton(roomData, players) {
   startGameBtn.disabled = !shouldShow;
 }
 
-// ---------------- Restore Session ----------------
-(async function attemptRestoreSession() {
+/* =========================
+   10) Dice Overlay State Machine
+========================= */
+function setDiceOverlayState(state, rollValue = null, hint = null) {
+  diceOverlayState = state;
+
+  if (!diceOverlayEl) return;
+
+  if (state === "hidden") {
+    diceOverlayEl.style.display = "none";
+    if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
+    return;
+  }
+
+  diceOverlayEl.style.display = "flex";
+
+  if (diceHintEl) {
+    if (hint != null) diceHintEl.textContent = hint;
+    else {
+      if (state === "rolling") diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
+      else if (state === "committing") diceHintEl.textContent = `ได้แต้ม: ${rollValue ?? "-"} (กำลังบันทึกผล…)`;
+      else if (state === "done") diceHintEl.textContent = rollValue != null ? `ได้แต้ม: ${rollValue}` : "เสร็จแล้ว";
+    }
+  }
+
+  if (!closeDiceOverlayBtn) return;
+
+  if (state === "rolling" || state === "committing") {
+    closeDiceOverlayBtn.style.display = "inline-flex";
+    closeDiceOverlayBtn.disabled = true;
+  } else if (state === "done") {
+    closeDiceOverlayBtn.style.display = "inline-flex";
+    closeDiceOverlayBtn.disabled = false;
+  }
+}
+
+closeDiceOverlayBtn?.addEventListener("click", () => {
+  if (diceOverlayState !== "done") return;
+  setDiceOverlayState("hidden");
+  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+/* =========================
+   11) Restore Session + Boot (single entry point)
+========================= */
+async function attemptRestoreSession() {
   try {
     const raw = STORAGE.getItem(STORAGE_KEY);
-    if (!raw) return;
+    if (!raw) return false;
 
     let s = null;
     try {
       s = JSON.parse(raw);
     } catch {
-      // session เสีย/ไม่ใช่ JSON -> เคลียร์ทิ้ง
       STORAGE.removeItem(STORAGE_KEY);
-      return;
+      return false;
     }
 
-    if (!s?.room || !s?.role) return;
+    if (!s?.room || !s?.role) return false;
 
     const roomCode = String(s.room).trim().toUpperCase();
-    if (!roomCode) return;
+    if (!roomCode) return false;
 
     const roomRef = ref(db, `rooms/${roomCode}`);
     const snap = await get(roomRef);
-    if (!snap.exists()) return;
+    if (!snap.exists()) return false;
 
     const roomData = snap.val();
     const players = roomData.players || {};
 
-    // --- Host restore ---
     if (s.role === "host") {
       didRestoreSession = true;
       currentRoomCode = roomCode;
@@ -673,15 +648,12 @@ function updateStartGameButton(roomData, players) {
       enterLobbyView();
       subscribeRoom(currentRoomCode);
       lockEntryUIForRole("host");
-      return;
+      return true;
     }
 
-    // --- Player restore ---
     if (s.role === "player") {
       const pid = s.pid ? String(s.pid) : null;
-
-      // ถ้าไม่มี pid หรือ pid ไม่อยู่แล้ว -> ไม่ restore
-      if (!pid || !players[pid]) return;
+      if (!pid || !players[pid]) return false;
 
       didRestoreSession = true;
       currentRoomCode = roomCode;
@@ -693,14 +665,28 @@ function updateStartGameButton(roomData, players) {
       enterLobbyView();
       subscribeRoom(currentRoomCode);
       lockEntryUIForRole("player");
-      return;
+      return true;
     }
+
+    return false;
   } catch (e) {
     console.warn("restore session failed:", e);
+    return false;
   }
-})();
+}
 
-// ---------------- Host: Step 1 – เปิด panel ตั้งค่าเกม ----------------
+async function boot() {
+  const restored = await attemptRestoreSession();
+  if (!restored) {
+    showEntryLanding();
+  }
+}
+boot();
+
+/* =========================
+   12) Host Actions (Create room, Start game, Start round, Start question, Reveal)
+========================= */
+// Host: Step 1 – เปิด panel ตั้งค่าเกม
 createRoomBtn?.addEventListener("click", () => {
   const hostName = (hostNameInput?.value || "").trim();
 
@@ -709,7 +695,6 @@ createRoomBtn?.addEventListener("click", () => {
     return;
   }
 
-  // lock input + button
   if (hostNameInput) hostNameInput.disabled = true;
   if (createRoomBtn) createRoomBtn.disabled = true;
 
@@ -720,7 +705,6 @@ createRoomBtn?.addEventListener("click", () => {
     return;
   }
 
-  // ✅ 1) หา card ที่ครอบปุ่ม (กัน layout กระชาก/ปุ่มขยับ)
   const card = createRoomBtn.closest(".card");
   if (card) {
     const h = card.getBoundingClientRect().height;
@@ -728,14 +712,9 @@ createRoomBtn?.addEventListener("click", () => {
     card.style.height = `${h}px`;
   }
 
-  // ✅ 2) เปิด panel (ใช้ class หรือ display อย่างใดอย่างหนึ่ง)
   hostGameOptionsEl.classList.add("is-open");
-  hostGameOptionsEl.style.display = "block"; // เผื่อยังมี inline display:none ค้างอยู่
+  hostGameOptionsEl.style.display = "block";
 
-  // ✅ 3) “ยกเลิกการ scroll” เพราะเป็นสาเหตุหลักที่ทำให้รู้สึกปุ่มกระโดด
-  // hostGameOptionsEl.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  // ✅ 4) ปล่อย lock หลัง browser render ทัน
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       if (card) {
@@ -748,7 +727,7 @@ createRoomBtn?.addEventListener("click", () => {
   console.log("[UI] open hostGameOptions");
 });
 
-// ---------------- Host Step 2: create room ----------------
+// Host Step 2: create room
 confirmCreateRoomBtn?.addEventListener("click", async () => {
   const hostName = (hostNameInput?.value || "").trim();
   if (!hostName) {
@@ -760,11 +739,9 @@ confirmCreateRoomBtn?.addEventListener("click", async () => {
   const maxRounds = Math.max(1, parseInt(maxRoundsInput?.value, 10) || 10);
   const maxWinners = Math.max(1, parseInt(maxWinnersInput?.value, 10) || 5);
 
-  // reward: allow +/- (แต่โดยทั่วไปควร >=0)
   const rewardRaw = parseInt(rewardCorrectInput?.value, 10);
   const rewardCorrect = Number.isFinite(rewardRaw) ? rewardRaw : 1;
 
-  // penalty: enforce negative always to prevent misunderstanding
   const penaltyRaw = parseInt(penaltyWrongInput?.value, 10);
   const penaltyWrong = Number.isFinite(penaltyRaw) ? -Math.abs(penaltyRaw) : -1;
 
@@ -792,12 +769,12 @@ confirmCreateRoomBtn?.addEventListener("click", async () => {
   try {
     await set(roomRefBase(roomCode), {
       createdAt: Date.now(),
-      status: STATUS.LOBBY,      // lobby | inGame | finished
+      status: STATUS.LOBBY,
       hostId,
       hostName,
       boardSize: BOARD_SIZE,
       currentRound: 0,
-      phase: PHASE.IDLE,         // idle | rolling | questionCountdown | answering | result | ended
+      phase: PHASE.IDLE,
       questionIndex: null,
       questionCountdownStartAt: null,
       questionCountdownSeconds: 3,
@@ -830,219 +807,7 @@ confirmCreateRoomBtn?.addEventListener("click", async () => {
   }
 });
 
-// ---------------- Leave Room ----------------
-leaveRoomBtn?.addEventListener("click", async () => {
-  if (currentRoomCode && currentPlayerId) {
-    try {
-      await remove(ref(db, `rooms/${currentRoomCode}/players/${currentPlayerId}`));
-    } catch (e) {
-      console.warn("remove player failed:", e);
-    }
-  }
-  resetToHome("ออกจากห้องเรียบร้อย");
-});
-
-// ---------------- Cancel Room (Host) ----------------
-cancelRoomBtn?.addEventListener("click", async () => {
-  if (currentRole !== "host" || !currentRoomCode) return;
-
-  const ok = confirm("ต้องการยกเลิกห้องนี้ใช่ไหม? ผู้เล่นทุกคนจะถูกเตะออก");
-  if (!ok) return;
-
-  try {
-    await set(ref(db, `rooms/${currentRoomCode}`), null);
-  } catch (e) {
-    console.error(e);
-    alert("ยกเลิกห้องไม่สำเร็จ (ดู Console)");
-    return;
-  }
-
-  resetToHome("ยกเลิกห้องเรียบร้อย");
-});
-
-// ---------------- Player: Join Room ----------------
-joinRoomBtn?.addEventListener("click", async () => {
-  const roomCode = (roomCodeInput?.value || "").trim().toUpperCase();
-  const playerNameRaw = (playerNameInput?.value || "").trim();
-
-  if (!roomCode || !playerNameRaw) {
-    alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
-    return;
-  }
-
-  const playerName = playerNameRaw;
-  const playerNameKey = playerNameRaw.toLowerCase();
-
-  const roomRef = ref(db, `rooms/${roomCode}`);
-  const snap = await get(roomRef);
-
-  if (!snap.exists()) {
-    alert("ไม่พบห้องนี้ กรุณาตรวจสอบ Room Code");
-    return;
-  }
-
-  const roomData = snap.val();
-
-  // กัน join กลางเกม
-  if (roomData.status !== STATUS.LOBBY || (roomData.currentRound || 0) > 0) {
-    alert("ห้องนี้เริ่มเกมแล้ว ไม่สามารถ Join เพิ่มได้");
-    return;
-  }
-
-  // ตรวจชื่อซ้ำกับ host
-  const hostNameKey = String(roomData.hostName || "").trim().toLowerCase();
-  if (hostNameKey && hostNameKey === playerNameKey) {
-    alert("ชื่อนี้ซ้ำกับชื่อ Host กรุณาใช้ชื่ออื่น");
-    return;
-  }
-
-  // ตรวจชื่อซ้ำกับผู้เล่น
-  const players = roomData.players || {};
-  for (const [, p] of Object.entries(players)) {
-    const existingName = String(p.name || "").trim().toLowerCase();
-    if (existingName === playerNameKey) {
-      alert("มีผู้เล่นใช้ชื่อนี้ในห้องแล้ว กรุณาใช้ชื่ออื่น");
-      return;
-    }
-  }
-
-  const playerId = createId("p");
-
-  currentRoomCode = roomCode;
-  currentRole = "player";
-  currentPlayerId = playerId;
-
-  try {
-    await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
-      name: playerName,
-      color: randomColor(),
-      position: 1,
-      lastRoll: null,
-      hasRolled: false,
-      answered: false,
-      answer: null,
-      lastAnswerCorrect: null,
-      joinedAt: Date.now(),
-      finished: false,
-      finishedRound: null,
-      finishedBy: null,
-      startOfRoundPos: 1,
-    });
-
-    enterLobbyView();
-    subscribeRoom(roomCode);
-    lockEntryUIForRole("player");
-    saveSession();
-
-    alert(`เข้าห้องสำเร็จ! คุณอยู่ในห้อง ${roomCode}`);
-  } catch (err) {
-    console.error("Error joining room:", err);
-    alert("มีปัญหาในการ Join ห้อง ดู error ใน Console");
-  }
-});
-
-// ---------------- Render Player List ----------------
-function renderPlayerList(roomData, playersObj) {
-  if (!playerListEl) return;
-
-  const players = playersObj || {};
-  const entries = Object.entries(players);
-
-  if (entries.length === 0) {
-    playerListEl.innerHTML = `<div class="muted">ยังไม่มีผู้เล่นเข้าห้อง</div>`;
-    return;
-  }
-
-  const history = roomData.history || {};
-
-  const perPlayer = {};
-  for (const [pid, p] of entries) {
-    perPlayer[pid] = {
-      id: pid,
-      name: p.name || pid,
-      position: clampPos(p.position),
-      hasRolled: !!p.hasRolled,
-      answered: !!p.answered,
-      finished: !!p.finished || clampPos(p.position) >= BOARD_SIZE,
-      rolls: [],
-      answerSymbols: [],
-    };
-  }
-
-  const roundKeys = Object.keys(history)
-    .filter((k) => k.startsWith("round_"))
-    .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
-
-  for (const rk of roundKeys) {
-    const roundData = history[rk] || {};
-    const answers = roundData.answers || {};
-
-    for (const [pid, rec] of Object.entries(answers)) {
-      if (!perPlayer[pid]) continue;
-
-      if (rec.diceRoll != null) perPlayer[pid].rolls.push(rec.diceRoll);
-
-      const finalPos = rec.finalPosition ?? perPlayer[pid].position;
-      const basePos = rec.basePosition ?? finalPos;
-      const neutralFinishByDice =
-        rec.correct == null &&
-        rec.answered === false &&
-        basePos >= BOARD_SIZE &&
-        finalPos >= BOARD_SIZE;
-
-      if (neutralFinishByDice) continue;
-
-      if (rec.correct === true) perPlayer[pid].answerSymbols.push("✅");
-      else perPlayer[pid].answerSymbols.push("❌");
-    }
-  }
-
-  const list = Object.values(perPlayer).sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-
-  let html = `
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th class="name-col">ผู้เล่น</th>
-          <th>ตำแหน่ง</th>
-          <th>ทอยแล้ว</th>
-          <th>ตอบแล้ว</th>
-          <th>สถานะ</th>
-          <th>ทอย (รวม)</th>
-          <th>ผลคำถาม</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
-
-  list.forEach((p, index) => {
-    const rollsText = p.rolls.length ? p.rolls.join("") : "-";
-    const ansText = p.answerSymbols.length ? p.answerSymbols.join("") : "-";
-
-    html += `
-      <tr>
-        <td>${index + 1}</td>
-        <td class="name-col">${escapeHtml(p.name)}</td>
-        <td>${p.position}</td>
-        <td>${p.hasRolled ? "🎲" : "-"}</td>
-        <td>${p.answered ? "✍️" : "-"}</td>
-        <td>${p.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
-        <td>${rollsText}</td>
-        <td>${ansText}</td>
-      </tr>
-    `;
-  });
-
-  html += `
-      </tbody>
-    </table>
-  `;
-
-  playerListEl.innerHTML = html;
-}
-
-// ---------------- Host: Start Game ----------------
+// Host: Start Game
 startGameBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
@@ -1072,7 +837,7 @@ startGameBtn?.addEventListener("click", async () => {
   document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-// ---------------- Host: Start New Round (Transaction) ----------------
+// Host: Start New Round (Transaction)
 startRoundBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
@@ -1133,7 +898,9 @@ startRoundBtn?.addEventListener("click", async () => {
   }
 });
 
-// ---------------- Dice 3D logic (as-is, minimal touch) ----------------
+/* =========================
+   13) Dice 3D Engine (as-is)
+========================= */
 function waitTransformEnd(el, timeoutMs = 6500) {
   return new Promise((resolve) => {
     let done = false;
@@ -1154,8 +921,6 @@ function waitTransformEnd(el, timeoutMs = 6500) {
     const t = setTimeout(cleanup, timeoutMs);
   });
 }
-
-const DICE_BASE = { x: 0, y: 0, z: 0 };
 
 const FACE_CLASS_TO_VALUE = {
   "face-1": 5, // FRONT
@@ -1218,12 +983,6 @@ async function buildTopVisiblePoseMap() {
   ));
 
   return map;
-}
-
-function normDeg(d) {
-  let x = ((d % 360) + 360) % 360;
-  if (x > 180) x -= 360;
-  return x;
 }
 
 function prepDiceForAnimate(el) {
@@ -1354,7 +1113,88 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
 // debug
 window.__SQ_rollDiceWithOverlay = rollDiceWithOverlay;
 
-// ---------------- Player: Roll Dice (Transaction-safe) ----------------
+/* =========================
+   14) Player Actions (Join, Roll, Submit)
+========================= */
+// Player: Join Room
+joinRoomBtn?.addEventListener("click", async () => {
+  const roomCode = (roomCodeInput?.value || "").trim().toUpperCase();
+  const playerNameRaw = (playerNameInput?.value || "").trim();
+
+  if (!roomCode || !playerNameRaw) {
+    alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
+    return;
+  }
+
+  const playerName = playerNameRaw;
+  const playerNameKey = playerNameRaw.toLowerCase();
+
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  const snap = await get(roomRef);
+
+  if (!snap.exists()) {
+    alert("ไม่พบห้องนี้ กรุณาตรวจสอบ Room Code");
+    return;
+  }
+
+  const roomData = snap.val();
+
+  if (roomData.status !== STATUS.LOBBY || (roomData.currentRound || 0) > 0) {
+    alert("ห้องนี้เริ่มเกมแล้ว ไม่สามารถ Join เพิ่มได้");
+    return;
+  }
+
+  const hostNameKey = String(roomData.hostName || "").trim().toLowerCase();
+  if (hostNameKey && hostNameKey === playerNameKey) {
+    alert("ชื่อนี้ซ้ำกับชื่อ Host กรุณาใช้ชื่ออื่น");
+    return;
+  }
+
+  const players = roomData.players || {};
+  for (const [, p] of Object.entries(players)) {
+    const existingName = String(p.name || "").trim().toLowerCase();
+    if (existingName === playerNameKey) {
+      alert("มีผู้เล่นใช้ชื่อนี้ในห้องแล้ว กรุณาใช้ชื่ออื่น");
+      return;
+    }
+  }
+
+  const playerId = createId("p");
+
+  currentRoomCode = roomCode;
+  currentRole = "player";
+  currentPlayerId = playerId;
+
+  try {
+    await set(ref(db, `rooms/${roomCode}/players/${playerId}`), {
+      name: playerName,
+      color: randomColor(),
+      position: 1,
+      lastRoll: null,
+      hasRolled: false,
+      answered: false,
+      answer: null,
+      lastAnswerCorrect: null,
+      joinedAt: Date.now(),
+      finished: false,
+      finishedRound: null,
+      finishedBy: null,
+      startOfRoundPos: 1,
+    });
+
+    enterLobbyView();
+    subscribeRoom(roomCode);
+    lockEntryUIForRole("player");
+    saveSession();
+
+    alert(`เข้าห้องสำเร็จ! คุณอยู่ในห้อง ${roomCode}`);
+  } catch (err) {
+    console.error("Error joining room:", err);
+    alert("มีปัญหาในการ Join ห้อง ดู error ใน Console");
+  }
+});
+
+// Player: Roll Dice (Transaction-safe)
 rollDiceBtn?.addEventListener("click", async () => {
   if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
   if (rollPending) return;
@@ -1402,23 +1242,18 @@ rollDiceBtn?.addEventListener("click", async () => {
       return;
     }
 
-    // 1) roll (visual)
     const roll = await rollDiceWithOverlay(5000);
 
-    // 2) committing
     setDiceOverlayState("committing", roll, `ได้แต้ม: ${roll} (กำลังบันทึกผล…)`);
 
-    // 3) commit
     const ok = await finalizeRollTransaction(roll);
     if (!ok) {
-      // abort means phase changed / already rolled / etc.
       setDiceOverlayState("done", roll, "บันทึกผลไม่สำเร็จ (สถานะห้องเปลี่ยน) ลองกดทอยใหม่หรือรอ Host");
       rollPending = false;
       rollDiceBtn.disabled = false;
       return;
     }
 
-    // 4) done (allow close)
     setDiceOverlayState("done", roll, `ได้แต้ม: ${roll}`);
     // ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls
   } catch (e) {
@@ -1514,7 +1349,109 @@ async function finalizeRollTransaction(roll) {
   return !!tx.committed;
 }
 
-// ---------------- Host: Start Question (Transaction) ----------------
+// Player: Submit Answer (Transaction-safe)
+async function submitAnswerTx(optionKey) {
+  if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
+  if (answerPending) return;
+
+  answerPending = true;
+
+  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+  const now = Date.now();
+
+  try {
+    const tx = await runTransaction(roomRef, (room) => {
+      if (!room) return;
+      if (room.phase !== PHASE.ANSWERING) return;
+
+      const startAt = room.answerStartAt;
+      const duration = room.answerTimeSeconds;
+
+      if (!Number.isFinite(startAt) || !Number.isFinite(duration)) return;
+
+      const expired = now > (startAt + duration * 1000);
+
+      if (room.answerDeadlineExpired === true || expired) {
+        room.answerDeadlineExpired = true;
+        return room;
+      }
+
+      const players = room.players || {};
+      const me = players[currentPlayerId];
+      if (!me) return;
+
+      const pos = clampPos(me.position);
+      if (me.finished || pos >= BOARD_SIZE) return;
+      if (me.answered) return;
+
+      me.answer = optionKey;
+      me.answered = true;
+      players[currentPlayerId] = me;
+      room.players = players;
+
+      return room;
+    });
+
+    if (!tx.committed) {
+      const snap = await get(roomRef);
+      if (!snap.exists()) {
+        alert("ส่งคำตอบไม่สำเร็จ (ไม่พบห้องแล้ว)");
+        return;
+      }
+
+      const room = snap.val();
+      if (room.phase !== PHASE.ANSWERING) {
+        alert("ส่งคำตอบไม่สำเร็จ (ยังไม่ใช่ช่วงตอบคำถาม)");
+        return;
+      }
+
+      const me = room.players?.[currentPlayerId];
+      if (!me) {
+        alert("ส่งคำตอบไม่สำเร็จ (ไม่พบข้อมูลผู้เล่น)");
+        return;
+      }
+
+      if (room.answerDeadlineExpired === true) {
+        alert("ส่งคำตอบไม่สำเร็จ (หมดเวลาแล้ว)");
+        return;
+      }
+
+      const startAt = room.answerStartAt;
+      const duration = room.answerTimeSeconds;
+      if (!Number.isFinite(startAt) || !Number.isFinite(duration)) {
+        alert("ส่งคำตอบไม่สำเร็จ (ระบบยังไม่เริ่มจับเวลา)");
+        return;
+      }
+
+      if (me.answered) return;
+
+      alert("ส่งคำตอบไม่สำเร็จ (ลองใหม่)");
+      return;
+    }
+
+    const after = tx.snapshot?.val?.() || null;
+    const meAfter = after?.players?.[currentPlayerId] || null;
+
+    if (after?.answerDeadlineExpired === true) {
+      alert("ส่งคำตอบไม่สำเร็จ (หมดเวลาแล้ว)");
+      return;
+    }
+
+    if (!meAfter || meAfter.answered !== true || meAfter.answer !== optionKey) {
+      alert("ส่งคำตอบไม่สำเร็จ (ลองใหม่)");
+      return;
+    }
+  } catch (e) {
+    console.error("submitAnswerTx failed:", e);
+    alert("ส่งคำตอบไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
+  } finally {
+    answerPending = false;
+  }
+}
+
+/* =========================
+   15) Host Question Flow (Start Question, Countdown->Answering, Reveal)
+========================= */
 startQuestionBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
@@ -1552,12 +1489,26 @@ startQuestionBtn?.addEventListener("click", async () => {
   }
 
   clearTimer();
-  countdownAutoTimeout = setTimeout(() => {
-    moveCountdownToAnsweringTx().catch((e) => console.error("auto-advance failed:", e));
-  }, 3080);
+  // (refactor) ให้ timer เป็นตัว advance เพียงทางเดียว
 });
 
-// ---------------- Host: Reveal Answer & Move (Transaction) ----------------
+async function moveCountdownToAnsweringTx() {
+  if (currentRole !== "host" || !currentRoomCode) return;
+
+  const roomRef = ref(db, `rooms/${currentRoomCode}`);
+  const now = Date.now();
+
+  await runTransaction(roomRef, (room) => {
+    if (!room) return room;
+    if (room.phase !== PHASE.QUESTION_COUNTDOWN) return;
+
+    room.phase = PHASE.ANSWERING;
+    room.answerStartAt = now;
+    room.answerDeadlineExpired = false;
+    return room;
+  });
+}
+
 revealAnswerBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
 
@@ -1690,7 +1641,143 @@ revealAnswerBtn?.addEventListener("click", async () => {
   clearTimer();
 });
 
-// ---------------- Game View ----------------
+/* =========================
+   16) Leave / Cancel Room
+========================= */
+leaveRoomBtn?.addEventListener("click", async () => {
+  if (currentRoomCode && currentPlayerId) {
+    try {
+      await remove(ref(db, `rooms/${currentRoomCode}/players/${currentPlayerId}`));
+    } catch (e) {
+      console.warn("remove player failed:", e);
+    }
+  }
+  resetToHome("ออกจากห้องเรียบร้อย");
+});
+
+cancelRoomBtn?.addEventListener("click", async () => {
+  if (currentRole !== "host" || !currentRoomCode) return;
+
+  const ok = confirm("ต้องการยกเลิกห้องนี้ใช่ไหม? ผู้เล่นทุกคนจะถูกเตะออก");
+  if (!ok) return;
+
+  try {
+    await set(ref(db, `rooms/${currentRoomCode}`), null);
+  } catch (e) {
+    console.error(e);
+    alert("ยกเลิกห้องไม่สำเร็จ (ดู Console)");
+    return;
+  }
+
+  resetToHome("ยกเลิกห้องเรียบร้อย");
+});
+
+/* =========================
+   17) Render: Player List
+========================= */
+function renderPlayerList(roomData, playersObj) {
+  if (!playerListEl) return;
+
+  const players = playersObj || {};
+  const entries = Object.entries(players);
+
+  if (entries.length === 0) {
+    playerListEl.innerHTML = `<div class="muted">ยังไม่มีผู้เล่นเข้าห้อง</div>`;
+    return;
+  }
+
+  const history = roomData.history || {};
+
+  const perPlayer = {};
+  for (const [pid, p] of entries) {
+    perPlayer[pid] = {
+      id: pid,
+      name: p.name || pid,
+      position: clampPos(p.position),
+      hasRolled: !!p.hasRolled,
+      answered: !!p.answered,
+      finished: !!p.finished || clampPos(p.position) >= BOARD_SIZE,
+      rolls: [],
+      answerSymbols: [],
+    };
+  }
+
+  const roundKeys = Object.keys(history)
+    .filter((k) => k.startsWith("round_"))
+    .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
+
+  for (const rk of roundKeys) {
+    const roundData = history[rk] || {};
+    const answers = roundData.answers || {};
+
+    for (const [pid, rec] of Object.entries(answers)) {
+      if (!perPlayer[pid]) continue;
+
+      if (rec.diceRoll != null) perPlayer[pid].rolls.push(rec.diceRoll);
+
+      const finalPos = rec.finalPosition ?? perPlayer[pid].position;
+      const basePos = rec.basePosition ?? finalPos;
+      const neutralFinishByDice =
+        rec.correct == null &&
+        rec.answered === false &&
+        basePos >= BOARD_SIZE &&
+        finalPos >= BOARD_SIZE;
+
+      if (neutralFinishByDice) continue;
+
+      if (rec.correct === true) perPlayer[pid].answerSymbols.push("✅");
+      else perPlayer[pid].answerSymbols.push("❌");
+    }
+  }
+
+  const list = Object.values(perPlayer).sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th class="name-col">ผู้เล่น</th>
+          <th>ตำแหน่ง</th>
+          <th>ทอยแล้ว</th>
+          <th>ตอบแล้ว</th>
+          <th>สถานะ</th>
+          <th>ทอย (รวม)</th>
+          <th>ผลคำถาม</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  list.forEach((p, index) => {
+    const rollsText = p.rolls.length ? p.rolls.join("") : "-";
+    const ansText = p.answerSymbols.length ? p.answerSymbols.join("") : "-";
+
+    html += `
+      <tr>
+        <td>${index + 1}</td>
+        <td class="name-col">${escapeHtml(p.name)}</td>
+        <td>${p.position}</td>
+        <td>${p.hasRolled ? "🎲" : "-"}</td>
+        <td>${p.answered ? "✍️" : "-"}</td>
+        <td>${p.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
+        <td>${rollsText}</td>
+        <td>${ansText}</td>
+      </tr>
+    `;
+  });
+
+  html += `
+      </tbody>
+    </table>
+  `;
+
+  playerListEl.innerHTML = html;
+}
+
+/* =========================
+   18) Game View + Controls + Timer
+========================= */
 function updateGameView(roomData, players) {
   const round = roomData.currentRound || 0;
   const phase = roomData.phase || PHASE.IDLE;
@@ -1749,7 +1836,6 @@ function updateGameView(roomData, players) {
   if (ended) renderEndGameSummary(roomData, players);
 }
 
-// ---------------- Role Controls ----------------
 function updateRoleControls(roomData, players) {
   const phase = roomData.phase || PHASE.IDLE;
 
@@ -1765,7 +1851,6 @@ function updateRoleControls(roomData, players) {
     playerGameControlsEl.style.pointerEvents = currentRole === "player" ? "auto" : "none";
   }
 
-  // Player roll button
   if (currentRole === "player") {
     const me = (players && currentPlayerId && players[currentPlayerId]) || {};
     const pos = me.position || 1;
@@ -1788,7 +1873,6 @@ function updateRoleControls(roomData, players) {
     if (rollDiceBtn) rollDiceBtn.style.display = "none";
   }
 
-  // Host controls
   if (currentRole === "host") {
     const list = Object.values(players || {});
     const activePlayers = list.filter((p) => !p.finished && clampPos(p.position) < BOARD_SIZE);
@@ -1813,7 +1897,6 @@ function updateRoleControls(roomData, players) {
   }
 }
 
-// ---------------- Question UI + Timer ----------------
 function updateQuestionUI(roomData, players) {
   const phase = roomData.phase || PHASE.IDLE;
   const round = roomData.currentRound || 0;
@@ -1945,7 +2028,6 @@ function ensureTimer(roomData, targetPhase) {
   if (phase === PHASE.ANSWERING) {
     const duration = roomData.answerTimeSeconds || 20;
 
-    // ❗ ไม่ auto-fix answerStartAt แล้ว (กันเวลาเพี้ยน/ไม่แฟร์)
     if (!Number.isFinite(roomData.answerStartAt)) {
       if (countdownDisplayEl) countdownDisplayEl.textContent = "กำลังรอ Host เริ่มจับเวลา…";
       return;
@@ -1973,125 +2055,9 @@ function ensureTimer(roomData, targetPhase) {
   }
 }
 
-// ---------------- Countdown -> Answering (Transaction) ----------------
-async function moveCountdownToAnsweringTx() {
-  if (currentRole !== "host" || !currentRoomCode) return;
-
-  const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  const now = Date.now();
-
-  await runTransaction(roomRef, (room) => {
-    if (!room) return room;
-    if (room.phase !== PHASE.QUESTION_COUNTDOWN) return;
-
-    room.phase = PHASE.ANSWERING;
-    room.answerStartAt = now;
-    room.answerDeadlineExpired = false;
-    return room;
-  });
-}
-
-// ---------------- Player: Submit Answer (Transaction-safe) ----------------
-async function submitAnswerTx(optionKey) {
-  if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
-  if (answerPending) return;
-
-  answerPending = true;
-
-  const roomRef = ref(db, `rooms/${currentRoomCode}`);
-  const now = Date.now(); // ✅ deterministic during retries
-
-  try {
-    const tx = await runTransaction(roomRef, (room) => {
-      if (!room) return;
-      if (room.phase !== PHASE.ANSWERING) return;
-
-      const startAt = room.answerStartAt;
-      const duration = room.answerTimeSeconds;
-
-      if (!Number.isFinite(startAt) || !Number.isFinite(duration)) return;
-
-      const expired = now > (startAt + duration * 1000);
-
-      if (room.answerDeadlineExpired === true || expired) {
-        room.answerDeadlineExpired = true;
-        return room;
-      }
-
-      const players = room.players || {};
-      const me = players[currentPlayerId];
-      if (!me) return;
-
-      const pos = clampPos(me.position);
-      if (me.finished || pos >= BOARD_SIZE) return;
-      if (me.answered) return;
-
-      me.answer = optionKey;
-      me.answered = true;
-      players[currentPlayerId] = me;
-      room.players = players;
-
-      return room;
-    });
-
-    if (!tx.committed) {
-      const snap = await get(roomRef);
-      if (!snap.exists()) {
-        alert("ส่งคำตอบไม่สำเร็จ (ไม่พบห้องแล้ว)");
-        return;
-      }
-
-      const room = snap.val();
-      if (room.phase !== PHASE.ANSWERING) {
-        alert("ส่งคำตอบไม่สำเร็จ (ยังไม่ใช่ช่วงตอบคำถาม)");
-        return;
-      }
-
-      const me = room.players?.[currentPlayerId];
-      if (!me) {
-        alert("ส่งคำตอบไม่สำเร็จ (ไม่พบข้อมูลผู้เล่น)");
-        return;
-      }
-
-      if (room.answerDeadlineExpired === true) {
-        alert("ส่งคำตอบไม่สำเร็จ (หมดเวลาแล้ว)");
-        return;
-      }
-
-      const startAt = room.answerStartAt;
-      const duration = room.answerTimeSeconds;
-      if (!Number.isFinite(startAt) || !Number.isFinite(duration)) {
-        alert("ส่งคำตอบไม่สำเร็จ (ระบบยังไม่เริ่มจับเวลา)");
-        return;
-      }
-
-      if (me.answered) return;
-
-      alert("ส่งคำตอบไม่สำเร็จ (ลองใหม่)");
-      return;
-    }
-
-    const after = tx.snapshot?.val?.() || null;
-    const meAfter = after?.players?.[currentPlayerId] || null;
-
-    if (after?.answerDeadlineExpired === true) {
-      alert("ส่งคำตอบไม่สำเร็จ (หมดเวลาแล้ว)");
-      return;
-    }
-
-    if (!meAfter || meAfter.answered !== true || meAfter.answer !== optionKey) {
-      alert("ส่งคำตอบไม่สำเร็จ (ลองใหม่)");
-      return;
-    }
-  } catch (e) {
-    console.error("submitAnswerTx failed:", e);
-    alert("ส่งคำตอบไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
-  } finally {
-    answerPending = false;
-  }
-}
-
-// ---------------- Board Rendering ----------------
+/* =========================
+   19) Board Rendering
+========================= */
 function renderBoard(roomData, players) {
   if (!boardEl) return;
 
@@ -2216,7 +2182,9 @@ function renderBoard(roomData, players) {
   }
 }
 
-// ---------------- End Game Summary (escaped) ----------------
+/* =========================
+   20) End Game Summary
+========================= */
 function renderEndGameSummary(roomData, players) {
   const history = roomData.history || {};
   const winners = Array.isArray(roomData.winners) ? roomData.winners : [];
@@ -2408,17 +2376,9 @@ function renderEndGameSummary(roomData, players) {
   if (endGameSummaryEl) endGameSummaryEl.innerHTML = html;
 }
 
-// ---------------- Init (when role set) ----------------
-function initUiIfReady() {
-  if (currentRoomCode && currentRole) {
-    enterLobbyView();
-    subscribeRoom(currentRoomCode);
-    lockEntryUIForRole(currentRole);
-  }
-}
-initUiIfReady();
-
-// ---------------- Reset UI ----------------
+/* =========================
+   21) Reset / Cleanup
+========================= */
 function resetToHome(message) {
   clearTimer();
 
@@ -2449,6 +2409,7 @@ function resetToHome(message) {
   if (lobbyBadgesEl) lobbyBadgesEl.innerHTML = "";
 
   setEntryVisible(true);
+  showEntryLanding(); // (refactor) ให้กลับ landing ชัดเจน
 
   if (hostGameOptionsEl) hostGameOptionsEl.classList.remove("is-open");
 
