@@ -380,29 +380,33 @@ function renderLobbyBadges(roomData) {
 }
 
 function updateHeaderActionsUI(roomData = null) {
-  // mode: landing / entryPages / inRoom / inGame
   const onLanding = entryLandingEl && entryLandingEl.style.display !== "none";
   const onAdminEntry = adminEntryPageEl && adminEntryPageEl.style.display !== "none";
   const onPlayerEntry = playerEntryPageEl && playerEntryPageEl.style.display !== "none";
 
-  const status = roomData?.status || null;
+  const inEntry = !onLanding && (onAdminEntry || onPlayerEntry);
 
-  // 1) Admin: แสดงเฉพาะหน้าแรก (landing) เท่านั้น
+  const status = roomData?.status || null;
+  const inRoom = !!currentRoomCode && !!currentRole; // เข้าห้องแล้ว (lobby/inGame/finished)
+
+  // 1) Admin: เฉพาะหน้าแรกเท่านั้น
   if (adminTopBtn) adminTopBtn.style.display = onLanding ? "inline-flex" : "none";
 
-  // 2) Home: แสดงตอนอยู่หน้า adminEntry หรือ playerEntry (ช่วงสร้างห้อง/กำลัง join)
-  const showHome = !onLanding && (onAdminEntry || onPlayerEntry);
-  if (headerHomeBtn) headerHomeBtn.style.display = showHome ? "inline-flex" : "none";
+  // 2) Exit: แสดงเมื่อ "เข้าห้องแล้ว" (รวม lobby ก่อนเริ่มเกมด้วย!)
+  //    และให้ไปแทนที่ Home
+  const showExit = inRoom && (status === STATUS.LOBBY || status === STATUS.IN_GAME || status === STATUS.FINISHED);
 
-  // 3) Exit: แสดงเมื่อเริ่มเกมแล้วเท่านั้น (status inGame / finished)
-  const showExit = !!currentRoomCode && (status === STATUS.IN_GAME || status === STATUS.FINISHED);
   if (headerExitBtn) {
     headerExitBtn.style.display = showExit ? "inline-flex" : "none";
+    if (showExit) headerExitBtn.textContent = currentRole === "host" ? "ยกเลิกห้อง" : "ออกจากห้อง";
+  }
 
-    // เปลี่ยนข้อความตาม role
-    if (showExit) {
-      headerExitBtn.textContent = currentRole === "host" ? "ยกเลิกห้อง" : "ออกจากห้อง";
-    }
+  // 3) Home: แสดงเฉพาะตอนอยู่หน้า entry (adminEntry/playerEntry)
+  //    แต่ถ้า showExit = true ให้ซ่อน Home (เพราะ Exit มาแทน)
+  const showHome = inEntry && !showExit;
+
+  if (headerHomeBtn) {
+    headerHomeBtn.style.display = showHome ? "inline-flex" : "none";
   }
 }
 
@@ -537,8 +541,6 @@ joinGameBtn?.addEventListener("click", () => {
   }
   showPlayerEntryPage();
 });
-backToLandingBtn1?.addEventListener("click", () => showEntryLanding());
-backToLandingBtn2?.addEventListener("click", () => showEntryLanding());
 
 /* =========================
    9) Lobby View + Subscribe
@@ -547,8 +549,8 @@ function enterLobbyView() {
   if (lobbyEl) lobbyEl.style.display = "block";
   setEntryVisible(false);
 
-  if (cancelRoomBtn) cancelRoomBtn.style.display = currentRole === "host" ? "inline-flex" : "none";
-  if (leaveRoomBtn) leaveRoomBtn.style.display = currentRole === "player" ? "inline-flex" : "none";
+  if (cancelRoomBtn) cancelRoomBtn.style.display = "none";
+  if (leaveRoomBtn) leaveRoomBtn.style.display = "none";
 
   if (roleInfoEl) roleInfoEl.textContent = "";
   setHeaderPills();
@@ -643,13 +645,12 @@ function isInGame(roomData) {
 }
 
 headerHomeBtn?.addEventListener("click", () => {
-  // Home ใน requirement นี้คือกลับหน้าแรก "ระหว่างกำลังสร้างห้อง/กำลัง join" (ยังไม่เข้าห้อง)
+  // ใช้ได้เฉพาะช่วง entry (ยังไม่เข้าห้อง)
   showEntryLanding();
   updateHeaderActionsUI(null);
 });
 
 headerExitBtn?.addEventListener("click", async () => {
-  // Exit หลังเริ่มเกม: host = cancel room, player = leave room
   if (currentRole === "host") await cancelRoomFlow();
   else if (currentRole === "player") await leaveRoomFlow();
 });
