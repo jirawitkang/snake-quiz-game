@@ -1801,19 +1801,9 @@ function renderPlayerList(roomData, playersObj) {
 
   const history = roomData.history || {};
   const currentRound = Number(roomData.currentRound || 0);
+  const roundsToShow = Math.max(0, currentRound); // แสดงตาม currentRound เสมอ
 
-  // round_1, round_2, ...
-  const roundKeys = Object.keys(history)
-    .filter((k) => k.startsWith("round_"))
-    .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
-
-  // จำนวนรอบที่ "มีคำตอบแล้ว" (หลัง host เฉลย) = roundKeys.length
-  const historyRounds = roundKeys.length;
-
-  // ระหว่างเล่น ให้ timeline ยาวเท่ากับ currentRound (เพื่อให้รอบปัจจุบันโผล่ทันที)
-  const roundsToShow = Math.max(0, currentRound);
-
-  // สร้าง state ต่อผู้เล่น
+  // เตรียม perPlayer
   const perPlayer = {};
   for (const [pid, p] of entries) {
     const pos = clampPos(p.position);
@@ -1826,84 +1816,53 @@ function renderPlayerList(roomData, playersObj) {
       finished: !!p.finished || pos >= BOARD_SIZE,
       finishRound: Number.isFinite(p.finishedRound) ? Number(p.finishedRound) : null,
 
-      // timeline ต่อรอบ (index 0 = รอบ 1)
       rollsByRound: Array(roundsToShow).fill(null), // number | "☐" | null
-      ansByRound: Array(roundsToShow).fill(null),   // "✅" | "❌" | "➖" | null
+      ansByRound: Array(roundsToShow).fill(null),   // "✅"/"❌"/"➖" | null
     };
   }
 
-  // 1) เติมจาก history.answers (รอบที่เฉลยแล้วเท่านั้น)
-  for (const rk of roundKeys) {
-    const rn = parseInt(rk.split("_")[1] || "0", 10);
+  // helper: เติมผลทอย/ผลคำตอบจาก history ต่อรอบ
+  for (let rn = 1; rn <= roundsToShow; rn++) {
     const idx = rn - 1;
-    if (idx < 0 || idx >= roundsToShow) continue;
+    const rd = history[`round_${rn}`] || {};
 
-    const roundData = history[rk] || {};
-    const answers = roundData.answers || {};
+    const diceMoves = rd.diceMoves || {};
+    const answers = rd.answers || {};
 
-    for (const [pid, rec] of Object.entries(answers)) {
-      const s = perPlayer[pid];
-      if (!s) continue;
-
-      // จำรอบเข้าเส้นชัยจาก history ถ้าใน player ยังไม่มี
-      const finalPos = Number(rec.finalPosition);
-      if (s.finishRound == null && Number.isFinite(finalPos) && finalPos >= BOARD_SIZE) {
-        s.finishRound = rn;
-      }
-
-      // รอบหลังเข้าเส้นชัย: ไม่ให้ history มาทับ (กัน “ซ้ำผลทอยรอบที่เข้าเส้นชัย”)
-      if (s.finishRound != null && rn > s.finishRound) continue;
-
-      // ผลทอยของรอบนั้น
-      const dr = Number(rec.diceRoll);
-      if (Number.isFinite(dr) && dr >= 1 && dr <= 6) s.rollsByRound[idx] = dr;
-
-      // ผลคำตอบของรอบนั้น
-      if (rec.correct === true) s.ansByRound[idx] = "✅";
-      else if (rec.correct === false) s.ansByRound[idx] = "❌";
-      // ถ้า correct เป็น null (เช่น neutral) ให้ปล่อยว่าง
-    }
-  }
-
-  // 2) เติม “รอบปัจจุบัน” แบบ realtime (ไม่ต้องรอ host เฉลย)
-  // เงื่อนไข: currentRound = historyRounds + 1 แปลว่ารอบนี้ยังไม่ถูกเฉลย/ยังไม่ถูกเขียน answers
-  const isRoundInProgress = (currentRound > 0 && currentRound === historyRounds + 1);
-  if (isRoundInProgress && roundsToShow > 0) {
-    const curIdx = currentRound - 1;
-
-    for (const [pid, p] of entries) {
-      const s = perPlayer[pid];
-      if (!s) continue;
-
-      // 2.1 เข้าเส้นชัยแล้ว -> รอบถัดๆไป (รวมรอบปัจจุบันถ้าเกิน finishRound) เติม ☐/➖ ทันที
-      if (s.finishRound != null && currentRound > s.finishRound) {
-        s.rollsByRound[curIdx] = "☐";
-        s.ansByRound[curIdx] = "➖";
+    for (const [pid, s] of Object.entries(perPlayer)) {
+      // 1) ถ้าเข้าเส้นชัยแล้ว -> รอบถัดไปทั้งหมดเป็น ☐ และ ➖ (รวมถึงรอบปัจจุบันถ้า rn > finishRound)
+      if (s.finishRound != null && rn > s.finishRound) {
+        s.rollsByRound[idx] = "☐";
+        s.ansByRound[idx] = "➖";
         continue;
       }
 
-      // 2.2 ยังไม่เข้าเส้นชัย -> ทอยเสร็จให้แสดงทันทีจาก lastRoll
-      const lr = Number(p.lastRoll);
-      if (!s.finished && Number.isFinite(lr) && lr >= 1 && lr <= 6) {
-        s.rollsByRound[curIdx] = lr;
+      // 2) ผลทอย: อ่านจาก diceMoves (ขึ้นทันทีหลังทอย)
+      const dm = diceMoves[pid];
+      if (dm && dm.diceRoll != null) {
+        s.rollsByRound[idx] = Number(dm.diceRoll);
       }
-      // ผลคำตอบรอบปัจจุบันยังไม่เติมจนกว่าจะเฉลย (ตรงตาม flow)
+
+      // 3) ผลคำตอบ: อ่านจาก answers (ขึ้นหลัง host เฉลย)
+      const ar = answers[pid];
+      if (ar) {
+        // neutralFinishByDice: กรณี record เป็นกลาง ไม่ต้องเติม ✅/❌
+        const basePos = ar.basePosition ?? null;
+        const finalPos = ar.finalPosition ?? null;
+        const neutralFinishByDice =
+          ar.correct == null &&
+          ar.answered === false &&
+          Number.isFinite(basePos) && Number.isFinite(finalPos) &&
+          basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
+
+        if (!neutralFinishByDice) {
+          s.ansByRound[idx] = (ar.correct === true) ? "✅" : "❌";
+        }
+      }
     }
   }
 
-  // 3) บังคับ “หลังเข้าเส้นชัย” ให้คง ☐/➖ เสมอ ทุกครั้งที่ render (กันหาย)
-  for (const s of Object.values(perPlayer)) {
-    if (s.finishRound == null) continue;
-
-    for (let rn = s.finishRound + 1; rn <= roundsToShow; rn++) {
-      const idx = rn - 1;
-      if (idx < 0 || idx >= roundsToShow) continue;
-      s.rollsByRound[idx] = "☐";
-      s.ansByRound[idx] = "➖";
-    }
-  }
-
-  // helpers -> string
+  // แปลงเป็นข้อความ
   const rollsToText = (arr) => {
     const out = arr.map(v => {
       if (v === "☐") return "☐";
