@@ -586,6 +586,12 @@ body.in-game #startGameBtn{
 #playerList th:nth-child(5),
 #playerList td:nth-child(5){ width: 7ch; }
 
+/* 6) ผลทอย */
+#playerList td:nth-child(6){
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;        /* ให้ emoji ไม่ชิดกันเกิน */
+}
+
 /* 6-7) ผลทอย + ผลคำตอบ ให้กว้างเท่ากัน */
 #playerList th:nth-child(6),
 #playerList td:nth-child(6),
