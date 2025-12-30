@@ -736,6 +736,25 @@ body.in-game #startGameBtn{
   white-space: nowrap;
 }
 
+/* 1) ทำให้ cell ผลทอยมีพื้นที่/การจัดวางที่ยืดหยุ่นขึ้น */
+#playerList tbody td.rolls-col,
+#endGameSummary tbody td.rolls-col{
+  height: 20px;          /* ตามที่คุณต้องการ */
+  padding-top: 0;        /* ตัด padding บน */
+  padding-bottom: 0;     /* ตัด padding ล่าง */
+  line-height: 20px;     /* ให้ baseline อยู่กลางง่ายขึ้น */
+  vertical-align: middle;
+  overflow: visible;     /* สำคัญ: ไม่ให้ td ตัด */
+}
+
+/* 2) ดันตัว glyph ขึ้นตามต้องการ */
+#playerList tbody td.rolls-col .rolls-text,
+#endGameSummary tbody td.rolls-col .rolls-text{
+  display: inline-block;
+  transform: translateY(-8px); /* ลอง -4 / -8 ได้แล้ว */
+  will-change: transform;
+}
+
 /* Rounded corners */
 #playerList thead tr th:first-child,
 #endGameSummary thead tr th:first-child{ border-top-left-radius: var(--radius-sm); }
