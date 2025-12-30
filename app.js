@@ -1863,17 +1863,16 @@ function renderPlayerList(roomData, playersObj) {
       s.rollsByRound[idx] = Number(rec.diceRoll);
     }
 
-      // answer result (กันกรณี neutral finish by dice)
-      const basePos = rec.basePosition ?? null;
-      const neutralFinishByDice =
-        rec.correct == null &&
-        rec.answered === false &&
-        Number.isFinite(basePos) && Number.isFinite(finalPos) &&
-        basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
+    // answer result (กันกรณี neutral finish by dice)
+    const basePos = rec.basePosition ?? null;
+    const neutralFinishByDice =
+      rec.correct == null &&
+      rec.answered === false &&
+      Number.isFinite(basePos) && Number.isFinite(finalPos) &&
+      basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
 
-      if (!neutralFinishByDice && s.ansByRound[idx] == null) {
-        s.ansByRound[idx] = (rec.correct === true) ? "✅" : "❌";
-      }
+    if (!neutralFinishByDice && s.ansByRound[idx] == null) {
+      s.ansByRound[idx] = (rec.correct === true) ? "✅" : "❌";
     }
   }
 
