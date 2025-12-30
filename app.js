@@ -720,11 +720,31 @@ createRoomBtn?.addEventListener("click", () => {
     return;
   }
 
+  // ✅ 1) หา card ที่ครอบปุ่ม (กัน layout กระชาก/ปุ่มขยับ)
+  const card = createRoomBtn.closest(".card");
+  if (card) {
+    const h = card.getBoundingClientRect().height;
+    card.classList.add("lock-height");
+    card.style.height = `${h}px`;
+  }
+
+  // ✅ 2) เปิด panel (ใช้ class หรือ display อย่างใดอย่างหนึ่ง)
   hostGameOptionsEl.classList.add("is-open");
-  // ✅ ถ้าไม่อยากให้หน้ากระตุก/เลื่อน ให้ “ไม่ต้อง” scroll
+  hostGameOptionsEl.style.display = "block"; // เผื่อยังมี inline display:none ค้างอยู่
+
+  // ✅ 3) “ยกเลิกการ scroll” เพราะเป็นสาเหตุหลักที่ทำให้รู้สึกปุ่มกระโดด
   // hostGameOptionsEl.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  hostGameOptionsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  // ✅ 4) ปล่อย lock หลัง browser render ทัน
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (card) {
+        card.style.height = "";
+        card.classList.remove("lock-height");
+      }
+    });
+  });
+
   console.log("[UI] open hostGameOptions");
 });
 
