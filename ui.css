@@ -35,7 +35,7 @@
   /* Board sizing (single source of truth) */
   --track-gap: 4px;
   --cell-h: 20px;
-  --start-w: 200px;
+  --start-w: 190px;
   --finish-w: 88px;
   /* Player List*/
   --name-col-ch: 16ch;
@@ -456,12 +456,6 @@ button:disabled{
   box-shadow: none !important;
 }
 
-/* Lobby card spacing */
-.lobby-card{
-  padding-top: 10px !important;
-  padding-bottom: 12px !important;
-}
-
 /* Round/phase pills in game bar */
 #roundInfo{
   white-space: nowrap;
@@ -749,8 +743,8 @@ body.in-game #startGameBtn{
 /* Rows */
 .board-label-row,
 .player-row{
-  display:flex;
-  align-items:center;
+  display: flex;
+  align-items: center;
   gap: 8px;
   margin-bottom: 4px;
   width: 100%;
@@ -763,8 +757,8 @@ body.in-game #startGameBtn{
   column-gap: var(--track-gap);
   align-items: center;
 
-  width: max-content;  /* track width based on columns */
-  min-width: 100%;     /* but not smaller than container */
+  width: max-content;
+  min-width: 100%;
 }
 
 /* Base cell */
@@ -772,85 +766,68 @@ body.in-game #startGameBtn{
   position: relative;
   overflow: visible;
   border-radius: 4px;
+  box-sizing: border-box;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.18);
 }
 
-/* Cells 1..30 */
-.board-track .cell-card:not(.start-cell):not(.finish-cell),
-.board-label-row .cell-card:not(.start-cell):not(.finish-cell){
+/* Common sizing for all cells in track */
+.board-track .cell-card{
   height: var(--cell-h) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0 !important;
+}
+
+/* Play cells (1..30) */
+.cell-card.play-cell{
+  background: #fff;
   padding: 0 !important;
   line-height: 1 !important;
-  box-sizing: border-box;
-  border-radius: 4px !important;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.18);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-
-  width: auto !important;
   flex: none !important;
 }
-.board-label-row .cell-card:not(.start-cell):not(.finish-cell){ background:#fff; }
 
-.cell-card.play-cell{ background:#fff; }
 .cell-card.play-cell.cell-dice{ background:#64b5f6 !important; }
 .cell-card.play-cell.cell-correct{ background:#66bb6a !important; }
 .cell-card.play-cell.cell-wrong{ background:#ef5350 !important; }
 .cell-card.play-cell.cell-past{ background:#9e9e9e !important; }
 
 /* Start/Finish cells */
-.start-cell,
-.finish-cell{
-  height: var(--cell-h) !important;
-  border-radius: 4px !important;
-  background:#fff;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.18);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  box-sizing:border-box;
-  min-width: 0 !important;
-}
-
-/* Start = player name on player rows */
 .start-cell{
   width: var(--start-w) !important;
+  background: #fff;
   border-right: 3px solid var(--p-600) !important;
   font-weight: 900;
   color: var(--p-800);
-  padding: 0 10px !important;
-  justify-content: flex-start !important;
-  overflow: hidden;
+  padding: 0 10px !important;      /* ปรับได้ตามชอบ */
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
+
+  /* ✅ ให้ชื่อผู้เล่นอยู่กลาง (ตามที่คุณต้องการล่าสุด) */
+  justify-content: center !important;
+  text-align: center;
 }
 
-/* Finish marker */
 .finish-cell{
   width: var(--finish-w) !important;
+  background: #fff;
   border-left: 3px solid #43a047 !important;
 }
 
-/* Cell label (numbers / Start / Finish label row) */
+/* Cell label (numbers / Start label) */
 .cell-label{
   font-size: 12px;
   color: var(--p-800);
   font-weight: 900;
 }
 
-.board-label-row{
-  background: var(--p-100);
+/* ✅ Label row: ให้ทุก cell-card เป็นสี p-100 */
+.board-label-row .cell-card{
+  background: var(--p-100) !important;
 }
 
-.board-label-row .start-cell,
-.player-row .start-cell{
-  display: flex;
-  align-items: center;     /* กลางแนวตั้ง */
-  justify-content: center; /* กลางแนวนอน */
-  text-align: center;
-}
-
-/* เผื่อมี <span class="cell-label">Start</span> ให้กลางจริง ๆ */
+/* ✅ Start label (คำว่า Start) ให้อยู่กลางจริง ๆ */
 .board-label-row .start-cell .cell-label{
   display: inline-block;
   width: 100%;
