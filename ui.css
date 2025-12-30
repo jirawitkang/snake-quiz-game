@@ -675,8 +675,8 @@ body.in-game #startGameBtn{
 #playerList thead th, #endGameSummary thead th,
 #playerList tbody td, #endGameSummary tbody td{
   padding: 0 6px !important;
-  height: 28px !important;       /* ✅ ลดจากเดิม แต่ยังรองรับ 24px ไม่ค่อยโดนตัด */
-  line-height: 28px !important;  /* ✅ กัน line-height ไปดันแถว */
+  height: 24px !important;       /* ✅ ลดจากเดิม แต่ยังรองรับ 24px ไม่ค่อยโดนตัด */
+  line-height: 24px !important;  /* ✅ กัน line-height ไปดันแถว */
   vertical-align: middle;
 }
 
