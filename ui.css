@@ -668,15 +668,6 @@ body.in-game #startGameBtn{
   text-overflow: ellipsis;
 }
 
-/* Bigger dice glyphs (⚀⚁⚂⚃⚄⚅ / ☐) */
-#playerList td.rolls-col,
-#endGameSummary td.rolls-col{
-  font-size: 26px;
-  line-height: 1.1;
-  letter-spacing: 1px;
-  white-space: nowrap;
-}
-
 #playerList thead th, #endGameSummary thead th{ font-size: 16px; }
 #playerList tbody td, #endGameSummary tbody td{ font-size: 16px; }
 
@@ -699,7 +690,7 @@ body.in-game #startGameBtn{
 #playerList td.rolls-col .rolls-glyph,
 #endGameSummary td.rolls-col .rolls-glyph{
   display: inline-block;
-  font-size: 24px;     /* ✅ คง 24px ตามที่ต้องการ */
+  font-size: 26px;     /* ✅ คง 24px ตามที่ต้องการ */
   line-height: 1;      /* ✅ ลดช่องว่างบน/ล่างจาก line box */
   letter-spacing: 1px;
   transform: translateY(-8px); /* ปรับจูนให้กึ่งกลาง (ลอง 0..2px) */
@@ -751,7 +742,7 @@ body.in-game #startGameBtn{
 #playerList tbody td.rolls-col .rolls-text,
 #endGameSummary tbody td.rolls-col .rolls-text{
   display: inline-block;
-  transform: translateY(-2px); /* ลอง -4 / -8 ได้แล้ว */
+  transform: translateY(-1px); /* ลอง -4 / -8 ได้แล้ว */
   will-change: transform;
 }
 
