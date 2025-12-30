@@ -1120,3 +1120,9 @@ button:disabled{
   visibility: visible;
   transform: translateY(0);
 }
+
+/* กันการกระชากของ layout ตอนเปิด host options */
+.card.lock-height{
+  overflow: hidden;
+}
+
