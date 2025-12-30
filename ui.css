@@ -548,11 +548,11 @@ body.in-game #startGameBtn{
 #endGameSummary th, #endGameSummary td{
   border: 1px solid var(--line);
   padding: 0 6px;
-  height: 24px;
-  line-height: 24px;
+  height: 20px;
+  line-height: 20px;
   text-align: center;
   vertical-align: middle;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 /* header */
@@ -668,7 +668,7 @@ body.in-game #startGameBtn{
 #playerList tbody td.rolls-col .rolls-text,
 #endGameSummary tbody td.rolls-col .rolls-text{
   display: inline-block;
-  font-size: 24px;
+  font-size: 26px;
   line-height: 1;
   letter-spacing: 1px;
   transform: translateY(-2px); /* ⭐ ขยับขึ้น */
