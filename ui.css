@@ -472,6 +472,35 @@ button:disabled{
   text-overflow: ellipsis;
 }
 
+/* ================================
+   IN-GAME LAYOUT SWITCH
+   - before start: nothing changes
+   - after start: gameBar+gameArea goes top, lobby bar hidden,
+     lobby-card moved under gameArea and hides its head sections
+   ================================ */
+
+/* ช่วงเริ่มเกมแล้ว: ซ่อนทั้ง #lobby (เพราะเราจะย้าย lobby-card ออกมาไว้ #lobbyCardHost) */
+body.in-game #lobby{
+  display: none !important;
+}
+
+/* โชว์ slot วาง lobby-card ใต้ gameArea */
+body.in-game #lobbyCardHost{
+  display: block !important;
+  margin-top: 14px;
+}
+
+/* ใน lobby-card: ซ่อนหัวส่วนบน + ซ่อนหัวรายชื่อ + ปุ่มเริ่มเล่น (อยู่ในหัวนั้น) */
+body.in-game .lobby-card-head,
+body.in-game .lobby-list-head{
+  display: none !important;
+}
+
+/* กันพลาด: ถ้ามีปุ่มเริ่มเล่นหลงเหลือ ให้ซ่อนไว้อีกชั้น */
+body.in-game #startGameBtn{
+  display: none !important;
+}
+
 /* =========================
    9) TABLES (playerList + endGameSummary)
    ========================= */
