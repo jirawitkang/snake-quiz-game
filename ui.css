@@ -546,8 +546,8 @@ body.in-game #startGameBtn{
 /* ---- shared cell style (header + body) ---- */
 :root{
   --tbl-font: 16px;     /* ปรับขนาดตัวอักษรหลักที่นี่ */
-  --tbl-row-h: 24px;    /* ความสูงแถวที่ต้องการ */
-  --tbl-pad-x: 6px;     /* padding ซ้าย/ขวา */
+  --tbl-row-h: 22px;    /* ความสูงแถวที่ต้องการ */
+  --tbl-pad-x: 4px;     /* padding ซ้าย/ขวา */
 }
 
 #playerList th, #playerList td,
@@ -681,7 +681,7 @@ body.in-game #startGameBtn{
   font-size: 24px;      /* dice ใหญ่ */
   line-height: 1;       /* ลดช่องว่างบน/ล่างของ line box */
   letter-spacing: 1px;
-  transform: translateY(-2px); /* ปรับจูนตำแหน่ง (อยากดันเพิ่มค่อยเพิ่ม) */
+  transform: translateY(-1px); /* ปรับจูนตำแหน่ง (อยากดันเพิ่มค่อยเพิ่ม) */
 }
 
 /* Rounded corners */
