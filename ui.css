@@ -549,28 +549,60 @@ body.in-game #startGameBtn{
   font-weight: 900;
 }
 
-/* ทำให้ตารางคุมคอลัมน์ตาม width ที่กำหนดจริง */
-#playerList table{
+/* =========================
+   PlayerList: fix column widths
+   (assumes table head order is exactly as renderPlayerList)
+   # | ผู้เล่น | ตำแหน่ง | ทอยแล้ว | ตอบแล้ว | สถานะ | ทอย(รวม) | ผลคำถาม
+   ========================= */
+/* ใช้ fixed layout ทั้ง playerList และ endGameSummary */
+#playerList table,
+#endGameSummary table{
   table-layout: fixed;
 }
 
-/* name column: style + lock width */
-#playerList th.name-col,
-#playerList td.name-col,
-#endGameSummary th.name-col,
-#endGameSummary td.name-col{
-  text-align:left;
-  font-weight: 800;
-  color: var(--p-800);
-
-  /* lock width only for playerList (end summary ปล่อยยืดได้ตามเดิม ถ้าต้องการ) */
+/* Column widths — ใช้ร่วมกันทั้งสองตาราง */
+#playerList th:nth-child(1), #playerList td:nth-child(1),
+#endGameSummary th:nth-child(1), #endGameSummary td:nth-child(1){
+  width: 4ch;
 }
 
-/* ล็อกความกว้างเฉพาะ playerList */
-#playerList th.name-col,
-#playerList td.name-col{
+#playerList th:nth-child(2), #playerList td:nth-child(2),
+#endGameSummary th:nth-child(2), #endGameSummary td:nth-child(2){
   width: var(--name-col-ch);
   max-width: var(--name-col-ch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#playerList th:nth-child(3), #playerList td:nth-child(3),
+#endGameSummary th:nth-child(3), #endGameSummary td:nth-child(3){
+  width: 6ch;
+}
+
+#playerList th:nth-child(4), #playerList td:nth-child(4),
+#endGameSummary th:nth-child(4), #endGameSummary td:nth-child(4){
+  width: 7ch;
+}
+
+#playerList th:nth-child(5), #playerList td:nth-child(5),
+#endGameSummary th:nth-child(5), #endGameSummary td:nth-child(5){
+  width: 7ch;
+}
+
+#playerList th:nth-child(6), #playerList td:nth-child(6),
+#endGameSummary th:nth-child(6), #endGameSummary td:nth-child(6){
+  width: 12ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#playerList th:nth-child(7), #playerList td:nth-child(7),
+#playerList th:nth-child(8), #playerList td:nth-child(8),
+#endGameSummary th:nth-child(7), #endGameSummary td:nth-child(7),
+#endGameSummary th:nth-child(8), #endGameSummary td:nth-child(8){
+  width: 16ch;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
