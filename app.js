@@ -417,6 +417,19 @@ function updateHeaderActionsUI(roomData = null) {
   }
 }
 
+const DICE_UNICODE = ["", "⚀","⚁","⚂","⚃","⚄","⚅"];
+
+function toDiceGlyph(n){
+  const x = Number(n);
+  return Number.isFinite(x) && x >= 1 && x <= 6 ? DICE_UNICODE[x] : "?";
+}
+
+function rollTextToGlyphs(rolls){
+  // rolls อาจเป็น [1,2,3] หรือ ["1","2"] หรือ null
+  if (!Array.isArray(rolls) || rolls.length === 0) return "-";
+  return rolls.map(toDiceGlyph).join("");
+}
+
 /* =========================
    7) Entry Navigation (SPA)
 ========================= */
@@ -1853,7 +1866,7 @@ function renderPlayerList(roomData, playersObj) {
   `;
 
   list.forEach((p, index) => {
-    const rollsText = p.rolls.length ? p.rolls.join("") : "-";
+    const rollsText = rollTextToGlyphs(p.rolls);  // ใหม่: ⚀⚁⚂⚃⚄⚅
     const ansText = p.answerSymbols.length ? p.answerSymbols.join("") : "-";
 
     html += `
@@ -1863,7 +1876,7 @@ function renderPlayerList(roomData, playersObj) {
         <td>${p.position}</td>
         <td>${p.hasRolled ? "🎲" : "-"}</td>
         <td>${p.answered ? "✔️" : "-"}</td>
-        <td>${rollsText}</td>
+        <td>${escapeHtml(rollsText)}</td>
         <td>${ansText}</td>
         <td>${p.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
       </tr>
