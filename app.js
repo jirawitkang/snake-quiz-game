@@ -1813,10 +1813,10 @@ function renderPlayerList(roomData, playersObj) {
       hasRolled: !!p.hasRolled,
       answered: !!p.answered,
       finished: !!p.finished || clampPos(p.position) >= BOARD_SIZE,
+      finishRound: null, // ✅ เพิ่ม
       rolls: [],
       answerSymbols: [],
     };
-  }
 
   const roundKeys = Object.keys(history)
     .filter((k) => k.startsWith("round_"))
@@ -1838,6 +1838,13 @@ function renderPlayerList(roomData, playersObj) {
         rec.answered === false &&
         basePos >= BOARD_SIZE &&
         finalPos >= BOARD_SIZE;
+
+      const rn = parseInt(rk.split("_")[1] || "0", 10);
+
+      // ✅ จำรอบแรกที่เข้าเส้นชัย
+      if (Number.isFinite(finalPos) && finalPos >= BOARD_SIZE && perPlayer[pid].finishRound == null) {
+        perPlayer[pid].finishRound = rn;
+      }
 
       if (neutralFinishByDice) continue;
 
@@ -1866,8 +1873,21 @@ function renderPlayerList(roomData, playersObj) {
   `;
 
   list.forEach((p, index) => {
-    const rollsText = rollTextToGlyphs(p.rolls);  // ใหม่: ⚀⚁⚂⚃⚄⚅
-    const ansText = p.answerSymbols.length ? p.answerSymbols.join("") : "-";
+    const currentRound = roomData.currentRound || 0;
+
+    // ผลทอย: แสดงเป็น ⚀⚁⚂... และถ้าเข้าเส้นชัยแล้วให้เติม ☐ ในรอบถัด ๆ ไป
+    let rollsText = rollTextToGlyphs(p.rolls);
+    if (p.finishRound != null && currentRound > p.finishRound) {
+      rollsText += "☐".repeat(currentRound - p.finishRound);
+    }
+    if (!rollsText) rollsText = "-";
+    
+    // ผลคำตอบ: ✅/❌ และถ้าเข้าเส้นชัยแล้วให้เติม ➖ ในรอบถัด ๆ ไป
+    let ansText = p.answerSymbols.length ? p.answerSymbols.join("") : "";
+    if (p.finishRound != null && currentRound > p.finishRound) {
+      ansText += "➖".repeat(currentRound - p.finishRound);
+    }
+    if (!ansText) ansText = "-";
 
     html += `
       <tr>
@@ -2474,8 +2494,22 @@ function renderEndGameSummary(roomData, players) {
   for (const s of stats) {
     const totalQ = s.correct + s.wrong + s.timeout;
     const pctText = totalQ > 0 ? `${Math.round(s.pctCorrect)}%` : "-";
-    const rollsText = s.rolls.length ? s.rolls.join("") : "-";
-    const ansText = s.answerSymbols.length ? s.answerSymbols.join("") : "-";
+    const totalRoundsPlayed = roundKeys.length;
+
+    // ผลทอย (ใช้ glyph) + เติม ☐ หลังเข้าเส้นชัย
+    let rollsText = rollTextToGlyphs(s.rolls);
+    if (s.finishRound != null && totalRoundsPlayed > s.finishRound) {
+      rollsText += "☐".repeat(totalRoundsPlayed - s.finishRound);
+    }
+    if (!rollsText) rollsText = "-";
+    
+    // ผลคำตอบ + เติม ➖ หลังเข้าเส้นชัย
+    let ansText = s.answerSymbols.length ? s.answerSymbols.join("") : "";
+    if (s.finishRound != null && totalRoundsPlayed > s.finishRound) {
+      ansText += "➖".repeat(totalRoundsPlayed - s.finishRound);
+    }
+    if (!ansText) ansText = "-";
+
     const finishFlag = s.finished ? "✅" : "-";
     const finishRoundText = s.finishRound != null ? s.finishRound : "-";
     const finishByText = s.finished
