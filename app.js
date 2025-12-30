@@ -183,14 +183,6 @@ const joinRoomBtn = document.getElementById("joinRoomBtn");
 const roomCodeInput = document.getElementById("roomCodeInput");
 const playerNameInput = document.getElementById("playerNameInput");
 
-const MAX_NAME_LEN = 12;
-
-function normalizeName(raw) {
-  const s = String(raw || "").trim().replace(/\s+/g, " ");
-  // ตัดความยาวเสมอ (กันกรณี paste/แก้ DOM)
-  return s.slice(0, MAX_NAME_LEN);
-}
-
 const lobbyEl = document.getElementById("lobby");
 // NOTE: roomInfo ไม่มีใน index.html ล่าสุด → ไม่ใช้งาน
 const roleInfoEl = document.getElementById("roleInfo");
@@ -276,6 +268,13 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+const MAX_NAME_LEN = 12;
+
+function normalizeName(raw) {
+  const s = String(raw || "").trim().replace(/\s+/g, " ");
+  // ตัดความยาวเสมอ (กันกรณี paste/แก้ DOM)
+  return s.slice(0, MAX_NAME_LEN);
 }
 function setEntryVisible(visible) {
   if (!entrySectionEl) return;
@@ -1856,7 +1855,7 @@ function renderPlayerList(roomData, playersObj) {
     html += `
       <tr>
         <td>${index + 1}</td>
-        <td class="name-col">${escapeHtml(p.name)}</td>
+        <td class="name-col">${escapeHtml(normalizeName(p.name))}</td>
         <td>${p.position}</td>
         <td>${p.hasRolled ? "🎲" : "-"}</td>
         <td>${p.answered ? "✍️" : "-"}</td>
