@@ -1844,27 +1844,24 @@ function renderPlayerList(roomData, playersObj) {
 
   // 1) เติมจาก history (เฉพาะรอบที่มีจริง)
   for (const rk of roundKeys) {
-    const rn = parseInt(rk.split("_")[1] || "0", 10); // 1-based round number
+    const rn = parseInt(rk.split("_")[1] || "0", 10);
     const idx = rn - 1;
-    if (idx < 0 || idx >= roundsToShow) continue;
-
-    const roundData = history[rk] || {};
-    const answers = roundData.answers || {};
-
-    for (const [pid, rec] of Object.entries(answers)) {
-      const s = perPlayer[pid];
-      if (!s) continue;
-
-      // จำรอบแรกที่เข้าเส้นชัยจาก history ถ้ายังไม่มี
-      const finalPos = rec.finalPosition ?? null;
-      if (s.finishRound == null && Number.isFinite(finalPos) && finalPos >= BOARD_SIZE) {
-        s.finishRound = rn;
-      }
-
-      // dice roll (ถ้า history เก็บ)
-      if (rec.diceRoll != null && s.rollsByRound[idx] == null) {
-        s.rollsByRound[idx] = rec.diceRoll;
-      }
+    
+    // จำรอบแรกที่เข้าเส้นชัยจาก history (ถ้ายังไม่มี)
+    const finalPos = rec.finalPosition ?? null;
+    if (s.finishRound == null && Number.isFinite(finalPos) && finalPos >= BOARD_SIZE) {
+      s.finishRound = rn;
+    }
+    
+    // ✅ lock: รอบหลังเข้าเส้นชัย ห้ามเติมจาก history
+    if (s.finishRound != null && rn > s.finishRound) {
+      continue;
+    }
+    
+    // เติมผลทอยจาก history เฉพาะรอบที่ยังไม่เกิน finishRound
+    if (rec.diceRoll != null && s.rollsByRound[idx] == null) {
+      s.rollsByRound[idx] = Number(rec.diceRoll);
+    }
 
       // answer result (กันกรณี neutral finish by dice)
       const basePos = rec.basePosition ?? null;
@@ -1898,10 +1895,10 @@ function renderPlayerList(roomData, playersObj) {
       }
 
       // 2.2 ถ้ายังไม่เข้าเส้นชัย -> ทอยเสร็จให้แสดงผลทันที
-      if (!s.finished && p.hasRolled && Number.isFinite(p.lastRoll) && s.rollsByRound[curIdx] == null) {
-        s.rollsByRound[curIdx] = p.lastRoll;
+      const lr = Number(p.lastRoll);
+      if (!s.finished && Number.isFinite(lr) && s.rollsByRound[curIdx] == null) {
+        s.rollsByRound[curIdx] = lr; // ✅ ทอยเสร็จเห็นทันที
       }
-
       // (ผลคำตอบ realtime ยังไม่ต้องทำตอนนี้ เพราะคุณอยากแสดงหลังเฉลย/หลังตัดสิน)
     }
   }
@@ -1909,12 +1906,13 @@ function renderPlayerList(roomData, playersObj) {
   // 3) เติม placeholder สำหรับ "ทุก r > finishRound" ให้คงอยู่เสมอ (ไม่หายตอนมีคนทอย)
   for (const s of Object.values(perPlayer)) {
     if (s.finishRound == null) continue;
-
+  
     for (let rn = s.finishRound + 1; rn <= roundsToShow; rn++) {
       const idx = rn - 1;
       if (idx < 0 || idx >= roundsToShow) continue;
-      if (s.rollsByRound[idx] == null) s.rollsByRound[idx] = "☐";
-      if (s.ansByRound[idx] == null) s.ansByRound[idx] = "➖";
+  
+      s.rollsByRound[idx] = "☐"; // ✅ บังคับทับเสมอ
+      s.ansByRound[idx] = "➖";   // ✅ บังคับทับเสมอ
     }
   }
 
