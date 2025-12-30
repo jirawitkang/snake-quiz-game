@@ -1914,7 +1914,7 @@ function renderPlayerList(roomData, playersObj) {
         <td>${s.position}</td>
         <td>${s.hasRolled ? "🎲" : "-"}</td>
         <td>${s.answered ? "✔️" : "-"}</td>
-        <td class="rolls-col">${escapeHtml(rollsText)}</td>
+        <td class="rolls-col"><span class="rolls-glyph">${escapeHtml(rollsText)}</span></td>
         <td>${ansText}</td>
         <td>${s.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
       </tr>
@@ -2542,7 +2542,7 @@ function renderEndGameSummary(roomData, players) {
         <td>${s.wrong}</td>
         <td>${s.timeout}</td>
         <td>${pctText}</td>
-        <td class="rolls-col">${rollsText}</td>
+        <td class="rolls-col"><span class="rolls-glyph">${escapeHtml(rollsText)}</span></td>
         <td>${ansText}</td>
       </tr>
     `;
