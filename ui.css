@@ -567,33 +567,40 @@ body.in-game #startGameBtn{
 
 /* =========================
    PlayerList: 8 columns
-   # | ผู้เล่น | ตำแหน่ง | ทอยแล้ว | ตอบแล้ว | สถานะ | ทอย(รวม) | ผลคำถาม
    ========================= */
+/* 1) # */
 #playerList th:nth-child(1),
 #playerList td:nth-child(1){ width: 4ch; }
 
+/* 2) ผู้เล่น (ใช้ .name-col ที่คุณล็อกไว้แล้ว) */
+
+/* 3) ตำแหน่ง */
 #playerList th:nth-child(3),
 #playerList td:nth-child(3){ width: 6ch; }
 
+/* 4) ทอยแล้ว */
 #playerList th:nth-child(4),
 #playerList td:nth-child(4){ width: 7ch; }
 
+/* 5) ตอบแล้ว */
 #playerList th:nth-child(5),
 #playerList td:nth-child(5){ width: 7ch; }
 
+/* 6-7) ผลทอย + ผลคำตอบ ให้กว้างเท่ากัน */
 #playerList th:nth-child(6),
-#playerList td:nth-child(6){
-  width: 12ch;
+#playerList td:nth-child(6),
+#playerList th:nth-child(7),
+#playerList td:nth-child(7){
+  width: 16ch;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-#playerList th:nth-child(7),
-#playerList td:nth-child(7),
+/* 8) สถานะผู้เล่น (ย้ายมาท้ายสุด) — แคบได้ เพราะมีแค่ เข้าเส้นชัย/หลุด */
 #playerList th:nth-child(8),
 #playerList td:nth-child(8){
-  width: 16ch;
+  width: 9ch; /* แนะนำ 8-10ch พอ */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
