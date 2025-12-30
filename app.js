@@ -1817,6 +1817,7 @@ function renderPlayerList(roomData, playersObj) {
       rolls: [],
       answerSymbols: [],
     };
+  } // ✅ สำคัญมาก: ปิด for-loop ให้ครบ
 
   const roundKeys = Object.keys(history)
     .filter((k) => k.startsWith("round_"))
@@ -1825,13 +1826,22 @@ function renderPlayerList(roomData, playersObj) {
   for (const rk of roundKeys) {
     const roundData = history[rk] || {};
     const answers = roundData.answers || {};
+    const rn = parseInt(rk.split("_")[1] || "0", 10);
 
     for (const [pid, rec] of Object.entries(answers)) {
       if (!perPlayer[pid]) continue;
 
+      // เก็บผลทอย
       if (rec.diceRoll != null) perPlayer[pid].rolls.push(rec.diceRoll);
 
       const finalPos = rec.finalPosition ?? perPlayer[pid].position;
+
+      // ✅ จำรอบแรกที่เข้าเส้นชัย (ถ้ามี)
+      if (Number.isFinite(finalPos) && finalPos >= BOARD_SIZE && perPlayer[pid].finishRound == null) {
+        perPlayer[pid].finishRound = rn;
+      }
+
+      // กรองเคส “ทอยถึงเส้นชัยแบบ neutral” (ไม่ต้องนับเป็นถูก/ผิด)
       const basePos = rec.basePosition ?? finalPos;
       const neutralFinishByDice =
         rec.correct == null &&
@@ -1839,21 +1849,17 @@ function renderPlayerList(roomData, playersObj) {
         basePos >= BOARD_SIZE &&
         finalPos >= BOARD_SIZE;
 
-      const rn = parseInt(rk.split("_")[1] || "0", 10);
-
-      // ✅ จำรอบแรกที่เข้าเส้นชัย
-      if (Number.isFinite(finalPos) && finalPos >= BOARD_SIZE && perPlayer[pid].finishRound == null) {
-        perPlayer[pid].finishRound = rn;
-      }
-
       if (neutralFinishByDice) continue;
 
+      // เก็บผลคำตอบ
       if (rec.correct === true) perPlayer[pid].answerSymbols.push("✅");
       else perPlayer[pid].answerSymbols.push("❌");
     }
   }
 
-  const list = Object.values(perPlayer).sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  const list = Object.values(perPlayer).sort((a, b) =>
+    String(a.name || "").localeCompare(String(b.name || ""))
+  );
 
   let html = `
     <table>
@@ -1875,15 +1881,17 @@ function renderPlayerList(roomData, playersObj) {
   list.forEach((p, index) => {
     const currentRound = roomData.currentRound || 0;
 
-    // ผลทอย: แสดงเป็น ⚀⚁⚂... และถ้าเข้าเส้นชัยแล้วให้เติม ☐ ในรอบถัด ๆ ไป
-    let rollsText = rollTextToGlyphs(p.rolls);
+    // ✅ ผลทอย: แปลงเป็น glyph แล้ว “หลังเข้าเส้นชัย” ให้เป็น ☐
+    const rollsUntilFinish = p.finishRound != null ? p.rolls.slice(0, p.finishRound) : p.rolls;
+    let rollsText = rollTextToGlyphs(rollsUntilFinish);
     if (p.finishRound != null && currentRound > p.finishRound) {
       rollsText += "☐".repeat(currentRound - p.finishRound);
     }
     if (!rollsText) rollsText = "-";
-    
-    // ผลคำตอบ: ✅/❌ และถ้าเข้าเส้นชัยแล้วให้เติม ➖ ในรอบถัด ๆ ไป
-    let ansText = p.answerSymbols.length ? p.answerSymbols.join("") : "";
+
+    // ✅ ผลคำตอบ: หลังเข้าเส้นชัยให้เป็น ➖
+    const ansUntilFinish = p.finishRound != null ? p.answerSymbols.slice(0, p.finishRound) : p.answerSymbols;
+    let ansText = ansUntilFinish.length ? ansUntilFinish.join("") : "";
     if (p.finishRound != null && currentRound > p.finishRound) {
       ansText += "➖".repeat(currentRound - p.finishRound);
     }
