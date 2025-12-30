@@ -671,7 +671,7 @@ body.in-game #startGameBtn{
 /* Bigger dice glyphs (⚀⚁⚂⚃⚄⚅ / ☐) */
 #playerList td.rolls-col,
 #endGameSummary td.rolls-col{
-  font-size: 24px;
+  font-size: 26px;
   line-height: 1.1;
   letter-spacing: 1px;
   white-space: nowrap;
@@ -751,7 +751,7 @@ body.in-game #startGameBtn{
 #playerList tbody td.rolls-col .rolls-text,
 #endGameSummary tbody td.rolls-col .rolls-text{
   display: inline-block;
-  transform: translateY(-4px); /* ลอง -4 / -8 ได้แล้ว */
+  transform: translateY(-2px); /* ลอง -4 / -8 ได้แล้ว */
   will-change: transform;
 }
 
