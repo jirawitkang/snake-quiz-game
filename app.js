@@ -535,6 +535,14 @@ function subscribeRoom(roomCode) {
       const roomData = snapshot.val();
       const players = roomData.players || {};
 
+      // ✅ INSERT ตรงนี้
+      // เงื่อนไข "เริ่มเล่นแล้ว" (ง่ายสุด = status inGame/finished)
+      if (roomData.status === STATUS.IN_GAME || roomData.status === STATUS.FINISHED) {
+        enterInGameLayout();
+      } else {
+        exitInGameLayout();
+      }
+
       console.log("[ROOM UPDATE]", {
         roomCode,
         status: roomData.status,
@@ -565,6 +573,36 @@ function updateStartGameButton(roomData, players) {
 
   startGameBtn.style.display = shouldShow ? "inline-flex" : "none";
   startGameBtn.disabled = !shouldShow;
+}
+
+function enterInGameLayout() {
+  document.body.classList.add("in-game");
+
+  const lobby = document.getElementById("lobby");
+  const lobbyCard = lobby ? lobby.querySelector(".lobby-card") : null;
+  const host = document.getElementById("lobbyCardHost");
+  if (lobbyCard && host && !host.contains(lobbyCard)) {
+    host.appendChild(lobbyCard);
+  }
+}
+
+function exitInGameLayout() {
+  document.body.classList.remove("in-game");
+
+  const lobby = document.getElementById("lobby");
+  const lobbyCard = document.querySelector("#lobbyCardHost .lobby-card");
+  const host = document.getElementById("lobbyCardHost");
+  if (lobbyCard && lobby && host) {
+    lobby.appendChild(lobbyCard);
+  }
+  if (host) host.style.display = "none"; // เผื่อ inline ถูกตั้งไว้
+}
+
+function isInGame(roomData) {
+  // เกณฑ์ที่ “ชัวร์” ว่าเริ่มเล่นแล้ว (คุณปรับได้ตามโครงสร้าง roomData ของคุณ)
+  const round = Number(roomData?.currentRound || 0);
+  const phase = roomData?.phase;
+  return round > 0 || phase === PHASE.ROUND_READY || phase === PHASE.QUESTION_COUNTDOWN || phase === PHASE.ANSWERING || phase === PHASE.REVEALING || phase === PHASE.ROUND_RESULT || phase === PHASE.GAME_OVER;
 }
 
 /* =========================
@@ -833,6 +871,9 @@ startGameBtn?.addEventListener("click", async () => {
     phase: PHASE.IDLE,
     gameStartedAt: Date.now(),
   });
+
+  // ✅ INSERT ตรงนี้ (ให้ Host เปลี่ยน layout ทันที)
+  enterInGameLayout();
 
   document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
