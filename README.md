@@ -1,1 +1,1 @@
-# snake-quiz-game
+# Quiz Runner
