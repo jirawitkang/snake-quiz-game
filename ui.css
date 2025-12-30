@@ -716,6 +716,19 @@ body.in-game #startGameBtn{
   overflow: hidden;
 }
 
+#playerList td.rolls-col,
+#endGameSummary td.rolls-col{
+  padding-top: 0;
+  padding-bottom: 0;
+
+  display: flex;
+  align-items: center;      /* กลางแนวตั้ง */
+  justify-content: center;  /* กลางแนวนอน */
+
+  line-height: 1;           /* ลดช่องว่างบน/ล่างจากบรรทัด */
+}
+
+
 /* Rounded corners */
 #playerList thead tr th:first-child,
 #endGameSummary thead tr th:first-child{ border-top-left-radius: var(--radius-sm); }
