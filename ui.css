@@ -677,6 +677,42 @@ body.in-game #startGameBtn{
   white-space: nowrap;
 }
 
+/* ล็อกความสูงแถวให้เตี้ยลง (ทั้ง header + body) */
+#playerList thead th, #endGameSummary thead th,
+#playerList tbody td, #endGameSummary tbody td{
+  padding: 0 6px !important;
+  height: 28px !important;       /* ✅ ลดจากเดิม แต่ยังรองรับ 24px ไม่ค่อยโดนตัด */
+  line-height: 28px !important;  /* ✅ กัน line-height ไปดันแถว */
+  vertical-align: middle;
+}
+
+/* คุม glyph ให้กินพื้นที่จริงน้อยที่สุด */
+#playerList td.rolls-col,
+#endGameSummary td.rolls-col{
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#playerList td.rolls-col .rolls-glyph,
+#endGameSummary td.rolls-col .rolls-glyph{
+  display: inline-block;
+  font-size: 24px;     /* ✅ คง 24px ตามที่ต้องการ */
+  line-height: 1;      /* ✅ ลดช่องว่างบน/ล่างจาก line box */
+  letter-spacing: 1px;
+  transform: translateY(1px); /* ปรับจูนให้กึ่งกลาง (ลอง 0..2px) */
+  white-space: nowrap;
+}
+
+#playerList tbody td, #endGameSummary tbody td{
+  height: 24px !important;
+  line-height: 24px !important;
+}
+
+#playerList td.rolls-col,
+#endGameSummary td.rolls-col{
+  overflow: hidden;
+}
+
 /* Rounded corners */
 #playerList thead tr th:first-child,
 #endGameSummary thead tr th:first-child{ border-top-left-radius: var(--radius-sm); }
