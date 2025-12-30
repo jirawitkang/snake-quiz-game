@@ -1213,15 +1213,16 @@ window.__SQ_rollDiceWithOverlay = rollDiceWithOverlay;
 joinRoomBtn?.addEventListener("click", async () => {
   const roomCode = (roomCodeInput?.value || "").trim().toUpperCase();
   const playerName = normalizeName(playerNameInput?.value);
+
   if (!roomCode || !playerName) {
     alert("กรุณากรอกทั้ง Room Code และชื่อนักเรียน");
     return;
   }
-  if (playerNameInput) playerNameInput.value = playerName; // optional
-  const playerNameKey = playerName.toLowerCase();
 
-  const playerName = playerNameRaw;
-  const playerNameKey = playerNameRaw.toLowerCase();
+  // sync ให้ช่อง input เห็นชื่อที่ถูกตัดแล้ว (optional แต่แนะนำ)
+  if (playerNameInput) playerNameInput.value = playerName;
+
+  const playerNameKey = playerName.toLowerCase();
 
   const roomRef = ref(db, `rooms/${roomCode}`);
   const snap = await get(roomRef);
@@ -1233,20 +1234,23 @@ joinRoomBtn?.addEventListener("click", async () => {
 
   const roomData = snap.val();
 
+  // กัน join กลางเกม
   if (roomData.status !== STATUS.LOBBY || (roomData.currentRound || 0) > 0) {
     alert("ห้องนี้เริ่มเกมแล้ว ไม่สามารถ Join เพิ่มได้");
     return;
   }
 
-  const hostNameKey = String(roomData.hostName || "").trim().toLowerCase();
+  // ตรวจชื่อซ้ำกับ host
+  const hostNameKey = normalizeName(roomData.hostName).toLowerCase();
   if (hostNameKey && hostNameKey === playerNameKey) {
     alert("ชื่อนี้ซ้ำกับชื่อ Host กรุณาใช้ชื่ออื่น");
     return;
   }
 
+  // ตรวจชื่อซ้ำกับผู้เล่น
   const players = roomData.players || {};
   for (const [, p] of Object.entries(players)) {
-    const existingName = String(p.name || "").trim().toLowerCase();
+    const existingName = normalizeName(p.name).toLowerCase();
     if (existingName === playerNameKey) {
       alert("มีผู้เล่นใช้ชื่อนี้ในห้องแล้ว กรุณาใช้ชื่ออื่น");
       return;
