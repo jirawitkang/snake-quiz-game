@@ -1904,7 +1904,7 @@ function renderPlayerList(roomData, playersObj) {
         <td>${p.position}</td>
         <td>${p.hasRolled ? "🎲" : "-"}</td>
         <td>${p.answered ? "✔️" : "-"}</td>
-        <td>${escapeHtml(rollsText)}</td>
+        <td class="rolls-col">${escapeHtml(rollsText)}</td>
         <td>${ansText}</td>
         <td>${p.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
       </tr>
