@@ -1845,35 +1845,34 @@ function renderPlayerList(roomData, playersObj) {
   // 1) เติมจาก history (เฉพาะรอบที่มีจริง)
   for (const rk of roundKeys) {
     const rn = parseInt(rk.split("_")[1] || "0", 10);
-    const idx = rn - 1;
+
+    if (!perPlayer[pid]) continue;
+    const s = perPlayer[pid];
     
-    // จำรอบแรกที่เข้าเส้นชัยจาก history (ถ้ายังไม่มี)
+    // เก็บผลทอยจาก history (เฉพาะรอบที่ยังไม่หลังเข้าเส้นชัย)
     const finalPos = rec.finalPosition ?? null;
     if (s.finishRound == null && Number.isFinite(finalPos) && finalPos >= BOARD_SIZE) {
-      s.finishRound = rn;
+      s.finishRound = rn; // จำรอบแรกที่เข้าเส้นชัย
     }
     
-    // ✅ lock: รอบหลังเข้าเส้นชัย ห้ามเติมจาก history
+    // ✅ lock: รอบหลังเข้าเส้นชัย ห้ามเอา history มาทับ
     if (s.finishRound != null && rn > s.finishRound) {
       continue;
     }
     
-    // เติมผลทอยจาก history เฉพาะรอบที่ยังไม่เกิน finishRound
-    if (rec.diceRoll != null && s.rollsByRound[idx] == null) {
-      s.rollsByRound[idx] = Number(rec.diceRoll);
-    }
-
-    // answer result (กันกรณี neutral finish by dice)
-    const basePos = rec.basePosition ?? null;
+    if (rec.diceRoll != null) s.rolls.push(Number(rec.diceRoll));
+    
+    const basePos = rec.basePosition ?? finalPos;
     const neutralFinishByDice =
       rec.correct == null &&
       rec.answered === false &&
-      Number.isFinite(basePos) && Number.isFinite(finalPos) &&
-      basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
-
-    if (!neutralFinishByDice && s.ansByRound[idx] == null) {
-      s.ansByRound[idx] = (rec.correct === true) ? "✅" : "❌";
-    }
+      basePos >= BOARD_SIZE &&
+      (finalPos ?? 0) >= BOARD_SIZE;
+    
+    if (neutralFinishByDice) continue;
+    
+    if (rec.correct === true) s.answerSymbols.push("✅");
+    else s.answerSymbols.push("❌");
   }
 
   // 2) เติม "รอบปัจจุบัน" แบบ realtime (ไม่รอ history)
