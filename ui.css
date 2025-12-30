@@ -716,18 +716,28 @@ body.in-game #startGameBtn{
   overflow: hidden;
 }
 
+/* td ยังเป็น table-cell ตามปกติ => เส้นตารางจะตรง */
 #playerList td.rolls-col,
 #endGameSummary td.rolls-col{
-  padding-top: 0;
-  padding-bottom: 0;
-
-  display: flex;
-  align-items: center;      /* กลางแนวตั้ง */
-  justify-content: center;  /* กลางแนวนอน */
-
-  line-height: 1;           /* ลดช่องว่างบน/ล่างจากบรรทัด */
+  padding: 0 6px;           /* คุมช่องว่างบนล่าง */
+  vertical-align: middle;   /* ช่วยจัดกึ่งกลางแนวตั้ง */
 }
 
+/* จัดกลางด้วย inline-flex ที่ span แทน */
+#playerList td.rolls-col .rolls-text,
+#endGameSummary td.rolls-col .rolls-text{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 24px;
+  line-height: 1;           /* ลดช่องว่างบน/ล่าง */
+  letter-spacing: 1px;
+  white-space: nowrap;
+
+  /* ถ้ายังรู้สึกลอยนิด ๆ ให้จูน 1px */
+  transform: translateY(1px); /* ลอง 0px / 1px / -1px */
+}
 
 /* Rounded corners */
 #playerList thead tr th:first-child,
