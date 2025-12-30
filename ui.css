@@ -836,13 +836,18 @@ body.in-game #startGameBtn{
 
 /* Highlight my track (player only) */
 .player-row.is-me .start-cell{
-  background: var(--p-800) !important;   /* พื้นหลัง */
+  background: var(--p-800) !important;
   color: #fff !important;
 
-  /* ✅ เปลี่ยนสี edge */
-  border-right: 3px solid var(--p-100) !important;
+  /* ✅ edge เป็นสีขาว */
+  border-right: 3px solid #fff !important;
 
   justify-content: center !important;
+}
+
+/* เผื่อข้างในเป็น span หรือ element อื่น */
+.player-row.is-me .start-cell *{
+  color: #fff !important;
 }
 
 /* เผื่อมี text element ข้างใน */
