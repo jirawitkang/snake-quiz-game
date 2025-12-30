@@ -2236,7 +2236,7 @@ function renderBoard(roomData, players) {
 
   const startLabelCell = document.createElement("div");
   startLabelCell.className = "cell-card start-cell";
-  startLabelCell.innerHTML = `<span class="cell-label">Start</span>`;
+  startLabelCell.innerHTML = `<span class="cell-label">START</span>`;
   labelTrack.appendChild(startLabelCell);
 
   for (let i = 1; i <= BOARD_SIZE; i++) {
@@ -2248,7 +2248,7 @@ function renderBoard(roomData, players) {
 
   const finishLabelCell = document.createElement("div");
   finishLabelCell.className = "cell-card finish-cell";
-  finishLabelCell.innerHTML = `<span class="cell-label">Finish</span>`;
+  finishLabelCell.innerHTML = `<span class="cell-label">FINISH</span>`;
   labelTrack.appendChild(finishLabelCell);
 
   labelRow.appendChild(labelTrack);
