@@ -882,3 +882,12 @@ body.in-game #startGameBtn{
   max-height: 52vh;         /* ให้ card scroll ได้ถ้าผู้เล่นเยอะ */
   overflow: auto;
 }
+
+/* Header action buttons: keep compact */
+.header-meta button.pill{
+  height: 30px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
