@@ -528,7 +528,7 @@ body.in-game #startGameBtn{
   overflow: hidden;
 
   /* keep readable on mobile: allow horizontal scroll */
-  min-width: 640px;
+  min-width: max-content;
 }
 @media (max-width: 520px){
   #playerList table,
@@ -540,7 +540,7 @@ body.in-game #startGameBtn{
 #playerList th, #playerList td,
 #endGameSummary th, #endGameSummary td{
   border: 1px solid var(--line);
-  padding: 8px 8px;
+  padding: 6px 6px;
   text-align: center;
 }
 #playerList th, #endGameSummary th{
@@ -549,25 +549,15 @@ body.in-game #startGameBtn{
   font-weight: 900;
 }
 
-/* =========================
-   PlayerList: fix column widths
-   (assumes table head order is exactly as renderPlayerList)
-   # | ผู้เล่น | ตำแหน่ง | ทอยแล้ว | ตอบแล้ว | สถานะ | ทอย(รวม) | ผลคำถาม
-   ========================= */
-/* ใช้ fixed layout ทั้ง playerList และ endGameSummary */
+/* ===== Base fixed layout for both tables ===== */
 #playerList table,
 #endGameSummary table{
   table-layout: fixed;
 }
 
-/* Column widths — ใช้ร่วมกันทั้งสองตาราง */
-#playerList th:nth-child(1), #playerList td:nth-child(1),
-#endGameSummary th:nth-child(1), #endGameSummary td:nth-child(1){
-  width: 4ch;
-}
-
-#playerList th:nth-child(2), #playerList td:nth-child(2),
-#endGameSummary th:nth-child(2), #endGameSummary td:nth-child(2){
+/* name column shared */
+#playerList th.name-col, #playerList td.name-col,
+#endGameSummary th.name-col, #endGameSummary td.name-col{
   width: var(--name-col-ch);
   max-width: var(--name-col-ch);
   white-space: nowrap;
@@ -575,34 +565,91 @@ body.in-game #startGameBtn{
   text-overflow: ellipsis;
 }
 
-#playerList th:nth-child(3), #playerList td:nth-child(3),
-#endGameSummary th:nth-child(3), #endGameSummary td:nth-child(3){
-  width: 6ch;
-}
+/* =========================
+   PlayerList: 8 columns
+   # | ผู้เล่น | ตำแหน่ง | ทอยแล้ว | ตอบแล้ว | สถานะ | ทอย(รวม) | ผลคำถาม
+   ========================= */
+#playerList th:nth-child(1),
+#playerList td:nth-child(1){ width: 4ch; }
 
-#playerList th:nth-child(4), #playerList td:nth-child(4),
-#endGameSummary th:nth-child(4), #endGameSummary td:nth-child(4){
-  width: 7ch;
-}
+#playerList th:nth-child(3),
+#playerList td:nth-child(3){ width: 6ch; }
 
-#playerList th:nth-child(5), #playerList td:nth-child(5),
-#endGameSummary th:nth-child(5), #endGameSummary td:nth-child(5){
-  width: 7ch;
-}
+#playerList th:nth-child(4),
+#playerList td:nth-child(4){ width: 7ch; }
 
-#playerList th:nth-child(6), #playerList td:nth-child(6),
-#endGameSummary th:nth-child(6), #endGameSummary td:nth-child(6){
+#playerList th:nth-child(5),
+#playerList td:nth-child(5){ width: 7ch; }
+
+#playerList th:nth-child(6),
+#playerList td:nth-child(6){
   width: 12ch;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-#playerList th:nth-child(7), #playerList td:nth-child(7),
-#playerList th:nth-child(8), #playerList td:nth-child(8),
-#endGameSummary th:nth-child(7), #endGameSummary td:nth-child(7),
-#endGameSummary th:nth-child(8), #endGameSummary td:nth-child(8){
+#playerList th:nth-child(7),
+#playerList td:nth-child(7),
+#playerList th:nth-child(8),
+#playerList td:nth-child(8){
   width: 16ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================
+   EndGameSummary: 12 columns
+   อันดับ | ผู้เล่น | ตำแหน่งสุดท้าย | ถึงเส้นชัย? | รอบที่ถึง | วิธีถึง
+   | ถูก | ผิด | ไม่ทัน | % ถูก | ทอยลูกเต๋า | ผลคำถาม
+   ========================= */
+
+/* 1) อันดับ */
+#endGameSummary th:nth-child(1),
+#endGameSummary td:nth-child(1){ width: 5ch; }
+
+/* 3) ตำแหน่งสุดท้าย */
+#endGameSummary th:nth-child(3),
+#endGameSummary td:nth-child(3){ width: 10ch; }
+
+/* 4) ถึงเส้นชัย? */
+#endGameSummary th:nth-child(4),
+#endGameSummary td:nth-child(4){ width: 10ch; }
+
+/* 5) รอบที่ถึง */
+#endGameSummary th:nth-child(5),
+#endGameSummary td:nth-child(5){ width: 8ch; }
+
+/* 6) วิธีถึง */
+#endGameSummary th:nth-child(6),
+#endGameSummary td:nth-child(6){
+  width: 10ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 7-9) ถูก/ผิด/ไม่ทัน */
+#endGameSummary th:nth-child(7),
+#endGameSummary td:nth-child(7),
+#endGameSummary th:nth-child(8),
+#endGameSummary td:nth-child(8),
+#endGameSummary th:nth-child(9),
+#endGameSummary td:nth-child(9){
+  width: 6ch;
+}
+
+/* 10) % ถูก */
+#endGameSummary th:nth-child(10),
+#endGameSummary td:nth-child(10){ width: 7ch; }
+
+/* 11) ทอยลูกเต๋า และ 12) ผลคำถาม ให้กว้างเท่ากัน */
+#endGameSummary th:nth-child(11),
+#endGameSummary td:nth-child(11),
+#endGameSummary th:nth-child(12),
+#endGameSummary td:nth-child(12){
+  width: 18ch;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
