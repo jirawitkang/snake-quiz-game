@@ -677,8 +677,8 @@ body.in-game #startGameBtn{
   white-space: nowrap;
 }
 
-#playerList thead th, #endGameSummary thead th{ font-size: 20px; }
-#playerList tbody td, #endGameSummary tbody td{ font-size: 20px; }
+#playerList thead th, #endGameSummary thead th{ font-size: 16px; }
+#playerList tbody td, #endGameSummary tbody td{ font-size: 16px; }
 
 /* ล็อกความสูงแถวให้เตี้ยลง (ทั้ง header + body) */
 #playerList thead th, #endGameSummary thead th,
