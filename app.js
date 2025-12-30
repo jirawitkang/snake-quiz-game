@@ -1407,7 +1407,7 @@ async function finalizeRollTransaction(roll) {
 
     const r = room.currentRound || 0;
     room.history = room.history || {};
-    const roundKey = `round_${r}`;renderPlayerL
+    const roundKey = `round_${r}`;
     room.history[roundKey] = room.history[roundKey] || {};
     room.history[roundKey].diceMoves = room.history[roundKey].diceMoves || {};
     room.history[roundKey].diceMoves[currentPlayerId] = {
