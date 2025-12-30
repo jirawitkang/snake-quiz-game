@@ -751,7 +751,7 @@ body.in-game #startGameBtn{
 #playerList tbody td.rolls-col .rolls-text,
 #endGameSummary tbody td.rolls-col .rolls-text{
   display: inline-block;
-  transform: translateY(-8px); /* ลอง -4 / -8 ได้แล้ว */
+  transform: translateY(-4px); /* ลอง -4 / -8 ได้แล้ว */
   will-change: transform;
 }
 
