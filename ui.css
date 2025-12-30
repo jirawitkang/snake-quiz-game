@@ -35,7 +35,7 @@
   /* Board sizing (single source of truth) */
   --track-gap: 4px;
   --cell-h: 20px;
-  --start-w: 180px;
+  --start-w: 200px;
   --finish-w: 88px;
   /* Player List*/
   --name-col-ch: 16ch;
@@ -836,6 +836,25 @@ body.in-game #startGameBtn{
   font-size: 12px;
   color: var(--p-800);
   font-weight: 900;
+}
+
+.board-label-row{
+  background: var(--p-100);
+}
+
+.board-label-row .start-cell,
+.player-row .start-cell{
+  display: flex;
+  align-items: center;     /* กลางแนวตั้ง */
+  justify-content: center; /* กลางแนวนอน */
+  text-align: center;
+}
+
+/* เผื่อมี <span class="cell-label">Start</span> ให้กลางจริง ๆ */
+.board-label-row .start-cell .cell-label{
+  display: inline-block;
+  width: 100%;
+  text-align: center;
 }
 
 /* Token (droplet) */
