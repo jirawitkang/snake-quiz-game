@@ -734,9 +734,6 @@ body.in-game #startGameBtn{
   line-height: 1;           /* ลดช่องว่างบน/ล่าง */
   letter-spacing: 1px;
   white-space: nowrap;
-
-  /* ถ้ายังรู้สึกลอยนิด ๆ ให้จูน 1px */
-  transform: translateY(1px); /* ลอง 0px / 1px / -1px */
 }
 
 /* Rounded corners */
