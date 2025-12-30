@@ -1844,9 +1844,9 @@ function renderPlayerList(roomData, playersObj) {
           <th>ตำแหน่ง</th>
           <th>ทอยแล้ว</th>
           <th>ตอบแล้ว</th>
-          <th>สถานะ</th>
-          <th>ทอย (รวม)</th>
-          <th>ผลคำถาม</th>
+          <th>ผลทอย</th>
+          <th>ผลคำตอบ</th>
+          <th>สถานะผู้เล่น</th>
         </tr>
       </thead>
       <tbody>
@@ -1862,10 +1862,10 @@ function renderPlayerList(roomData, playersObj) {
         <td class="name-col">${escapeHtml(normalizeName(p.name))}</td>
         <td>${p.position}</td>
         <td>${p.hasRolled ? "🎲" : "-"}</td>
-        <td>${p.answered ? "✍️" : "-"}</td>
-        <td>${p.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
+        <td>${p.answered ? "✔️" : "-"}</td>
         <td>${rollsText}</td>
         <td>${ansText}</td>
+        <td>${p.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
       </tr>
     `;
   });
