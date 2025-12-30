@@ -417,6 +417,11 @@ function updateHeaderActionsUI(roomData = null) {
   }
 }
 
+function diceToGlyph(n) {
+  const map = ["", "⚀","⚁","⚂","⚃","⚄","⚅"];
+  return map[n] || "";
+}
+/*
 const DICE_UNICODE = ["", "⚀","⚁","⚂","⚃","⚄","⚅"];
 
 function toDiceGlyph(n){
@@ -429,6 +434,7 @@ function rollTextToGlyphs(rolls){
   if (!Array.isArray(rolls) || rolls.length === 0) return "-";
   return rolls.map(toDiceGlyph).join("");
 }
+*/
 
 /* =========================
    7) Entry Navigation (SPA)
@@ -1803,7 +1809,20 @@ function renderPlayerList(roomData, playersObj) {
   }
 
   const history = roomData.history || {};
+  const currentRound = roomData.currentRound || 0;
 
+  // จำนวนรอบที่มี history แล้ว (รอบที่ "ปิดจบ" แล้ว)
+  const roundKeys = Object.keys(history)
+    .filter((k) => k.startsWith("round_"))
+    .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
+
+  const historyRounds = roundKeys.length;
+
+  // ระหว่างเล่น: ให้แสดง timeline เท่ากับ currentRound (เพื่อให้รอบปัจจุบันโผล่ทันที)
+  // ก่อนเริ่มเกม (currentRound=0) ก็ยังแสดงตารางเดิมได้ แต่ timeline จะว่าง
+  const roundsToShow = Math.max(0, currentRound);
+
+  // เตรียมข้อมูลต่อผู้เล่น (timeline ต่อรอบ)
   const perPlayer = {};
   for (const [pid, p] of entries) {
     perPlayer[pid] = {
@@ -1813,52 +1832,105 @@ function renderPlayerList(roomData, playersObj) {
       hasRolled: !!p.hasRolled,
       answered: !!p.answered,
       finished: !!p.finished || clampPos(p.position) >= BOARD_SIZE,
-      finishRound: null, // ✅ เพิ่ม
-      rolls: [],
-      answerSymbols: [],
+
+      // ใช้ของใน DB ถ้ามี (ดีที่สุด)
+      finishRound: Number.isFinite(p.finishedRound) ? p.finishedRound : null,
+
+      // timeline ต่อรอบ (1..roundsToShow)
+      rollsByRound: Array(roundsToShow).fill(null),   // number | "☐" | null
+      ansByRound: Array(roundsToShow).fill(null),     // "✅"/"❌"/"➖" | null
     };
-  } // ✅ สำคัญมาก: ปิด for-loop ให้ครบ
+  }
 
-  const roundKeys = Object.keys(history)
-    .filter((k) => k.startsWith("round_"))
-    .sort((a, b) => parseInt(a.split("_")[1] || "0", 10) - parseInt(b.split("_")[1] || "0", 10));
-
-  const currentRound = roomData.currentRound || 0;
-  const historyRounds = roundKeys.length;            // จำนวนรอบที่มี history แล้ว (รอบที่ปิดจบ)
-  const isRoundInProgress = currentRound > 0 && historyRounds === currentRound - 1;
-
+  // 1) เติมจาก history (เฉพาะรอบที่มีจริง)
   for (const rk of roundKeys) {
+    const rn = parseInt(rk.split("_")[1] || "0", 10); // 1-based round number
+    const idx = rn - 1;
+    if (idx < 0 || idx >= roundsToShow) continue;
+
     const roundData = history[rk] || {};
     const answers = roundData.answers || {};
-    const rn = parseInt(rk.split("_")[1] || "0", 10);
 
     for (const [pid, rec] of Object.entries(answers)) {
-      if (!perPlayer[pid]) continue;
+      const s = perPlayer[pid];
+      if (!s) continue;
 
-      // เก็บผลทอย
-      if (rec.diceRoll != null) perPlayer[pid].rolls.push(rec.diceRoll);
-
-      const finalPos = rec.finalPosition ?? perPlayer[pid].position;
-
-      // ✅ จำรอบแรกที่เข้าเส้นชัย (ถ้ามี)
-      if (Number.isFinite(finalPos) && finalPos >= BOARD_SIZE && perPlayer[pid].finishRound == null) {
-        perPlayer[pid].finishRound = rn;
+      // จำรอบแรกที่เข้าเส้นชัยจาก history ถ้ายังไม่มี
+      const finalPos = rec.finalPosition ?? null;
+      if (s.finishRound == null && Number.isFinite(finalPos) && finalPos >= BOARD_SIZE) {
+        s.finishRound = rn;
       }
 
-      // กรองเคส “ทอยถึงเส้นชัยแบบ neutral” (ไม่ต้องนับเป็นถูก/ผิด)
-      const basePos = rec.basePosition ?? finalPos;
+      // dice roll (ถ้า history เก็บ)
+      if (rec.diceRoll != null && s.rollsByRound[idx] == null) {
+        s.rollsByRound[idx] = rec.diceRoll;
+      }
+
+      // answer result (กันกรณี neutral finish by dice)
+      const basePos = rec.basePosition ?? null;
       const neutralFinishByDice =
         rec.correct == null &&
         rec.answered === false &&
-        basePos >= BOARD_SIZE &&
-        finalPos >= BOARD_SIZE;
+        Number.isFinite(basePos) && Number.isFinite(finalPos) &&
+        basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
 
-      if (neutralFinishByDice) continue;
-
-      // เก็บผลคำตอบ
-      if (rec.correct === true) perPlayer[pid].answerSymbols.push("✅");
-      else perPlayer[pid].answerSymbols.push("❌");
+      if (!neutralFinishByDice && s.ansByRound[idx] == null) {
+        s.ansByRound[idx] = (rec.correct === true) ? "✅" : "❌";
+      }
     }
+  }
+
+  // 2) เติม "รอบปัจจุบัน" แบบ realtime (ไม่รอ history)
+  // เงื่อนไข: currentRound = historyRounds + 1 แปลว่าอยู่ในรอบใหม่ที่ยังไม่ถูกปิดจบ
+  const isRoundInProgress = (currentRound > 0 && currentRound === historyRounds + 1);
+  if (isRoundInProgress && roundsToShow > 0) {
+    const curIdx = currentRound - 1;
+
+    for (const [pid, p] of entries) {
+      const s = perPlayer[pid];
+      if (!s) continue;
+
+      // 2.1 ถ้าเข้าเส้นชัยแล้ว -> รอบถัด ๆ ไปให้ ☐ และ ➖ ทันที (รวมรอบปัจจุบันด้วยถ้าเกิน finishRound)
+      if (s.finishRound != null && currentRound > s.finishRound) {
+        s.rollsByRound[curIdx] = "☐";
+        s.ansByRound[curIdx] = "➖";
+        continue;
+      }
+
+      // 2.2 ถ้ายังไม่เข้าเส้นชัย -> ทอยเสร็จให้แสดงผลทันที
+      if (!s.finished && p.hasRolled && Number.isFinite(p.lastRoll) && s.rollsByRound[curIdx] == null) {
+        s.rollsByRound[curIdx] = p.lastRoll;
+      }
+
+      // (ผลคำตอบ realtime ยังไม่ต้องทำตอนนี้ เพราะคุณอยากแสดงหลังเฉลย/หลังตัดสิน)
+    }
+  }
+
+  // 3) เติม placeholder สำหรับ "ทุก r > finishRound" ให้คงอยู่เสมอ (ไม่หายตอนมีคนทอย)
+  for (const s of Object.values(perPlayer)) {
+    if (s.finishRound == null) continue;
+
+    for (let rn = s.finishRound + 1; rn <= roundsToShow; rn++) {
+      const idx = rn - 1;
+      if (idx < 0 || idx >= roundsToShow) continue;
+      if (s.rollsByRound[idx] == null) s.rollsByRound[idx] = "☐";
+      if (s.ansByRound[idx] == null) s.ansByRound[idx] = "➖";
+    }
+  }
+
+  // 4) แปลง timeline เป็น string
+  function rollsToText(arr) {
+    const out = arr.map(v => {
+      if (v === "☐") return "☐";
+      if (Number.isFinite(v)) return diceToGlyph(v);
+      return ""; // ยังไม่มี
+    }).join("");
+    return out || "-";
+  }
+
+  function ansToText(arr) {
+    const out = arr.map(v => (v ? v : "")).join("");
+    return out || "-";
   }
 
   const list = Object.values(perPlayer).sort((a, b) =>
@@ -1882,48 +1954,25 @@ function renderPlayerList(roomData, playersObj) {
       <tbody>
   `;
 
-  list.forEach((p, index) => {
-    const live = players?.[p.id] || {};  // state ล่าสุดใน rooms/.../players
-  
-    // 1) base จาก history (รอบที่ปิดจบแล้ว)
-    let rollsText = rollTextToGlyphs(p.rolls);
-    let ansText = p.answerSymbols.length ? p.answerSymbols.join("") : "";
-  
-    // 2) รอบปัจจุบัน (กำลังเล่นอยู่) แสดงผลทันที
-    if (isRoundInProgress) {
-      // 2.1 ผู้เล่น "เข้าเส้นชัยแล้ว" -> เริ่มรอบใหม่ปุ๊บเติม ☐ และ ➖ ทันที
-      if (p.finishRound != null && currentRound > p.finishRound) {
-        rollsText += "☐";
-        ansText += "➖";
-      }
-      // 2.2 ผู้เล่น "ยังไม่เข้าเส้นชัย" -> ทอยเสร็จให้โชว์ทันที (ไม่รอ host เริ่มคำถาม)
-      else if (!p.finished && live.hasRolled && Number.isFinite(live.lastRoll)) {
-        rollsText += rollTextToGlyphs([live.lastRoll]); // เติม glyph ของรอบนี้ทันที
-      }
-    }
-  
-    if (!rollsText) rollsText = "-";
-    if (!ansText) ansText = "-";
-  
+  list.forEach((s, index) => {
+    const rollsText = rollsToText(s.rollsByRound);
+    const ansText = ansToText(s.ansByRound);
+
     html += `
       <tr>
         <td>${index + 1}</td>
-        <td class="name-col">${escapeHtml(normalizeName(p.name))}</td>
-        <td>${p.position}</td>
-        <td>${p.hasRolled ? "🎲" : "-"}</td>
-        <td>${p.answered ? "✔️" : "-"}</td>
+        <td class="name-col">${escapeHtml(normalizeName(s.name))}</td>
+        <td>${s.position}</td>
+        <td>${s.hasRolled ? "🎲" : "-"}</td>
+        <td>${s.answered ? "✔️" : "-"}</td>
         <td class="rolls-col">${escapeHtml(rollsText)}</td>
         <td>${ansText}</td>
-        <td>${p.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
+        <td>${s.finished ? "🏁 เข้าเส้นชัย" : "-"}</td>
       </tr>
     `;
   });
 
-  html += `
-      </tbody>
-    </table>
-  `;
-
+  html += `</tbody></table>`;
   playerListEl.innerHTML = html;
 }
 
