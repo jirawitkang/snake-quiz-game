@@ -158,6 +158,17 @@ function getQuestionFromRoom(roomData, index) {
 /* =========================
    4) DOM Cache
 ========================= */
+// ---------------- Admin Password Gate ----------------
+const ADMIN_PIN = "8888";
+const adminTopBtn = document.getElementById("adminTopBtn");
+const adminPwOverlayEl = document.getElementById("adminPwOverlay");
+const adminPwInputEl = document.getElementById("adminPwInput");
+const adminPwErrorEl = document.getElementById("adminPwError");
+const adminPwCancelBtn = document.getElementById("adminPwCancelBtn");
+
+const headerHomeBtn = document.getElementById("headerHomeBtn");
+const headerExitBtn = document.getElementById("headerExitBtn");
+
 const createRoomBtn = document.getElementById("createRoomBtn");
 const hostNameInput = document.getElementById("hostNameInput");
 const hostGameOptionsEl = document.getElementById("hostGameOptions");
@@ -219,14 +230,6 @@ const adminEntryPageEl = document.getElementById("adminEntryPage");
 const playerEntryPageEl = document.getElementById("playerEntryPage");
 const backToLandingBtn1 = document.getElementById("backToLandingBtn1");
 const backToLandingBtn2 = document.getElementById("backToLandingBtn2");
-
-// ---------------- Admin Password Gate ----------------
-const ADMIN_PIN = "8888";
-const adminTopBtn = document.getElementById("adminTopBtn");
-const adminPwOverlayEl = document.getElementById("adminPwOverlay");
-const adminPwInputEl = document.getElementById("adminPwInput");
-const adminPwErrorEl = document.getElementById("adminPwError");
-const adminPwCancelBtn = document.getElementById("adminPwCancelBtn");
 
 /* =========================
    5) Runtime State
@@ -376,6 +379,33 @@ function renderLobbyBadges(roomData) {
   }
 }
 
+function updateHeaderActionsUI(roomData = null) {
+  // mode: landing / entryPages / inRoom / inGame
+  const onLanding = entryLandingEl && entryLandingEl.style.display !== "none";
+  const onAdminEntry = adminEntryPageEl && adminEntryPageEl.style.display !== "none";
+  const onPlayerEntry = playerEntryPageEl && playerEntryPageEl.style.display !== "none";
+
+  const status = roomData?.status || null;
+
+  // 1) Admin: แสดงเฉพาะหน้าแรก (landing) เท่านั้น
+  if (adminTopBtn) adminTopBtn.style.display = onLanding ? "inline-flex" : "none";
+
+  // 2) Home: แสดงตอนอยู่หน้า adminEntry หรือ playerEntry (ช่วงสร้างห้อง/กำลัง join)
+  const showHome = !onLanding && (onAdminEntry || onPlayerEntry);
+  if (headerHomeBtn) headerHomeBtn.style.display = showHome ? "inline-flex" : "none";
+
+  // 3) Exit: แสดงเมื่อเริ่มเกมแล้วเท่านั้น (status inGame / finished)
+  const showExit = !!currentRoomCode && (status === STATUS.IN_GAME || status === STATUS.FINISHED);
+  if (headerExitBtn) {
+    headerExitBtn.style.display = showExit ? "inline-flex" : "none";
+
+    // เปลี่ยนข้อความตาม role
+    if (showExit) {
+      headerExitBtn.textContent = currentRole === "host" ? "ยกเลิกห้อง" : "ออกจากห้อง";
+    }
+  }
+}
+
 /* =========================
    7) Entry Navigation (SPA)
 ========================= */
@@ -396,6 +426,8 @@ function showEntryLanding() {
   if (joinRoomBtn) joinRoomBtn.disabled = false;
 
   entryLandingEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  updateHeaderActionsUI(null);
 }
 
 function showAdminEntryPage() {
@@ -404,6 +436,8 @@ function showAdminEntryPage() {
   if (playerEntryPageEl) playerEntryPageEl.style.display = "none";
 
   adminEntryPageEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  updateHeaderActionsUI(null);
 }
 
 function showPlayerEntryPage() {
@@ -412,6 +446,8 @@ function showPlayerEntryPage() {
   if (playerEntryPageEl) playerEntryPageEl.style.display = "grid";
 
   playerEntryPageEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  updateHeaderActionsUI(null);
 }
 
 /* =========================
@@ -535,7 +571,8 @@ function subscribeRoom(roomCode) {
       const roomData = snapshot.val();
       const players = roomData.players || {};
 
-      // ✅ INSERT ตรงนี้
+      updateHeaderActionsUI(roomData);
+      
       // เงื่อนไข "เริ่มเล่นแล้ว" (ง่ายสุด = status inGame/finished)
       if (roomData.status === STATUS.IN_GAME || roomData.status === STATUS.FINISHED) {
         enterInGameLayout();
@@ -604,6 +641,18 @@ function isInGame(roomData) {
   const phase = roomData?.phase;
   return round > 0 || phase === PHASE.ROUND_READY || phase === PHASE.QUESTION_COUNTDOWN || phase === PHASE.ANSWERING || phase === PHASE.REVEALING || phase === PHASE.ROUND_RESULT || phase === PHASE.GAME_OVER;
 }
+
+headerHomeBtn?.addEventListener("click", () => {
+  // Home ใน requirement นี้คือกลับหน้าแรก "ระหว่างกำลังสร้างห้อง/กำลัง join" (ยังไม่เข้าห้อง)
+  showEntryLanding();
+  updateHeaderActionsUI(null);
+});
+
+headerExitBtn?.addEventListener("click", async () => {
+  // Exit หลังเริ่มเกม: host = cancel room, player = leave room
+  if (currentRole === "host") await cancelRoomFlow();
+  else if (currentRole === "player") await leaveRoomFlow();
+});
 
 /* =========================
    10) Dice Overlay State Machine
@@ -1686,7 +1735,7 @@ revealAnswerBtn?.addEventListener("click", async () => {
 /* =========================
    16) Leave / Cancel Room
 ========================= */
-leaveRoomBtn?.addEventListener("click", async () => {
+async function leaveRoomFlow() {
   if (currentRoomCode && currentPlayerId) {
     try {
       await remove(ref(db, `rooms/${currentRoomCode}/players/${currentPlayerId}`));
@@ -1695,9 +1744,10 @@ leaveRoomBtn?.addEventListener("click", async () => {
     }
   }
   resetToHome("ออกจากห้องเรียบร้อย");
-});
+  updateHeaderActionsUI(null);
+}
 
-cancelRoomBtn?.addEventListener("click", async () => {
+async function cancelRoomFlow() {
   if (currentRole !== "host" || !currentRoomCode) return;
 
   const ok = confirm("ต้องการยกเลิกห้องนี้ใช่ไหม? ผู้เล่นทุกคนจะถูกเตะออก");
@@ -1710,9 +1760,12 @@ cancelRoomBtn?.addEventListener("click", async () => {
     alert("ยกเลิกห้องไม่สำเร็จ (ดู Console)");
     return;
   }
-
   resetToHome("ยกเลิกห้องเรียบร้อย");
-});
+  updateHeaderActionsUI(null);
+}
+
+leaveRoomBtn?.addEventListener("click", leaveRoomFlow);
+cancelRoomBtn?.addEventListener("click", cancelRoomFlow);
 
 /* =========================
    17) Render: Player List
