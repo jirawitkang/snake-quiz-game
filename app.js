@@ -1493,18 +1493,19 @@ startQuestionBtn?.addEventListener("click", async () => {
 });
 
 async function moveCountdownToAnsweringTx() {
-  if (currentRole !== "host" || !currentRoomCode) return;
+  if (!currentRoomCode) return;
 
   const roomRef = ref(db, `rooms/${currentRoomCode}`);
   const now = Date.now();
 
   await runTransaction(roomRef, (room) => {
     if (!room) return room;
-    if (room.phase !== PHASE.QUESTION_COUNTDOWN) return;
+    if (room.phase !== PHASE.QUESTION_COUNTDOWN) return; // ถ้าเลยไปแล้ว ไม่ต้องทำอะไร
 
     room.phase = PHASE.ANSWERING;
     room.answerStartAt = now;
     room.answerDeadlineExpired = false;
+
     return room;
   });
 }
@@ -1921,21 +1922,33 @@ function updateQuestionUI(roomData, players) {
   if (phase === PHASE.ANSWERING && question) {
     if (questionAreaEl) questionAreaEl.style.display = "block";
     if (questionTextEl) questionTextEl.textContent = question.text;
-
+  
     const me = players?.[currentPlayerId] || {};
     const selectedOption = me.answer || null;
-
+  
     const startAt = roomData.answerStartAt;
     const duration = roomData.answerTimeSeconds;
+  
+    // ✅ fallback: phase เป็น answering แต่ยังไม่มีเวลาเริ่ม
+    if (!Number.isFinite(startAt)) {
+      if (countdownDisplayEl) countdownDisplayEl.textContent = "กำลังซิงค์เวลาเริ่ม…";
+      // optional: เผื่อ DB ค้าง countdown จริง ๆ (tx จะไม่ทำอะไรถ้าไม่ใช่ countdown)
+      if (currentRoomCode) moveCountdownToAnsweringTx().catch(() => {});
+      // จะให้ตอบไม่ได้จนกว่า startAt มาจริง
+      renderChoicesForPhase(question, selectedOption, question.correctOption, false, true);
+      clearTimer();
+      return;
+    }
+  
     const now = Date.now();
     const computedExpired =
-      Number.isFinite(startAt) && Number.isFinite(duration)
+      Number.isFinite(duration)
         ? now > (startAt + duration * 1000)
         : false;
-
+  
     const deadlineExpired = roomData.answerDeadlineExpired === true || computedExpired;
     const disableButtons = deadlineExpired || !!me.finished;
-
+  
     renderChoicesForPhase(question, selectedOption, question.correctOption, false, disableButtons);
     ensureTimer(roomData, PHASE.ANSWERING);
     return;
@@ -2018,7 +2031,7 @@ function ensureTimer(roomData, targetPhase) {
 
       if (remaining <= 0) {
         clearTimer();
-        if (currentRole === "host" && currentRoomCode) {
+        if (currentRoomCode) {
           moveCountdownToAnsweringTx().catch((e) => console.error(e));
         }
       }
