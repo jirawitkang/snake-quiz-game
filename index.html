@@ -227,85 +227,72 @@
     <div id="lobby" style="display:none;">
       <div class="lobby-bar mt-14">
         <div class="section-title">LOBBY</div>
-  
+    
         <div id="lobbyBadges" class="lobby-badges" aria-label="สถานะห้อง"></div>
-  
+    
         <div class="lobby-actions">
           <button id="cancelRoomBtn" class="btn-ghost" type="button" style="display:none;">ยกเลิกห้อง</button>
           <button id="leaveRoomBtn" class="btn-ghost" type="button" style="display:none;">ออกจากห้อง</button>
         </div>
       </div>
-  
+    
       <div class="card lobby-card">
         <div class="lobby-card-head">
           <div id="roleInfo" class="muted role-line" aria-live="polite"></div>
         </div>
-  
+    
         <div class="lobby-list-head">
           <div class="lobby-list-title"><strong>รายชื่อผู้เล่นในห้อง:</strong></div>
-  
+    
           <div class="lobby-list-actions">
             <button id="startGameBtn" class="btn-primary" type="button" style="display:none;">
               เริ่มเล่น
             </button>
           </div>
         </div>
-  
-        <ul id="playerList" aria-label="รายชื่อผู้เล่น"></ul>
+    
+        <!-- ✅ เปลี่ยนจาก ul เป็น div -->
+        <div id="playerList" aria-label="รายชื่อผู้เล่น"></div>
       </div>
     </div>
-  
+    
     <!-- GAME BAR -->
     <div id="gameBar" class="lobby-bar mt-14" style="display:none;">
       <div class="section-title">GAME BOARD</div>
-  
+    
       <div class="lobby-badges">
         <div class="lobby-badge" id="roundInfo">รอบที่: -</div>
         <div class="lobby-badge" id="phaseInfo">[สถานะรอบ: -]</div>
       </div>
-  
+    
       <div id="hostGameControls" class="lobby-actions" style="display:none;">
         <button id="startRoundBtn" class="btn-primary" type="button">เริ่มรอบใหม่</button>
         <button id="startQuestionBtn" class="btn-ghost" type="button">เริ่มคำถาม</button>
         <button id="revealAnswerBtn" class="btn-ghost" type="button">เฉลยคำถาม</button>
       </div>
-  
+    
       <div id="playerGameControls" class="lobby-actions" style="display:none;">
         <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
       </div>
     </div>
-  
+    
     <!-- GAME AREA -->
     <div id="gameArea" class="card" style="display:none;">
       <div id="board"></div>
-  
+    
       <div id="endGameArea" style="display:none; margin-top:1rem;">
         <h3>สรุปผลเกม</h3>
         <div id="endGameSummary"></div>
       </div>
     </div>
-  
+    
     <!-- QUESTION AREA -->
     <div id="questionArea" class="card mt-14" style="display:none;">
       <div id="countdownDisplay" aria-live="assertive"></div>
       <div id="questionText"></div>
       <div id="choicesContainer"></div>
     </div>
-      
-        <!-- Host controls -->
-        <div id="hostGameControls" class="lobby-actions" style="display:none;">
-          <button id="startRoundBtn" class="btn-primary" type="button">เริ่มรอบใหม่</button>
-          <button id="startQuestionBtn" class="btn-ghost" type="button">เริ่มคำถาม</button>
-          <button id="revealAnswerBtn" class="btn-ghost" type="button">เฉลยคำถาม</button>
-        </div>
-      
-        <!-- Player controls (ตำแหน่งเดียวกับ host controls) -->
-        <div id="playerGameControls" class="lobby-actions" style="display:none;">
-          <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
-        </div>
-      </div>
-  
-    </main>
+  </main>
 
   <noscript>เกมนี้ต้องเปิดใช้งาน JavaScript</noscript>
   <!-- Admin Password Overlay -->
