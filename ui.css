@@ -841,14 +841,14 @@ body.in-game #startGameBtn{
 .player-row.is-me .start-cell{
   background: var(--p-800) !important;
   color: #fff !important;
-  border-right: 3px solid #fff !important; /* ✅ เปลี่ยน edge เป็นสีขาว */
+  border-right: 3px solid var(--p-550) !important;
 }
 
 /* FINISH cell highlight */
 .player-row.is-me .finish-cell{
   background: var(--p-800) !important;
   color: #fff !important;
-  border-left: 3px solid #fff !important;  /* ✅ เหลือเส้นเดียว */
+  border-left: 3px solid var(--p-550) !important;
   display: flex;
   align-items: center;
   justify-content: center;
