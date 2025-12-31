@@ -153,7 +153,7 @@ button, input, select, textarea { font: inherit; }
   font-size: 32px;
   line-height: 1;
   letter-spacing: .6px;
-  color: #ffffff;
+  color: #FFA240;
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -840,7 +840,7 @@ body.in-game #startGameBtn{
   color: #fff !important;
 
   /* ✅ edge เป็นสีขาว */
-  border-right: 3px solid #ffd41d !important;
+  border-right: 3px solid #FFA240 !important;
 
   justify-content: center !important;
 }
