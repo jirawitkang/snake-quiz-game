@@ -15,6 +15,7 @@
   --p-800:#3a3178;
   --p-700:#463a86;
   --p-600:#4B3C8C;
+  --p-550:#FFA240;
   --p-500:#5a4bb0;
   --p-100:#EDE9F7;
   --p-050:#F6F4FB;
@@ -812,7 +813,7 @@ body.in-game #startGameBtn{
 .finish-cell{
   width: var(--finish-w) !important;
   background: #fff;
-  border-left: 3px solid #43a047 !important;
+  border-left: 3px solid var(--p-800) !important;
 }
 
 /* Cell label (numbers / Start label) */
@@ -840,7 +841,7 @@ body.in-game #startGameBtn{
   color: #fff !important;
 
   /* ✅ edge เป็นสีขาว */
-  border-right: 3px solid #FFA240 !important;
+  border-right: 3px solid var(--p-550) !important;
 
   justify-content: center !important;
 }
@@ -859,6 +860,29 @@ body.in-game #startGameBtn{
 /* ถ้าข้อความเป็นตัวอักษรธรรมดาใน start-cell */
 .player-row.is-me .start-cell{
   justify-content: center !important; /* ให้ชื่ออยู่กลางเหมือนที่คุณต้องการ */
+}
+
+/* Highlight my track: FINISH cell (player only) */
+.player-row.is-me .finish-cell{
+  background: var(--p-800) !important;
+  color: #fff !important;
+
+  /* edge ฝั่ง finish คือซ้าย */
+  border-left: 3px solid var(--p-550) !important;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* เผื่อมี element ข้างใน */
+.player-row.is-me .finish-cell *{
+  color: #fff !important;
+}
+
+/* ถ้าเงากลืนเส้นขอบ ให้คมขึ้น (optional) */
+.player-row.is-me .finish-cell{
+  box-shadow: inset 3px 0 0 #fff, 0 3px 6px rgba(0,0,0,0.18) !important;
 }
 
 /* Token (droplet) */
