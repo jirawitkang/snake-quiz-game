@@ -840,7 +840,7 @@ body.in-game #startGameBtn{
   color: #fff !important;
 
   /* ✅ edge เป็นสีขาว */
-  border-right: 3px solid #fff !important;
+  border-right: 3px solid #ffd41d !important;
 
   justify-content: center !important;
 }
