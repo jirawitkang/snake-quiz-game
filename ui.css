@@ -729,7 +729,7 @@ body.in-game #startGameBtn{
 
 /* =========================
    11) BOARD (GRID ONLY — single source of truth)
-   ========================= */
+========================= */
 
 /* Board container scroll */
 #board{
@@ -751,18 +751,17 @@ body.in-game #startGameBtn{
   width: 100%;
 }
 
-/* Track = grid, with fixed columns (Start + 30 cells + Finish) */
+/* Track = grid (Start + 30 cells + Finish) */
 .board-track{
   display: grid !important;
   grid-template-columns: var(--start-w) repeat(30, var(--cell-h)) var(--finish-w);
   column-gap: var(--track-gap);
   align-items: center;
-
   width: max-content;
   min-width: 100%;
 }
 
-/* Base cell */
+/* Base cell (all cells) */
 .cell-card{
   position: relative;
   overflow: visible;
@@ -774,10 +773,10 @@ body.in-game #startGameBtn{
 /* Common sizing for all cells in track */
 .board-track .cell-card{
   height: var(--cell-h) !important;
+  min-width: 0 !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0 !important;
 }
 
 /* Play cells (1..30) */
@@ -787,25 +786,24 @@ body.in-game #startGameBtn{
   line-height: 1 !important;
   flex: none !important;
 }
-
 .cell-card.play-cell.cell-dice{ background:#64b5f6 !important; }
 .cell-card.play-cell.cell-correct{ background:#66bb6a !important; }
 .cell-card.play-cell.cell-wrong{ background:#ef5350 !important; }
 .cell-card.play-cell.cell-past{ background:#9e9e9e !important; }
 
-/* Start/Finish cells */
+/* Start/Finish cells (default) */
 .start-cell{
   width: var(--start-w) !important;
   background: #fff;
   border-right: 3px solid var(--p-600) !important;
   font-weight: 900;
   color: var(--p-800);
-  padding: 0 10px !important;      /* ปรับได้ตามชอบ */
+  padding: 0 10px !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 
-  /* ✅ ให้ชื่อผู้เล่นอยู่กลาง (ตามที่คุณต้องการล่าสุด) */
+  /* center text per your latest requirement */
   justify-content: center !important;
   text-align: center;
 }
@@ -816,73 +814,50 @@ body.in-game #startGameBtn{
   border-left: 3px solid var(--p-800) !important;
 }
 
-/* Cell label (numbers / Start label) */
+/* Cell label (numbers / Start label row text) */
 .cell-label{
   font-size: 12px;
   color: var(--p-800);
   font-weight: 900;
 }
 
-/* ✅ Label row: ให้ทุก cell-card เป็นสี p-100 */
+/* Label row: all cell-cards = p-100 */
 .board-label-row .cell-card{
   background: var(--p-100) !important;
 }
 
-/* ✅ Start label (คำว่า Start) ให้อยู่กลางจริง ๆ */
+/* Start label centering (if inside span.cell-label) */
 .board-label-row .start-cell .cell-label{
   display: inline-block;
   width: 100%;
   text-align: center;
 }
 
-/* Highlight my track (player only) */
+/* =========================
+   Highlight my track (player only)
+========================= */
+
+/* START cell highlight */
 .player-row.is-me .start-cell{
   background: var(--p-800) !important;
   color: #fff !important;
-
-  /* ✅ edge เป็นสีขาว */
-  border-right: 3px solid var(--p-550) !important;
-
-  justify-content: center !important;
+  border-right: 3px solid #fff !important; /* ✅ เปลี่ยน edge เป็นสีขาว */
 }
 
-/* เผื่อข้างในเป็น span หรือ element อื่น */
-.player-row.is-me .start-cell *{
-  color: #fff !important;
-}
-
-/* เผื่อมี text element ข้างใน */
-.player-row.is-me .start-cell .cell-label,
-.player-row.is-me .start-cell span{
-  color: #fff !important;
-}
-
-/* ถ้าข้อความเป็นตัวอักษรธรรมดาใน start-cell */
-.player-row.is-me .start-cell{
-  justify-content: center !important; /* ให้ชื่ออยู่กลางเหมือนที่คุณต้องการ */
-}
-
-/* Highlight my track: FINISH cell (player only) */
+/* FINISH cell highlight */
 .player-row.is-me .finish-cell{
   background: var(--p-800) !important;
   color: #fff !important;
-
-  /* edge ฝั่ง finish คือซ้าย */
-  border-left: 3px solid var(--p-550) !important;
-
+  border-left: 3px solid #fff !important;  /* ✅ เหลือเส้นเดียว */
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* เผื่อมี element ข้างใน */
+/* Ensure inner elements become white */
+.player-row.is-me .start-cell *,
 .player-row.is-me .finish-cell *{
   color: #fff !important;
-}
-
-/* ถ้าเงากลืนเส้นขอบ ให้คมขึ้น (optional) */
-.player-row.is-me .finish-cell{
-  box-shadow: inset 3px 0 0 #fff, 0 3px 6px rgba(0,0,0,0.18) !important;
 }
 
 /* Token (droplet) */
