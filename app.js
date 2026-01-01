@@ -214,12 +214,18 @@ const rollDiceBtn = document.getElementById("rollDiceBtn");
 const diceOverlayEl = document.getElementById("diceOverlay");
 const dice3dEl = document.getElementById("dice3d");
 const diceHintEl = document.getElementById("diceHint");
+const diceRollHintEl = document.getElementById("diceRollHint");
 const closeDiceOverlayBtn = document.getElementById("closeDiceOverlayBtn");
 
 const questionAreaEl = document.getElementById("questionArea");
+const questionAreaOverlayEl = document.getElementById("questionAreaOverlay");
 const countdownDisplayEl = document.getElementById("countdownDisplay");
 const questionTextEl = document.getElementById("questionText");
 const choicesContainerEl = document.getElementById("choicesContainer");
+
+// Question Countdown Overlay
+const questionCountdownOverlayEl = document.getElementById("questionCountdownOverlay");
+const questionCountdownNumberEl = document.getElementById("questionCountdownNumber");
 
 const endGameAreaEl = document.getElementById("endGameArea");
 const endGameSummaryEl = document.getElementById("endGameSummary");
@@ -252,7 +258,7 @@ let rollPending = false; // ✅ กันกดทอยซ้ำระหว่
 let answerPending = false;
 
 // Dice overlay state
-let diceOverlayState = "hidden"; // hidden | rolling | committing | done
+let diceOverlayState = "hidden"; // hidden | waiting | rolling | committing | done
 
 /* =========================
    6) Utils
@@ -260,6 +266,28 @@ let diceOverlayState = "hidden"; // hidden | rolling | committing | done
 const raf = () => new Promise((r) => requestAnimationFrame(r));
 const rand360 = () => Math.floor(Math.random() * 360);
 const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+
+// ใช้ Web Crypto API สำหรับ random ที่ดีกว่า (สำหรับการทอยลูกเต๋า)
+// ใช้ rejection sampling เพื่อหลีกเลี่ยง bias
+function secureRandomInt(min, max) {
+  const range = max - min + 1;
+  
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    // ใช้ Web Crypto API สำหรับ cryptographically secure random
+    // คำนวณค่าสูงสุดที่ยอมรับได้ (เพื่อหลีกเลี่ยง bias)
+    const maxValid = Math.floor(256 / range) * range - 1;
+    let randomValue;
+    do {
+      const randomBytes = new Uint8Array(1);
+      crypto.getRandomValues(randomBytes);
+      randomValue = randomBytes[0];
+    } while (randomValue > maxValid);
+    return min + (randomValue % range);
+  } else {
+    // fallback to Math.random() if crypto API not available
+    return Math.floor(Math.random() * range) + min;
+  }
+}
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -620,9 +648,15 @@ function subscribeRoom(roomCode) {
 function updateStartGameButton(roomData, players) {
   if (!startGameBtn) return;
 
+  // ซ่อนปุ่มสำหรับ player เสมอ
+  if (currentRole !== "host") {
+    startGameBtn.style.display = "none";
+    startGameBtn.disabled = true;
+    return;
+  }
+
   const totalPlayers = Object.keys(players || {}).length;
   const shouldShow =
-    currentRole === "host" &&
     currentRoomCode &&
     roomData?.status === "lobby" &&
     totalPlayers > 0;
@@ -683,6 +717,8 @@ function setDiceOverlayState(state, rollValue = null, hint = null) {
   if (state === "hidden") {
     diceOverlayEl.style.display = "none";
     if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
+    if (rollDiceBtn) rollDiceBtn.style.display = "none";
+    if (diceRollHintEl) diceRollHintEl.classList.remove("show");
     return;
   }
 
@@ -697,14 +733,31 @@ function setDiceOverlayState(state, rollValue = null, hint = null) {
     }
   }
 
-  if (!closeDiceOverlayBtn) return;
-
-  if (state === "rolling" || state === "committing") {
-    closeDiceOverlayBtn.style.display = "inline-flex";
-    closeDiceOverlayBtn.disabled = true;
+  // จัดการการแสดง/ซ่อน rollDiceBtn, closeDiceOverlayBtn, และ diceRollHint
+  if (state === "waiting") {
+    // แสดง rollDiceBtn และ hint เมื่อรอให้ player ทอย
+    if (rollDiceBtn) {
+      rollDiceBtn.style.display = "block";
+      rollDiceBtn.disabled = false;
+    }
+    if (diceRollHintEl) diceRollHintEl.classList.add("show");
+    if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
+  } else if (state === "rolling" || state === "committing") {
+    // แสดง rollDiceBtn แต่ disable เมื่อกำลังทอย/บันทึก, ซ่อน hint
+    if (rollDiceBtn) {
+      rollDiceBtn.style.display = "block";
+      rollDiceBtn.disabled = true;
+    }
+    if (diceRollHintEl) diceRollHintEl.classList.remove("show");
+    if (closeDiceOverlayBtn) closeDiceOverlayBtn.style.display = "none";
   } else if (state === "done") {
-    closeDiceOverlayBtn.style.display = "inline-flex";
-    closeDiceOverlayBtn.disabled = false;
+    // ซ่อน rollDiceBtn และ hint, แสดง closeDiceOverlayBtn เมื่อทอยเสร็จแล้ว
+    if (rollDiceBtn) rollDiceBtn.style.display = "none";
+    if (diceRollHintEl) diceRollHintEl.classList.remove("show");
+    if (closeDiceOverlayBtn) {
+      closeDiceOverlayBtn.style.display = "inline-flex";
+      closeDiceOverlayBtn.disabled = false;
+    }
   }
 }
 
@@ -1179,7 +1232,7 @@ function logDiceState(stage, finalRoll, endObj) {
 }
 
 const rollDiceWithOverlay = async (durationMs = 5000) => {
-  const finalRoll = Math.floor(Math.random() * 6) + 1;
+  const finalRoll = secureRandomInt(1, 6);
   logDiceState("before-roll", finalRoll, null);
 
   if (!diceOverlayEl || !dice3dEl) return finalRoll;
@@ -1307,6 +1360,9 @@ rollDiceBtn?.addEventListener("click", async () => {
   if (currentRole !== "player" || !currentRoomCode || !currentPlayerId) return;
   if (rollPending) return;
 
+  // Hide hint immediately when dice is clicked
+  if (diceRollHintEl) diceRollHintEl.classList.remove("show");
+
   rollPending = true;
   rollDiceBtn.disabled = true;
 
@@ -1350,6 +1406,7 @@ rollDiceBtn?.addEventListener("click", async () => {
       return;
     }
 
+    // เปลี่ยน state เป็น rolling และลูกเต๋าจะแสดง
     const roll = await rollDiceWithOverlay(5000);
 
     setDiceOverlayState("committing", roll, `ได้แต้ม: ${roll} (กำลังบันทึกผล…)`);
@@ -1596,8 +1653,9 @@ startQuestionBtn?.addEventListener("click", async () => {
     return;
   }
 
-  clearTimer();
-  // (refactor) ให้ timer เป็นตัว advance เพียงทางเดียว
+  // ไม่ต้อง clearTimer() ที่นี่ เพราะ Firebase sync จะเรียก updateQuestionUI → ensureTimer เอง
+  // clearTimer() ที่นี่อาจทำให้ timer ไม่ทำงานถูกต้องสำหรับ host
+  // ให้ Firebase sync เป็นตัวจัดการ timer แทน
 });
 
 async function moveCountdownToAnsweringTx() {
@@ -2015,12 +2073,32 @@ function updateRoleControls(roomData, players) {
     const rolledOrPending = rolled || rollPending;
     const canRoll = roomData.phase === PHASE.ROLLING && !rolledOrPending && !finished;
 
-    if (rollDiceBtn) {
+    // แสดง overlay เมื่อ phase เป็น ROLLING และ player ยังไม่ทอยและยังไม่ finished
+    // และ overlay ยังไม่แสดงอยู่ (state ไม่ใช่ waiting, rolling, committing, done)
+    if (roomData.phase === PHASE.ROLLING && !finished && !rolled && diceOverlayState === "hidden") {
+      setDiceOverlayState("waiting");
+    } else if (roomData.phase !== PHASE.ROLLING) {
+      // ซ่อน overlay ทันทีเมื่อ phase ไม่ใช่ ROLLING (เช่น เมื่อเปลี่ยนเป็น QUESTION_COUNTDOWN/ANSWERING)
+      // เพื่อไม่ให้ลูกเต๋าแสดงซ้อนกับ questionAreaOverlay
+      if (diceOverlayState !== "hidden") {
+        setDiceOverlayState("hidden");
+      }
+    } else if (finished) {
+      // ซ่อน overlay เมื่อ player finished แล้ว
+      if (diceOverlayState !== "hidden") {
+        setDiceOverlayState("hidden");
+      }
+    }
+
+    // ควบคุม rollDiceBtn ใน overlay (เฉพาะเมื่อ state เป็น "waiting")
+    if (rollDiceBtn && diceOverlayState === "waiting") {
       rollDiceBtn.disabled = !canRoll;
-      rollDiceBtn.style.display = "inline-flex";
     }
   } else {
-    if (rollDiceBtn) rollDiceBtn.style.display = "none";
+    // Host: ซ่อน overlay ถ้ายังแสดงอยู่
+    if (diceOverlayState !== "hidden") {
+      setDiceOverlayState("hidden");
+    }
   }
 
   if (currentRole === "host") {
@@ -2054,22 +2132,23 @@ function updateQuestionUI(roomData, players) {
   const question = questionIndex != null ? getQuestionFromRoom(roomData, questionIndex) : null;
 
   if (round === 0) {
-    if (questionAreaEl) questionAreaEl.style.display = "none";
+    if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
     if (countdownDisplayEl) countdownDisplayEl.textContent = "";
     clearTimer();
     return;
   }
 
   if (phase === PHASE.QUESTION_COUNTDOWN) {
-    if (questionAreaEl) questionAreaEl.style.display = "block";
-    if (questionTextEl) questionTextEl.textContent = `เตรียมคำถามรอบที่ ${round} …`;
+    // ไม่แสดง questionArea เมื่อนับถอยหลัง ให้แสดง countdown overlay แทน
+    if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
+    if (questionTextEl) questionTextEl.textContent = "";
     if (choicesContainerEl) choicesContainerEl.innerHTML = "";
     ensureTimer(roomData, PHASE.QUESTION_COUNTDOWN);
     return;
   }
 
   if (phase === PHASE.ANSWERING && question) {
-    if (questionAreaEl) questionAreaEl.style.display = "block";
+    if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "flex";
     if (questionTextEl) questionTextEl.textContent = question.text;
   
     const me = players?.[currentPlayerId] || {};
@@ -2104,9 +2183,11 @@ function updateQuestionUI(roomData, players) {
   }
 
   if (phase === PHASE.RESULT && question) {
-    if (questionAreaEl) questionAreaEl.style.display = "block";
-    if (questionTextEl) questionTextEl.textContent = `เฉลยรอบที่ ${round}: ${question.text}`;
-    if (countdownDisplayEl) countdownDisplayEl.textContent = "";
+    if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "flex";
+    // questionText ไม่เปลี่ยนแปลง เพื่อให้ card ไม่เปลี่ยนขนาด
+    if (questionTextEl) questionTextEl.textContent = question.text;
+    // แสดงข้อความ "เฉลยรอบที่ x:" ใน countdownDisplay
+    if (countdownDisplayEl) countdownDisplayEl.textContent = `เฉลยรอบที่ ${round}:`;
 
     let selectedOption = null;
     if (currentRole === "player") {
@@ -2119,8 +2200,9 @@ function updateQuestionUI(roomData, players) {
     return;
   }
 
-  if (questionAreaEl) questionAreaEl.style.display = "none";
+  if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
   if (countdownDisplayEl) countdownDisplayEl.textContent = "";
+  if (questionCountdownOverlayEl) questionCountdownOverlayEl.style.display = "none";
   clearTimer();
 }
 
@@ -2159,10 +2241,47 @@ function ensureTimer(roomData, targetPhase) {
   if (phase !== targetPhase || round === 0) {
     clearTimer();
     if (countdownDisplayEl) countdownDisplayEl.textContent = "";
+    if (questionCountdownOverlayEl) questionCountdownOverlayEl.style.display = "none";
     return;
   }
-  if (timerPhase === phase && timerRound === round && timerInterval) return;
+  
+  // ตรวจสอบว่า timer ยังทำงานอยู่หรือไม่
+  // สำหรับ QUESTION_COUNTDOWN: ต้องระวังการเรียกซ้ำจาก Firebase sync
+  // ปัญหาคือเมื่อ host กดปุ่ม Firebase sync กลับมาเร็วมาก
+  // ทำให้ ensureTimer ถูกเรียกหลายครั้ง และการตรวจสอบอาจทำให้ return ก่อนที่ timer จะทำงาน
+  // ดังนั้นสำหรับ QUESTION_COUNTDOWN ให้ตรวจสอบว่า timer ยังทำงานอยู่จริงๆ
+  if (timerPhase === phase && timerRound === round && timerInterval) {
+    if (phase === PHASE.QUESTION_COUNTDOWN) {
+      // สำหรับ QUESTION_COUNTDOWN: ตรวจสอบว่า timer ยังทำงานอยู่จริงๆ
+      // โดยดูว่า overlay ยังแสดงอยู่และ element ยังมีอยู่
+      // แต่ถ้า Firebase sync เร็วมาก อาจจะเรียก ensureTimer ก่อนที่ timer จะทำงาน
+      // ดังนั้นให้ตรวจสอบว่า timer ยังทำงานอยู่จริงๆ โดยดูว่า questionCountdownNumberEl ยังมีอยู่
+      // และ overlay ยังแสดงอยู่
+      if (questionCountdownNumberEl && questionCountdownOverlayEl) {
+        // Element ยังมีอยู่ แต่ต้องตรวจสอบว่า timer ยังทำงานอยู่จริงๆ
+        // โดยดูว่า overlay ยังแสดงอยู่ (ใช้ getComputedStyle เพื่อให้แน่ใจ)
+        const overlayDisplay = window.getComputedStyle(questionCountdownOverlayEl).display;
+        if (overlayDisplay !== "none") {
+          // Timer ยังทำงานอยู่ ไม่ต้องสร้างใหม่
+          // แต่ต้องแน่ใจว่า timer ยังทำงานอยู่จริงๆ โดยดูว่า questionCountdownNumberEl.textContent ยังมีค่า
+          // ถ้า textContent เป็น empty string แสดงว่า timer อาจจะจบแล้ว
+          if (questionCountdownNumberEl.textContent && questionCountdownNumberEl.textContent.trim() !== "") {
+            return;
+          }
+        }
+      }
+      // Timer อาจไม่ทำงาน หรือ element ไม่มี หรือ textContent เป็น empty string
+      // ให้สร้างใหม่
+      clearTimer();
+      timerPhase = phase;
+      timerRound = round;
+    } else {
+      // Phase อื่นๆ: Timer ยังทำงานอยู่ ไม่ต้องสร้างใหม่
+      return;
+    }
+  }
 
+  // ถ้า timerPhase/timerRound ไม่ตรง หรือ timerInterval ไม่มี ให้สร้างใหม่
   clearTimer();
   timerPhase = phase;
   timerRound = round;
@@ -2171,20 +2290,48 @@ function ensureTimer(roomData, targetPhase) {
     const start = roomData.questionCountdownStartAt || Date.now();
     const duration = roomData.questionCountdownSeconds || 3;
 
-    timerInterval = setInterval(() => {
+    // แสดง countdown overlay
+    if (questionCountdownOverlayEl) {
+      questionCountdownOverlayEl.style.display = "flex";
+    }
+
+    // ฟังก์ชันอัพเดทตัวเลข
+    const updateCountdown = () => {
       const now = Date.now();
       let remaining = Math.ceil((start + duration * 1000 - now) / 1000);
       if (remaining < 0) remaining = 0;
 
-      if (countdownDisplayEl) countdownDisplayEl.textContent = `เริ่มตอบใน ${remaining} วินาที`;
+      // แสดงตัวเลขนับถอยหลัง (3, 2, 1)
+      if (questionCountdownNumberEl) {
+        if (remaining > 0) {
+          questionCountdownNumberEl.textContent = remaining;
+        } else {
+          questionCountdownNumberEl.textContent = "";
+        }
+      }
 
       if (remaining <= 0) {
+        // ซ่อน countdown overlay เมื่อนับถอยหลังเสร็จ
+        if (questionCountdownOverlayEl) {
+          questionCountdownOverlayEl.style.display = "none";
+        }
         clearTimer();
         if (currentRoomCode) {
           moveCountdownToAnsweringTx().catch((e) => console.error(e));
         }
       }
-    }, 250);
+    };
+
+    // อัพเดททันทีครั้งแรก (สำคัญ: ต้องเรียกก่อน setInterval)
+    updateCountdown();
+
+    // ตั้ง timer เพื่ออัพเดทต่อเนื่อง (ใช้ 50ms เพื่อให้อัพเดทบ่อยขึ้น)
+    timerInterval = setInterval(updateCountdown, 50);
+  } else {
+    // ซ่อน countdown overlay ถ้า phase ไม่ใช่ QUESTION_COUNTDOWN
+    if (questionCountdownOverlayEl) {
+      questionCountdownOverlayEl.style.display = "none";
+    }
   }
 
   if (phase === PHASE.ANSWERING) {
@@ -2579,8 +2726,9 @@ function resetToHome(message) {
   if (lobbyEl) lobbyEl.style.display = "none";
   if (gameAreaEl) gameAreaEl.style.display = "none";
   if (endGameAreaEl) endGameAreaEl.style.display = "none";
-  if (questionAreaEl) questionAreaEl.style.display = "none";
+  if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
   if (countdownDisplayEl) countdownDisplayEl.textContent = "";
+  if (questionCountdownOverlayEl) questionCountdownOverlayEl.style.display = "none";
 
   if (playerListEl) playerListEl.innerHTML = "";
   if (boardEl) boardEl.innerHTML = "";

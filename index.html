@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8" />
   <title>Snake Quiz – Multiplayer</title>
@@ -9,69 +10,77 @@
 </head>
 
 <body>
-  <!-- Dice Overlay (Modal) -->
-  <div id="diceOverlay" class="overlay" style="display:none;">
-    <div class="overlay-card">
-      <div class="overlay-title">กำลังทอยลูกเต๋า…</div>
-  
-      <div class="dice-scene">
-        <!-- ตัวครอบกล้อง: ทำให้เห็น 3 ด้านตลอดเวลา -->
-        <div class="dice-cam">
-          <div id="dice3d" class="dice">
-            <!-- FRONT = 5 -->
-            <div class="face face-1">
-              <span class="pip tl"></span>
-              <span class="pip tr"></span>
-              <span class="pip c"></span>
-              <span class="pip bl"></span>
-              <span class="pip br"></span>
-            </div>
-          
-            <!-- RIGHT = 4 -->
-            <div class="face face-2">
-              <span class="pip tl"></span>
-              <span class="pip tr"></span>
-              <span class="pip bl"></span>
-              <span class="pip br"></span>
-            </div>
-          
-            <!-- TOP = 1 -->
-            <div class="face face-3">
-              <span class="pip c"></span>
-            </div>
-          
-            <!-- BOTTOM = 6 -->
-            <div class="face face-4">
-              <span class="pip tl"></span>
-              <span class="pip ml"></span>
-              <span class="pip bl"></span>
-              <span class="pip tr"></span>
-              <span class="pip mr"></span>
-              <span class="pip br"></span>
-            </div>
-          
-            <!-- LEFT = 3 -->
-            <div class="face face-5">
-              <span class="pip tl"></span>
-              <span class="pip c"></span>
-              <span class="pip br"></span>
-            </div>
-          
-            <!-- BACK = 2 -->
-            <div class="face face-6">
-              <span class="pip tl"></span>
-              <span class="pip br"></span>
-            </div>
+  <!-- Dice (no overlay-card) -->
+  <div id="diceOverlay" style="display:none;">
+    <div class="dice-scene">
+      <!-- ตัวครอบกล้อง: ทำให้เห็น 3 ด้านตลอดเวลา -->
+      <div class="dice-cam">
+        <div id="dice3d" class="dice">
+          <!-- FRONT = 5 -->
+          <div class="face face-1">
+            <span class="pip tl"></span>
+            <span class="pip tr"></span>
+            <span class="pip c"></span>
+            <span class="pip bl"></span>
+            <span class="pip br"></span>
+          </div>
+        
+          <!-- RIGHT = 4 -->
+          <div class="face face-2">
+            <span class="pip tl"></span>
+            <span class="pip tr"></span>
+            <span class="pip bl"></span>
+            <span class="pip br"></span>
+          </div>
+        
+          <!-- TOP = 1 -->
+          <div class="face face-3">
+            <span class="pip c"></span>
+          </div>
+        
+          <!-- BOTTOM = 6 -->
+          <div class="face face-4">
+            <span class="pip tl"></span>
+            <span class="pip ml"></span>
+            <span class="pip bl"></span>
+            <span class="pip tr"></span>
+            <span class="pip mr"></span>
+            <span class="pip br"></span>
+          </div>
+        
+          <!-- LEFT = 3 -->
+          <div class="face face-5">
+            <span class="pip tl"></span>
+            <span class="pip c"></span>
+            <span class="pip br"></span>
+          </div>
+        
+          <!-- BACK = 2 -->
+          <div class="face face-6">
+            <span class="pip tl"></span>
+            <span class="pip br"></span>
           </div>
         </div>
       </div>
-  
-      <div id="diceHint" class="overlay-hint">โปรดรอสักครู่…</div>
-  
-      <button id="closeDiceOverlayBtn" class="btn-primary mt-14" type="button" style="display:none;">
-        กลับไปที่ GAME BOARD
-      </button>
     </div>
+
+    <button id="rollDiceBtn" type="button" style="display:none;"></button>
+
+    <div id="diceRollHint" class="dice-roll-hint">
+      <div class="dice-roll-hint-ring"></div>
+      <div class="dice-roll-hint-dots"></div>
+    </div>
+
+    <div id="diceHint" class="overlay-hint" style="display:none;">โปรดรอสักครู่…</div>
+
+    <button id="closeDiceOverlayBtn" class="btn-primary mt-14" type="button" style="display:none;">
+      X
+    </button>
+  </div>
+
+  <!-- Question Countdown Overlay -->
+  <div id="questionCountdownOverlay" class="overlay" style="display:none;">
+    <div id="questionCountdownNumber" class="question-countdown-number">3</div>
   </div>
   
   <header class="app-header">
@@ -115,7 +124,7 @@
       <!-- Landing: Everyone sees this -->
       <div id="entryLanding" class="card entry-landing">
         <div class="entry-landing-inner">
-          <h2 class="entry-title">Ready to Run??</h2>
+          <h2 class="entry-title">Ready to Run?</h2>
           <p class="muted entry-sub">
             Join a race and test your speed, strategy, and knowledge.
           </p>
@@ -133,13 +142,8 @@
           <h2>Race Organizer</h2>
   
           <label for="hostNameInput">Organizer Name</label>
-          <input
-            id="hostNameInput"
-            placeholder="e.g. Coach P'Fon"
-            maxlength="12"
-            autocomplete="name"
-            spellcheck="false"
-          />
+          <input id="hostNameInput" placeholder="e.g. Coach P'Fon" maxlength="12" autocomplete="name"
+            spellcheck="false" />
   
           <button id="createRoomBtn" class="btn-primary" type="button">
             Set Up the Race
@@ -193,23 +197,12 @@
           <h2>Runner Registration</h2>
   
           <label for="roomCodeInput">Race Code</label>
-          <input
-            id="roomCodeInput"
-            placeholder="Enter Race Code"
-            maxlength="12"
-            autocapitalize="characters"
-            autocomplete="off"
-            spellcheck="false"
-          />
+          <input id="roomCodeInput" placeholder="Enter Race Code" maxlength="12" autocapitalize="characters"
+            autocomplete="off" spellcheck="false" />
   
           <label for="playerNameInput">Runner name</label>
-          <input
-            id="playerNameInput"
-            placeholder="e.g. Runner A"
-            maxlength="12"
-            autocomplete="name"
-            spellcheck="false"
-          />
+          <input id="playerNameInput" placeholder="e.g. Runner A" maxlength="12" autocomplete="name"
+            spellcheck="false" />
   
           <button id="joinRoomBtn" class="btn-primary" type="button">
             Join the Race
@@ -271,7 +264,6 @@
       </div>
     
       <div id="playerGameControls" class="lobby-actions" style="display:none;">
-        <button id="rollDiceBtn" class="btn-primary" type="button">ทอยลูกเต๋า</button>
       </div>
     </div>
     
@@ -289,10 +281,12 @@
     <div id="lobbyCardHost" style="display:none;"></div>
     
     <!-- QUESTION AREA -->
-    <div id="questionArea" class="card mt-14" style="display:none;">
+    <div id="questionAreaOverlay" class="overlay" style="display:none;">
+      <div id="questionArea" class="card">
       <div id="countdownDisplay" aria-live="assertive"></div>
       <div id="questionText"></div>
       <div id="choicesContainer"></div>
+      </div>
     </div>
   </main>
 
@@ -303,15 +297,9 @@
       <div class="overlay-title">Admin Access</div>
       <div class="overlay-hint">กรอกรหัส 4 หลักเพื่อเข้าสู่หน้า Admin</div>
   
-      <input
-        id="adminPwInput"
-        type="password"
-        inputmode="numeric"
-        autocomplete="one-time-code"
-        maxlength="4"
+      <input id="adminPwInput" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="4"
         placeholder="••••"
-        style="margin-top:12px; text-align:center; font-size:22px; letter-spacing:10px; font-weight:900;"
-      />
+        style="margin-top:12px; text-align:center; font-size:22px; letter-spacing:10px; font-weight:900;" />
   
       <div id="adminPwError" class="muted" style="margin-top:10px; color:#c62828; font-weight:900; display:none;">
         รหัสไม่ถูกต้อง
@@ -325,4 +313,5 @@
 
   <script type="module" src="app.js"></script>
 </body>
+
 </html>
