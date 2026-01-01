@@ -698,10 +698,25 @@ body.in-game #startGameBtn{
 #questionAreaOverlay.overlay{
   z-index: 9998;
   pointer-events: none; /* ให้ overlay ไม่บล็อกการคลิก */
+  flex-direction: column; /* เปลี่ยนเป็น column เพื่อให้ปุ่มอยู่ใต้ card */
 }
 
 #questionAreaOverlay.overlay #questionArea{
   pointer-events: auto; /* ให้ card ภายในสามารถคลิกได้ */
+}
+
+#questionAreaOverlay.overlay #closeQuestionAreaBtn{
+  pointer-events: auto; /* ให้ปุ่มสามารถคลิกได้ */
+  margin-top: 14px; /* ห่างจาก card 14px */
+  background: var(--p-550) !important;
+  border-color: var(--p-550) !important;
+  color: #fff;
+}
+
+#questionAreaOverlay.overlay #closeQuestionAreaBtn:hover{
+  background: var(--p-550) !important;
+  border-color: var(--p-550) !important;
+  opacity: 0.9;
 }
 
 #questionArea.card{
@@ -746,6 +761,7 @@ body.in-game #startGameBtn{
   color: var(--text);
   padding: 10px 12px;
   font-weight: 800;
+  text-align: left;
 }
 .choice-btn.selected{
   background: var(--p-600);

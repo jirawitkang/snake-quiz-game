@@ -14,6 +14,15 @@ import {
   runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+import {
+  QUESTION_SETS,
+  getQuestionSetById,
+  getQuestionSetLengthForRoom,
+  getQuestionFromRoom,
+  getQuestionSetIds,
+  getQuestionSetName,
+} from "./questions.js";
+
 /* =========================
    1) Firebase Config + Boot logs
 ========================= */
@@ -62,98 +71,6 @@ const PHASE = Object.freeze({
   RESULT: "result",
   ENDED: "ended",
 });
-
-/* =========================
-   3) Question Sets
-========================= */
-const QUESTION_SETS = {
-  general: [
-    {
-      text: "ทำไมกาแฟถึงขม? (ตอบผิดไม่ดุ แต่อาจงอนนิดนึง)",
-      choices: { A: "เพราะชีวิต", B: "เพราะน้ำตาลหมด", C: "เพราะเมล็ดกาแฟ", D: "เพราะแก้วมันเศร้า" },
-      correctOption: "C",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้า Wi-Fi หลุดบ่อย เราควรทำอะไรก่อน?",
-      choices: { A: "รีสตาร์ทเราเตอร์", B: "โทษชะตา", C: "เดินไปใกล้ ๆ แล้วทำเนียน", D: "อธิษฐานกับเสาสัญญาณ" },
-      correctOption: "A",
-      timeLimit: 30,
-    },
-    {
-      text: "ข้อใดคือ ‘งานด่วน’ ที่แท้จริง?",
-      choices: { A: "งานที่ต้องเสร็จเมื่อวาน", B: "งานที่หัวหน้าบอกว่าไม่รีบ", C: "งานที่ส่งแล้วแต่ยังต้องแก้", D: "งานที่ยังไม่เริ่มแต่ใกล้เดดไลน์" },
-      correctOption: "A",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้าลืมรหัสผ่านบ่อย ควรตั้งรหัสใหม่ว่าอะไร?",
-      choices: { A: "123456", B: "password", C: "ForgetMeNot2025!", D: "ชื่อแมว+วันเกิด+OTP" },
-      correctOption: "C",
-      timeLimit: 30,
-    },
-    {
-      text: "เวลาพูดว่า ‘เดี๋ยวทำ’ โดยเฉลี่ยหมายถึง…",
-      choices: { A: "ภายใน 5 นาที", B: "หลังอาหาร", C: "พรุ่งนี้แหละ", D: "เมื่อโลกสงบ" },
-      correctOption: "C",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้าพบไฟล์ชื่อ final_v7_REALfinal จริง ๆ แล้วไฟล์ไหนคือไฟล์สุดท้าย?",
-      choices: { A: "final", B: "final_v7_REALfinal", C: "final_v7_REALfinal_2", D: "ไฟล์ที่เปิดล่าสุด" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-    {
-      text: "ข้อใดคือ ‘การออกกำลังกาย’ ของสายออฟฟิศ?",
-      choices: { A: "เดินไปเข้าห้องน้ำ", B: "ยืดเส้นยืดสาย", C: "เดินไปหาเครื่องปริ้นท์แล้วเครื่องพัง", D: "ทั้งหมดที่กล่าวมา" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้ากำลังจะชงมาม่า แต่หา ‘ซองพริก’ ไม่เจอ ควรทำยังไง?",
-      choices: { A: "โทรแจ้งตำรวจ", B: "ทำใจแล้วกินแบบคลีน", C: "เขียนรายงานสาเหตุราก (RCA)", D: "เปิดซองอีกอันอย่างสง่างาม" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-    {
-      text: "คำว่า ‘เดี๋ยวส่งให้ครับ/ค่ะ’ ในแชทงาน หมายถึงข้อใดมากที่สุด?",
-      choices: { A: "ส่งทันที", B: "ส่งหลังประชุม", C: "ส่งก่อนเลิกงานถ้านึกได้", D: "ส่งเมื่อคุณทักมาครั้งที่ 3" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้าตั้งนาฬิกาปลุก 10 อัน แต่ยังตื่นสาย สาเหตุคืออะไร?",
-      choices: { A: "นาฬิกาปลุกผิด", B: "หมอนดูดวิญญาณ", C: "มือปิดเองแบบอัตโนมัติ (สกิลลับ)", D: "ทั้ง B และ C" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-  ],
-  setA: [
-    { text: "HTML ย่อมาจากข้อใด?", choices: { A: "HyperText Markup Language", B: "HighText Machine Language", C: "Hyperlinks and Text Markup Language", D: "Home Tool Markup Language" }, correctOption: "A", timeLimit: 10 },
-    { text: "HTTP status code 404 หมายถึง?", choices: { A: "OK", B: "Not Found", C: "Forbidden", D: "Bad Request" }, correctOption: "B", timeLimit: 10 },
-  ],
-  setB: [
-    { text: "ข้อใดต่อไปนี้คือหน่วยของความถี่?", choices: { A: "นิวตัน", B: "วัตต์", C: "เฮิรตซ์", D: "จูล" }, correctOption: "C", timeLimit: 10 },
-    { text: "H2O คือสารใด?", choices: { A: "คาร์บอนไดออกไซด์", B: "น้ำ", C: "ไฮโดรเจน", D: "ออกซิเจน" }, correctOption: "B", timeLimit: 10 },
-  ],
-};
-
-function getQuestionSetById(id) {
-  return QUESTION_SETS[id] || QUESTION_SETS.general || [];
-}
-function getQuestionSetLengthForRoom(roomData) {
-  const setId = roomData.gameSettings?.questionSetId || "general";
-  const set = getQuestionSetById(setId);
-  return set.length || 1;
-}
-function getQuestionFromRoom(roomData, index) {
-  const setId = roomData.gameSettings?.questionSetId || "general";
-  const set = getQuestionSetById(setId);
-  if (!set.length) return null;
-  const i = (index ?? 0) % set.length;
-  return set[i];
-}
 
 /* =========================
    4) DOM Cache
@@ -219,6 +136,7 @@ const closeDiceOverlayBtn = document.getElementById("closeDiceOverlayBtn");
 
 const questionAreaEl = document.getElementById("questionArea");
 const questionAreaOverlayEl = document.getElementById("questionAreaOverlay");
+const closeQuestionAreaBtn = document.getElementById("closeQuestionAreaBtn");
 const countdownDisplayEl = document.getElementById("countdownDisplay");
 const questionTextEl = document.getElementById("questionText");
 const choicesContainerEl = document.getElementById("choicesContainer");
@@ -767,6 +685,13 @@ closeDiceOverlayBtn?.addEventListener("click", () => {
   document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
+// Close Question Area Button
+closeQuestionAreaBtn?.addEventListener("click", () => {
+  if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
+  if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
+  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
 /* =========================
    11) Restore Session + Boot (single entry point)
 ========================= */
@@ -833,7 +758,35 @@ async function attemptRestoreSession() {
   }
 }
 
+/**
+ * Populate question set options in the select dropdown.
+ * This makes it so adding question sets only requires editing questions.js.
+ */
+function populateQuestionSetSelect() {
+  if (!questionSetSelect) return;
+  
+  // Clear existing options
+  questionSetSelect.innerHTML = "";
+  
+  // Get all question set IDs and populate options
+  const setIds = getQuestionSetIds();
+  setIds.forEach((setId) => {
+    const option = document.createElement("option");
+    option.value = setId;
+    option.textContent = getQuestionSetName(setId);
+    questionSetSelect.appendChild(option);
+  });
+  
+  // Set default to "general" if it exists
+  if (setIds.includes("general")) {
+    questionSetSelect.value = "general";
+  }
+}
+
 async function boot() {
+  // Populate question set select before doing anything else
+  populateQuestionSetSelect();
+  
   const restored = await attemptRestoreSession();
   if (!restored) {
     showEntryLanding();
@@ -1050,6 +1003,9 @@ startRoundBtn?.addEventListener("click", async () => {
   if (!result.committed) {
     alert("เริ่มรอบใหม่ไม่ได้ (อาจถึงรอบสูงสุดแล้ว หรืออยู่ในช่วงตอบ/นับถอยหลัง)");
   } else {
+    // ปิด questionAreaOverlay อัตโนมัติเมื่อเริ่มรอบใหม่เพื่อไม่ให้บังลูกเต๋า
+    if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
+    if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
     clearTimer();
   }
 });
@@ -1060,12 +1016,14 @@ startRoundBtn?.addEventListener("click", async () => {
 function waitTransformEnd(el, timeoutMs = 6500) {
   return new Promise((resolve) => {
     let done = false;
+    const startTime = Date.now();
 
     const cleanup = () => {
       if (done) return;
       done = true;
       el.removeEventListener("transitionend", onEnd);
       clearTimeout(t);
+      clearInterval(checkInterval);
       resolve();
     };
 
@@ -1074,7 +1032,17 @@ function waitTransformEnd(el, timeoutMs = 6500) {
     };
 
     el.addEventListener("transitionend", onEnd, { once: false });
+    
+    // Timeout based on real time (not throttled) เพื่อให้ทำงานแม้ tab ไม่ active
     const t = setTimeout(cleanup, timeoutMs);
+    
+    // Check interval to force complete after real time elapsed (ป้องกัน throttling)
+    const checkInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= timeoutMs) {
+        cleanup();
+      }
+    }, 100);
   });
 }
 
@@ -1179,11 +1147,41 @@ async function animateRollToPick(el, pick, rollMs) {
   });
 
   const anim = el.animate(frames, { duration: rollMs, easing: "linear", fill: "forwards" });
-  await anim.finished;
-
-  try { el.getAnimations().forEach((a) => a.cancel()); } catch {}
-  el.style.transition = "none";
-  el.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
+  const startTime = Date.now();
+  
+  // ใช้ timestamp-based timeout เพื่อให้ animation เสร็จตามเวลาจริงแม้ tab ไม่ active
+  // เพื่อป้องกันปัญหาเมื่อ player เปลี่ยน tab แล้ว animation ไม่ทำงาน
+  await new Promise((resolve) => {
+    let resolved = false;
+    
+    const complete = () => {
+      if (resolved) return;
+      resolved = true;
+      try { anim.cancel(); } catch {}
+      try { el.getAnimations().forEach((a) => a.cancel()); } catch {}
+      el.style.transition = "none";
+      el.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
+      resolve();
+    };
+    
+    // Listen for animation completion (ปกติ)
+    anim.finished.then(complete).catch(complete);
+    
+    // Timeout based on real time (ทำงานแม้ tab ไม่ active) - ใช้ setInterval เพื่อตรวจสอบเวลาจริง
+    const checkInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= rollMs) {
+        clearInterval(checkInterval);
+        complete();
+      }
+    }, 50); // Check every 50ms
+    
+    // Fallback timeout (ป้องกันกรณีที่ setInterval ถูก throttle มากเกินไป)
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      complete();
+    }, rollMs + 100);
+  });
 
   return { s, end };
 }
@@ -1235,7 +1233,9 @@ const rollDiceWithOverlay = async (durationMs = 5000) => {
   const finalRoll = secureRandomInt(1, 6);
   logDiceState("before-roll", finalRoll, null);
 
-  if (!diceOverlayEl || !dice3dEl) return finalRoll;
+  if (!diceOverlayEl || !dice3dEl) {
+    return finalRoll;
+  }
 
   setDiceOverlayState("rolling", null, "ลูกเต๋ากำลังกลิ้ง…");
   await raf(); await raf();
@@ -1407,20 +1407,30 @@ rollDiceBtn?.addEventListener("click", async () => {
     }
 
     // เปลี่ยน state เป็น rolling และลูกเต๋าจะแสดง
+    // บันทึก roll result ทันทีเมื่อ animation เสร็จ โดยไม่ใช้ callback เพื่อหลีกเลี่ยง throttling
     const roll = await rollDiceWithOverlay(5000);
-
-    setDiceOverlayState("committing", roll, `ได้แต้ม: ${roll} (กำลังบันทึกผล…)`);
-
-    const ok = await finalizeRollTransaction(roll);
-    if (!ok) {
-      setDiceOverlayState("done", roll, "บันทึกผลไม่สำเร็จ (สถานะห้องเปลี่ยน) ลองกดทอยใหม่หรือรอ Host");
+    
+    // บันทึกผลทันทีหลังจาก animation เสร็จ (แม้ tab จะไม่ active)
+    // Firebase runTransaction ทำงานผ่าน network layer จึงไม่ถูก throttle
+    try {
+      setDiceOverlayState("committing", roll, `ได้แต้ม: ${roll} (กำลังบันทึกผล…)`);
+      const ok = await finalizeRollTransaction(roll);
+      
+      if (!ok) {
+        setDiceOverlayState("done", roll, "บันทึกผลไม่สำเร็จ (สถานะห้องเปลี่ยน) ลองกดทอยใหม่หรือรอ Host");
+        rollPending = false;
+        if (rollDiceBtn) rollDiceBtn.disabled = false;
+        return;
+      }
+      
+      setDiceOverlayState("done", roll, `ได้แต้ม: ${roll}`);
+      // ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls
+    } catch (err) {
+      console.error("[ROLL SAVE ERROR]", err);
+      setDiceOverlayState("hidden");
       rollPending = false;
-      rollDiceBtn.disabled = false;
-      return;
+      if (rollDiceBtn) rollDiceBtn.disabled = false;
     }
-
-    setDiceOverlayState("done", roll, `ได้แต้ม: ${roll}`);
-    // ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls
   } catch (e) {
     console.error(e);
     setDiceOverlayState("hidden");
@@ -2150,6 +2160,9 @@ function updateQuestionUI(roomData, players) {
   if (phase === PHASE.ANSWERING && question) {
     if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "flex";
     if (questionTextEl) questionTextEl.textContent = question.text;
+    
+    // ซ่อนปุ่ม close เมื่อ phase เป็น ANSWERING
+    if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
   
     const me = players?.[currentPlayerId] || {};
     const selectedOption = me.answer || null;
@@ -2196,13 +2209,21 @@ function updateQuestionUI(roomData, players) {
     }
 
     renderChoicesForPhase(question, selectedOption, question.correctOption, true, true);
+    
+    // แสดงปุ่ม close เมื่อ phase เป็น RESULT (หลังจาก reveal answer)
+    if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "inline-flex";
+    
     clearTimer();
     return;
   }
+  
+  // ซ่อนปุ่ม close เมื่อ phase ไม่ใช่ RESULT
+  if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
 
   if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
   if (countdownDisplayEl) countdownDisplayEl.textContent = "";
   if (questionCountdownOverlayEl) questionCountdownOverlayEl.style.display = "none";
+  if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
   clearTimer();
 }
 

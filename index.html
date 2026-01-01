@@ -156,9 +156,7 @@
               <div class="split-col">
                 <label for="questionSetSelect">Select Track (Race Theme)</label>
                 <select id="questionSetSelect">
-                  <option value="general">ชุดคำถามทั่วไป</option>
-                  <option value="setA">ชุดคำถามตัวอย่าง A</option>
-                  <option value="setB">ชุดคำถามตัวอย่าง B</option>
+                  <!-- Options will be populated automatically from questions.js -->
                 </select>
   
                 <label for="maxRoundsInput">Maximum Laps</label>
@@ -287,6 +285,9 @@
       <div id="questionText"></div>
       <div id="choicesContainer"></div>
       </div>
+      <button id="closeQuestionAreaBtn" class="btn-primary" type="button" style="display:none;">
+        X
+      </button>
     </div>
   </main>
 
