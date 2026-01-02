@@ -1516,8 +1516,9 @@ async function finalizeRollTransaction(roll) {
           try { return structuredClone(obj); }
           catch { return JSON.parse(JSON.stringify(obj)); }
         };
-        if (!room.finalPlayers) room.finalPlayers = clonePlayers(players || {});
-        if (!room.finalWinners) room.finalWinners = Array.isArray(winners) ? winners.slice() : [];
+
+        room.finalPlayers = clonePlayers(players || {});
+        room.finalWinners = Array.isArray(room.winners) ? room.winners.slice() : [];
       }
     }    
 
