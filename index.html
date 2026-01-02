@@ -168,10 +168,10 @@
                 <input id="maxWinnersInput" type="number" min="1" step="1" value="5" inputmode="numeric" />
   
                 <label for="rewardCorrectInput">Speed Boost (Correct Answer)</label>
-                <input id="rewardCorrectInput" type="number" step="1" value="1" inputmode="numeric" />
+                <input id="rewardCorrectInput" type="number" step="1" value="2" inputmode="numeric" />
   
                 <label for="penaltyWrongInput">Slow Down (Wrong / Timeout)</label>
-                <input id="penaltyWrongInput" type="number" step="1" value="-1" inputmode="numeric" />
+                <input id="penaltyWrongInput" type="number" step="1" value="-2" inputmode="numeric" />
               </div>
             </div>
   
@@ -270,9 +270,9 @@
       <div id="board"></div>
     
       <div id="endGameArea" style="display:none; margin-top:1rem;">
-        <h3>สรุปผลเกม</h3>
+        <h3 id="endGameTitle" style="margin:0;">สรุปผลเกม</h3>
         <div id="endGameSummary"></div>
-      </div>
+      </div>          
     </div>
     
     <!-- ✅ NEW: slot สำหรับย้าย lobby-card มาวางใต้ gameArea ตอนเริ่มเกมแล้ว -->

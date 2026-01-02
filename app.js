@@ -14,6 +14,15 @@ import {
   runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+import {
+  QUESTION_SETS,
+  getQuestionSetById,
+  getQuestionSetLengthForRoom,
+  getQuestionFromRoom,
+  getQuestionSetIds,
+  getQuestionSetName,
+} from "./questions.js";
+
 /* =========================
    1) Firebase Config + Boot logs
 ========================= */
@@ -64,99 +73,7 @@ const PHASE = Object.freeze({
 });
 
 /* =========================
-   3) Question Sets
-========================= */
-const QUESTION_SETS = {
-  general: [
-    {
-      text: "ทำไมกาแฟถึงขม? (ตอบผิดไม่ดุ แต่อาจงอนนิดนึง)",
-      choices: { A: "เพราะชีวิต", B: "เพราะน้ำตาลหมด", C: "เพราะเมล็ดกาแฟ", D: "เพราะแก้วมันเศร้า" },
-      correctOption: "C",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้า Wi-Fi หลุดบ่อย เราควรทำอะไรก่อน?",
-      choices: { A: "รีสตาร์ทเราเตอร์", B: "โทษชะตา", C: "เดินไปใกล้ ๆ แล้วทำเนียน", D: "อธิษฐานกับเสาสัญญาณ" },
-      correctOption: "A",
-      timeLimit: 30,
-    },
-    {
-      text: "ข้อใดคือ ‘งานด่วน’ ที่แท้จริง?",
-      choices: { A: "งานที่ต้องเสร็จเมื่อวาน", B: "งานที่หัวหน้าบอกว่าไม่รีบ", C: "งานที่ส่งแล้วแต่ยังต้องแก้", D: "งานที่ยังไม่เริ่มแต่ใกล้เดดไลน์" },
-      correctOption: "A",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้าลืมรหัสผ่านบ่อย ควรตั้งรหัสใหม่ว่าอะไร?",
-      choices: { A: "123456", B: "password", C: "ForgetMeNot2025!", D: "ชื่อแมว+วันเกิด+OTP" },
-      correctOption: "C",
-      timeLimit: 30,
-    },
-    {
-      text: "เวลาพูดว่า ‘เดี๋ยวทำ’ โดยเฉลี่ยหมายถึง…",
-      choices: { A: "ภายใน 5 นาที", B: "หลังอาหาร", C: "พรุ่งนี้แหละ", D: "เมื่อโลกสงบ" },
-      correctOption: "C",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้าพบไฟล์ชื่อ final_v7_REALfinal จริง ๆ แล้วไฟล์ไหนคือไฟล์สุดท้าย?",
-      choices: { A: "final", B: "final_v7_REALfinal", C: "final_v7_REALfinal_2", D: "ไฟล์ที่เปิดล่าสุด" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-    {
-      text: "ข้อใดคือ ‘การออกกำลังกาย’ ของสายออฟฟิศ?",
-      choices: { A: "เดินไปเข้าห้องน้ำ", B: "ยืดเส้นยืดสาย", C: "เดินไปหาเครื่องปริ้นท์แล้วเครื่องพัง", D: "ทั้งหมดที่กล่าวมา" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้ากำลังจะชงมาม่า แต่หา ‘ซองพริก’ ไม่เจอ ควรทำยังไง?",
-      choices: { A: "โทรแจ้งตำรวจ", B: "ทำใจแล้วกินแบบคลีน", C: "เขียนรายงานสาเหตุราก (RCA)", D: "เปิดซองอีกอันอย่างสง่างาม" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-    {
-      text: "คำว่า ‘เดี๋ยวส่งให้ครับ/ค่ะ’ ในแชทงาน หมายถึงข้อใดมากที่สุด?",
-      choices: { A: "ส่งทันที", B: "ส่งหลังประชุม", C: "ส่งก่อนเลิกงานถ้านึกได้", D: "ส่งเมื่อคุณทักมาครั้งที่ 3" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-    {
-      text: "ถ้าตั้งนาฬิกาปลุก 10 อัน แต่ยังตื่นสาย สาเหตุคืออะไร?",
-      choices: { A: "นาฬิกาปลุกผิด", B: "หมอนดูดวิญญาณ", C: "มือปิดเองแบบอัตโนมัติ (สกิลลับ)", D: "ทั้ง B และ C" },
-      correctOption: "D",
-      timeLimit: 30,
-    },
-  ],
-  setA: [
-    { text: "HTML ย่อมาจากข้อใด?", choices: { A: "HyperText Markup Language", B: "HighText Machine Language", C: "Hyperlinks and Text Markup Language", D: "Home Tool Markup Language" }, correctOption: "A", timeLimit: 10 },
-    { text: "HTTP status code 404 หมายถึง?", choices: { A: "OK", B: "Not Found", C: "Forbidden", D: "Bad Request" }, correctOption: "B", timeLimit: 10 },
-  ],
-  setB: [
-    { text: "ข้อใดต่อไปนี้คือหน่วยของความถี่?", choices: { A: "นิวตัน", B: "วัตต์", C: "เฮิรตซ์", D: "จูล" }, correctOption: "C", timeLimit: 10 },
-    { text: "H2O คือสารใด?", choices: { A: "คาร์บอนไดออกไซด์", B: "น้ำ", C: "ไฮโดรเจน", D: "ออกซิเจน" }, correctOption: "B", timeLimit: 10 },
-  ],
-};
-
-function getQuestionSetById(id) {
-  return QUESTION_SETS[id] || QUESTION_SETS.general || [];
-}
-function getQuestionSetLengthForRoom(roomData) {
-  const setId = roomData.gameSettings?.questionSetId || "general";
-  const set = getQuestionSetById(setId);
-  return set.length || 1;
-}
-function getQuestionFromRoom(roomData, index) {
-  const setId = roomData.gameSettings?.questionSetId || "general";
-  const set = getQuestionSetById(setId);
-  if (!set.length) return null;
-  const i = (index ?? 0) % set.length;
-  return set[i];
-}
-
-/* =========================
-   4) DOM Cache
+   3) DOM Cache
 ========================= */
 // ---------------- Admin Password Gate ----------------
 const ADMIN_PIN = "8888";
@@ -219,6 +136,7 @@ const closeDiceOverlayBtn = document.getElementById("closeDiceOverlayBtn");
 
 const questionAreaEl = document.getElementById("questionArea");
 const questionAreaOverlayEl = document.getElementById("questionAreaOverlay");
+const closeQuestionAreaBtn = document.getElementById("closeQuestionAreaBtn");
 const countdownDisplayEl = document.getElementById("countdownDisplay");
 const questionTextEl = document.getElementById("questionText");
 const choicesContainerEl = document.getElementById("choicesContainer");
@@ -230,15 +148,16 @@ const questionCountdownNumberEl = document.getElementById("questionCountdownNumb
 const endGameAreaEl = document.getElementById("endGameArea");
 const endGameSummaryEl = document.getElementById("endGameSummary");
 
+// Entry pages
 const joinGameBtn = document.getElementById("joinGameBtn");
-const entryLandingEl = document.getElementById("entryLanding");   // หน้าแรกปุ่ม Join Game
+const entryLandingEl = document.getElementById("entryLanding"); // หน้าแรกปุ่ม Join Game
 const adminEntryPageEl = document.getElementById("adminEntryPage");
 const playerEntryPageEl = document.getElementById("playerEntryPage");
 const backToLandingBtn1 = document.getElementById("backToLandingBtn1");
 const backToLandingBtn2 = document.getElementById("backToLandingBtn2");
 
 /* =========================
-   5) Runtime State
+   4) Runtime State
 ========================= */
 let didRestoreSession = false;
 
@@ -257,11 +176,18 @@ let countdownAutoTimeout = null;
 let rollPending = false; // ✅ กันกดทอยซ้ำระหว่างรอ DB sync
 let answerPending = false;
 
-// Dice overlay state
-let diceOverlayState = "hidden"; // hidden | waiting | rolling | committing | done
+let diceOverlayState = "hidden"; 
+// "hidden" | "waiting" | "rolling" | "committing" | "done"
+
+// End-game question overlay (local dismiss)
+let lastRoomData = null;
+
+let endQuestionDismissed = false; // ผู้ใช้ปิดหน้าเฉลยตอนจบเกมแล้ว
+let endQuestionKey = null;        // ใช้รีเซ็ต dismissed เมื่อเป็นคนละรอบ/คนละข้อ/คนละห้อง
+
 
 /* =========================
-   6) Utils
+   5) Utils
 ========================= */
 const raf = () => new Promise((r) => requestAnimationFrame(r));
 const rand360 = () => Math.floor(Math.random() * 360);
@@ -271,8 +197,8 @@ const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 // ใช้ rejection sampling เพื่อหลีกเลี่ยง bias
 function secureRandomInt(min, max) {
   const range = max - min + 1;
-  
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
     // ใช้ Web Crypto API สำหรับ cryptographically secure random
     // คำนวณค่าสูงสุดที่ยอมรับได้ (เพื่อหลีกเลี่ยง bias)
     const maxValid = Math.floor(256 / range) * range - 1;
@@ -297,6 +223,7 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
 const MAX_NAME_LEN = 12;
 
 function normalizeName(raw) {
@@ -304,28 +231,34 @@ function normalizeName(raw) {
   // ตัดความยาวเสมอ (กันกรณี paste/แก้ DOM)
   return s.slice(0, MAX_NAME_LEN);
 }
+
 function setEntryVisible(visible) {
   if (!entrySectionEl) return;
   entrySectionEl.style.display = visible ? "" : "none";
 }
+
 function clampPos(pos) {
   const p = Number(pos ?? 1);
   if (!Number.isFinite(p)) return 1;
   return Math.max(1, Math.min(BOARD_SIZE, Math.trunc(p)));
 }
+
 function createId(prefix) {
   return prefix + "_" + Math.random().toString(36).substring(2, 10);
 }
+
 function createRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
   for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
   return code;
 }
+
 function randomColor() {
   const colors = ["#e91e63", "#9c27b0", "#3f51b5", "#009688", "#ff9800", "#795548"];
   return colors[Math.floor(Math.random() * colors.length)];
 }
+
 function clearTimer() {
   if (timerInterval) {
     clearInterval(timerInterval);
@@ -338,6 +271,7 @@ function clearTimer() {
   timerPhase = null;
   timerRound = 0;
 }
+
 function getPathCells(from, to) {
   const cells = [];
   if (from === to) return cells;
@@ -350,19 +284,23 @@ function getPathCells(from, to) {
   }
   return cells;
 }
+
 function saveSession() {
   const payload = { room: currentRoomCode, role: currentRole, pid: currentPlayerId };
   STORAGE.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
+
 function clearSession() {
   STORAGE.removeItem(STORAGE_KEY);
 }
+
 function setHeaderPills() {
   const uiRoomPill = document.getElementById("uiRoomPill");
   const uiRolePill = document.getElementById("uiRolePill");
   if (uiRoomPill) uiRoomPill.textContent = `Room: ${currentRoomCode || "-"}`;
   if (uiRolePill) uiRolePill.textContent = `Role: ${currentRole || "-"}`;
 }
+
 function lockEntryUIForRole(role) {
   const lockHost = role === "host";
   const lockPlayer = role === "player";
@@ -446,17 +384,17 @@ function updateHeaderActionsUI(roomData = null) {
 }
 
 function diceToGlyph(n) {
-  const map = ["", "⚀","⚁","⚂","⚃","⚄","⚅"];
+  const map = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
   return map[n] || "";
 }
 
 function rollTextToGlyphs(rolls) {
   if (!Array.isArray(rolls) || rolls.length === 0) return "";
-  return rolls.map(n => diceToGlyph(Number(n))).join("");
+  return rolls.map((n) => diceToGlyph(Number(n))).join("");
 }
 
 /* =========================
-   7) Entry Navigation (SPA)
+   6) Entry Navigation (SPA)
 ========================= */
 function showEntryLanding() {
   if (entryLandingEl) entryLandingEl.style.display = "block";
@@ -500,7 +438,7 @@ function showPlayerEntryPage() {
 }
 
 /* =========================
-   8) Admin PIN Overlay
+   7) Admin PIN Overlay
 ========================= */
 function openAdminPwOverlay() {
   if (!adminPwOverlayEl || !adminPwInputEl) {
@@ -529,66 +467,8 @@ function failPin() {
   }
 }
 
-// Bind admin pin
-adminTopBtn?.addEventListener("click", () => {
-  if (currentRole === "host" && currentRoomCode) return;
-  openAdminPwOverlay();
-});
-adminPwCancelBtn?.addEventListener("click", closeAdminPwOverlay);
-adminPwOverlayEl?.addEventListener("click", (e) => {
-  if (e.target === adminPwOverlayEl) closeAdminPwOverlay();
-});
-adminPwInputEl?.addEventListener("input", () => {
-  let v = String(adminPwInputEl.value || "");
-  v = v.replace(/\D/g, "").slice(0, 4);
-  adminPwInputEl.value = v;
-
-  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
-
-  if (v.length === 4) {
-    if (v === ADMIN_PIN) {
-      closeAdminPwOverlay();
-      showAdminEntryPage();
-    } else {
-      failPin();
-    }
-  }
-});
-adminPwInputEl?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") e.preventDefault();
-});
-
-// ---- DEBUG DOM wiring ----
-(function logEntryDomWiring() {
-  const items = {
-    adminTopBtn,
-    joinGameBtn,
-    entryLandingEl,
-    adminEntryPageEl,
-    playerEntryPageEl,
-    backToLandingBtn1,
-    backToLandingBtn2,
-  };
-
-  console.groupCollapsed("%c[ENTRY DOM] wiring check", "color:#5a4bb0;font-weight:900;");
-  for (const [k, el] of Object.entries(items)) {
-    console.log(k, el ? "✅ found" : "❌ MISSING", el || "");
-  }
-  console.groupEnd();
-})();
-
-// Landing events
-joinGameBtn?.addEventListener("click", () => {
-  console.log("[ENTRY] Join Game clicked -> playerEntryPage");
-  if (!playerEntryPageEl) {
-    alert("ไม่พบหน้า Player (#playerEntryPage) กรุณาตรวจสอบ id ใน index.html");
-    return;
-  }
-  showPlayerEntryPage();
-});
-
 /* =========================
-   9) Lobby View + Subscribe
+   8) Lobby View + Subscribe
 ========================= */
 function enterLobbyView() {
   if (lobbyEl) lobbyEl.style.display = "block";
@@ -603,7 +483,9 @@ function enterLobbyView() {
 
 function subscribeRoom(roomCode) {
   if (roomUnsub) {
-    try { roomUnsub(); } catch {}
+    try {
+      roomUnsub();
+    } catch {}
     roomUnsub = null;
   }
 
@@ -618,8 +500,11 @@ function subscribeRoom(roomCode) {
       const roomData = snapshot.val();
       const players = roomData.players || {};
 
+      // ✅ เก็บ roomData ล่าสุดไว้ให้ปุ่ม close ใช้อ้างอิง
+      lastRoomData = roomData;
+
       updateHeaderActionsUI(roomData);
-      
+
       // เงื่อนไข "เริ่มเล่นแล้ว" (ง่ายสุด = status inGame/finished)
       if (roomData.status === STATUS.IN_GAME || roomData.status === STATUS.FINISHED) {
         enterInGameLayout();
@@ -656,10 +541,7 @@ function updateStartGameButton(roomData, players) {
   }
 
   const totalPlayers = Object.keys(players || {}).length;
-  const shouldShow =
-    currentRoomCode &&
-    roomData?.status === "lobby" &&
-    totalPlayers > 0;
+  const shouldShow = currentRoomCode && roomData?.status === "lobby" && totalPlayers > 0;
 
   startGameBtn.style.display = shouldShow ? "inline-flex" : "none";
   startGameBtn.disabled = !shouldShow;
@@ -688,26 +570,8 @@ function exitInGameLayout() {
   if (host) host.style.display = "none"; // เผื่อ inline ถูกตั้งไว้
 }
 
-function isInGame(roomData) {
-  // เกณฑ์ที่ “ชัวร์” ว่าเริ่มเล่นแล้ว (คุณปรับได้ตามโครงสร้าง roomData ของคุณ)
-  const round = Number(roomData?.currentRound || 0);
-  const phase = roomData?.phase;
-  return round > 0 || phase === PHASE.ROUND_READY || phase === PHASE.QUESTION_COUNTDOWN || phase === PHASE.ANSWERING || phase === PHASE.REVEALING || phase === PHASE.ROUND_RESULT || phase === PHASE.GAME_OVER;
-}
-
-headerHomeBtn?.addEventListener("click", () => {
-  // ใช้ได้เฉพาะช่วง entry (ยังไม่เข้าห้อง)
-  showEntryLanding();
-  updateHeaderActionsUI(null);
-});
-
-headerExitBtn?.addEventListener("click", async () => {
-  if (currentRole === "host") await cancelRoomFlow();
-  else if (currentRole === "player") await leaveRoomFlow();
-});
-
 /* =========================
-   10) Dice Overlay State Machine
+   9) Dice Overlay State Machine
 ========================= */
 function setDiceOverlayState(state, rollValue = null, hint = null) {
   diceOverlayState = state;
@@ -728,8 +592,10 @@ function setDiceOverlayState(state, rollValue = null, hint = null) {
     if (hint != null) diceHintEl.textContent = hint;
     else {
       if (state === "rolling") diceHintEl.textContent = "ลูกเต๋ากำลังกลิ้ง…";
-      else if (state === "committing") diceHintEl.textContent = `ได้แต้ม: ${rollValue ?? "-"} (กำลังบันทึกผล…)`;
-      else if (state === "done") diceHintEl.textContent = rollValue != null ? `ได้แต้ม: ${rollValue}` : "เสร็จแล้ว";
+      else if (state === "committing")
+        diceHintEl.textContent = `ได้แต้ม: ${rollValue ?? "-"} (กำลังบันทึกผล…)`;
+      else if (state === "done")
+        diceHintEl.textContent = rollValue != null ? `ได้แต้ม: ${rollValue}` : "เสร็จแล้ว";
     }
   }
 
@@ -761,14 +627,8 @@ function setDiceOverlayState(state, rollValue = null, hint = null) {
   }
 }
 
-closeDiceOverlayBtn?.addEventListener("click", () => {
-  if (diceOverlayState !== "done") return;
-  setDiceOverlayState("hidden");
-  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
-});
-
 /* =========================
-   11) Restore Session + Boot (single entry point)
+   10) Restore Session + Boot (single entry point)
 ========================= */
 async function attemptRestoreSession() {
   try {
@@ -833,7 +693,35 @@ async function attemptRestoreSession() {
   }
 }
 
+/**
+ * Populate question set options in the select dropdown.
+ * This makes it so adding question sets only requires editing questions.js.
+ */
+function populateQuestionSetSelect() {
+  if (!questionSetSelect) return;
+
+  // Clear existing options
+  questionSetSelect.innerHTML = "";
+
+  // Get all question set IDs and populate options
+  const setIds = getQuestionSetIds();
+  setIds.forEach((setId) => {
+    const option = document.createElement("option");
+    option.value = setId;
+    option.textContent = getQuestionSetName(setId);
+    questionSetSelect.appendChild(option);
+  });
+
+  // Set default to "general" if it exists
+  if (setIds.includes("general")) {
+    questionSetSelect.value = "general";
+  }
+}
+
 async function boot() {
+  // Populate question set select before doing anything else
+  populateQuestionSetSelect();
+
   const restored = await attemptRestoreSession();
   if (!restored) {
     showEntryLanding();
@@ -842,12 +730,327 @@ async function boot() {
 boot();
 
 /* =========================
-   12) Host Actions (Create room, Start game, Start round, Start question, Reveal)
+   11) Dice 3D Engine (as-is)
+========================= */
+function waitTransformEnd(el, timeoutMs = 6500) {
+  return new Promise((resolve) => {
+    let done = false;
+
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      el.removeEventListener("transitionend", onEnd);
+      clearTimeout(t);
+      resolve();
+    };
+
+    const onEnd = (e) => {
+      if (e.target === el && e.propertyName === "transform") cleanup();
+    };
+
+    el.addEventListener("transitionend", onEnd, { once: false });
+    const t = setTimeout(cleanup, timeoutMs);
+  });
+}
+
+const FACE_CLASS_TO_VALUE = {
+  "face-1": 5, // FRONT
+  "face-2": 4, // RIGHT
+  "face-3": 1, // TOP
+  "face-4": 6, // BOTTOM
+  "face-5": 3, // LEFT
+  "face-6": 2, // BACK
+};
+
+function getTopVisibleValue() {
+  const faces = dice3dEl?.querySelectorAll(".face");
+  if (!faces || faces.length === 0) return null;
+
+  let best = { y: Infinity, value: null };
+
+  faces.forEach((el) => {
+    const rect = el.getBoundingClientRect();
+    const cy = rect.top + rect.height / 2;
+    const cls = [...el.classList].find((c) => /^face-\d$/.test(c));
+    const value = FACE_CLASS_TO_VALUE[cls];
+    if (value != null && cy < best.y) best = { y: cy, value };
+  });
+
+  return best.value;
+}
+
+let TOP_VISIBLE_TO_POSES = null;
+
+function genPoseList() {
+  const A = [0, 90, 180, 270];
+  const poses = [];
+  for (const x of A) for (const y of A) for (const z of A) poses.push({ x, y, z, key: `${x}_${y}_${z}` });
+  return poses;
+}
+
+async function buildTopVisiblePoseMap() {
+  if (!dice3dEl) return null;
+
+  const poses = genPoseList();
+  const map = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+
+  const prevTransition = dice3dEl.style.transition;
+  const prevTransform = dice3dEl.style.transform;
+
+  dice3dEl.style.transition = "none";
+
+  for (const p of poses) {
+    dice3dEl.style.transform = `rotateX(${p.x}deg) rotateY(${p.y}deg) rotateZ(${p.z}deg)`;
+    await raf();
+    const topVal = getTopVisibleValue();
+    if (topVal >= 1 && topVal <= 6) map[topVal].push(p);
+  }
+
+  dice3dEl.style.transform = prevTransform;
+  dice3dEl.style.transition = prevTransition;
+
+  console.log(
+    "[DICE] TOP_VISIBLE_TO_POSES built:",
+    Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v.length]))
+  );
+
+  return map;
+}
+
+function prepDiceForAnimate(el) {
+  if (!el) return;
+  try {
+    el.getAnimations().forEach((a) => a.cancel());
+  } catch {}
+  el.style.transition = "none";
+  el.getBoundingClientRect();
+}
+
+function nearestEquivalentDeg(currentDeg, targetDeg) {
+  const c = Number(currentDeg) || 0;
+  const t = Number(targetDeg) || 0;
+  const n = Math.round((c - t) / 360);
+  return t + 360 * n;
+}
+
+function easeOutPow(t, p = 3.2) {
+  return 1 - Math.pow(1 - t, p);
+}
+
+async function animateRollToPick(el, pick, rollMs) {
+  prepDiceForAnimate(el);
+
+  const s = { x: randInt(-18, 18), y: rand360(), z: randInt(-18, 18) };
+  const kx = randInt(1, 3);
+  const ky = randInt(2, 4);
+  const kz = randInt(1, 3);
+
+  const end = { x: pick.x + 360 * kx, y: pick.y + 360 * ky, z: pick.z + 360 * kz };
+
+  const T = [0, 0.22, 0.48, 0.72, 0.88, 1.0];
+  const frames = T.map((tt) => {
+    const f = easeOutPow(tt, 3.2);
+    const ax = s.x + (end.x - s.x) * f;
+    const ay = s.y + (end.y - s.y) * f;
+    const az = s.z + (end.z - s.z) * f;
+    return { offset: tt, transform: `rotateX(${ax}deg) rotateY(${ay}deg) rotateZ(${az}deg)` };
+  });
+
+  const anim = el.animate(frames, { duration: rollMs, easing: "linear", fill: "forwards" });
+  await anim.finished;
+
+  try {
+    el.getAnimations().forEach((a) => a.cancel());
+  } catch {}
+  el.style.transition = "none";
+  el.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
+
+  return { s, end };
+}
+
+async function settleToPick(el, pick, settleMs, endAbs) {
+  const targetAbs = {
+    x: nearestEquivalentDeg(endAbs?.x ?? pick.x, pick.x),
+    y: nearestEquivalentDeg(endAbs?.y ?? pick.y, pick.y),
+    z: nearestEquivalentDeg(endAbs?.z ?? pick.z, pick.z),
+  };
+
+  const t = Math.max(0, Math.floor(settleMs));
+
+  if (t > 0) {
+    el.style.transition = `transform ${t}ms cubic-bezier(.18,.92,.22,1)`;
+    el.style.transform = `rotateX(${targetAbs.x}deg) rotateY(${targetAbs.y}deg) rotateZ(${targetAbs.z}deg)`;
+    await waitTransformEnd(el, t + 120);
+  }
+
+  el.style.transition = "none";
+  el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
+  await raf();
+}
+
+function logDiceState(stage, finalRoll, endObj) {
+  try {
+    const cam = document.querySelector(".dice-cam");
+    const dice = document.getElementById("dice3d");
+
+    console.log(`%c[DICE LOG] ${stage}`, "color:#5a4bb0;font-weight:900;", {
+      finalRoll,
+      endObj,
+      dice_style_transform: dice?.style?.transform || "",
+      dice_computed_transform: dice ? getComputedStyle(dice).transform : "",
+      cam_style_transform: cam?.style?.transform || "",
+      cam_computed_transform: cam ? getComputedStyle(cam).transform : "",
+      ts: Date.now(),
+    });
+  } catch (e) {
+    console.warn("[DICE LOG] failed:", e);
+  }
+}
+
+const rollDiceWithOverlay = async (durationMs = 5000) => {
+  const finalRoll = secureRandomInt(1, 6);
+  logDiceState("before-roll", finalRoll, null);
+
+  if (!diceOverlayEl || !dice3dEl) return finalRoll;
+
+  setDiceOverlayState("rolling", null, "ลูกเต๋ากำลังกลิ้ง…");
+  await raf();
+  await raf();
+
+  prepDiceForAnimate(dice3dEl);
+  await raf();
+
+  if (!TOP_VISIBLE_TO_POSES) {
+    TOP_VISIBLE_TO_POSES = await buildTopVisiblePoseMap();
+  }
+  const candidates = TOP_VISIBLE_TO_POSES?.[finalRoll] || [];
+  const pick = candidates.length ? candidates[randInt(0, candidates.length - 1)] : { x: 0, y: 0, z: 0 };
+
+  const rollMs = Math.max(2000, Math.floor(durationMs * 0.94));
+  const settleMs = Math.max(80, durationMs - rollMs);
+
+  logDiceState("computed-end-before-animate", finalRoll, { pick, rollMs, settleMs });
+
+  const { end } = await animateRollToPick(dice3dEl, pick, rollMs);
+  await settleToPick(dice3dEl, pick, settleMs, end);
+
+  const seenTop = getTopVisibleValue?.();
+  if (seenTop != null && seenTop !== finalRoll) {
+    console.warn("[DICE SNAP MISMATCH]", { finalRoll, seenTop, pick });
+  }
+  logDiceState("after-snap-final", finalRoll, { pick, seenTop });
+
+  return finalRoll;
+};
+
+// debug
+window.__SQ_rollDiceWithOverlay = rollDiceWithOverlay;
+
+/* =========================
+   12) Host / Player / UI Event Bindings
+========================= */
+// Header buttons
+headerHomeBtn?.addEventListener("click", () => {
+  // ใช้ได้เฉพาะช่วง entry (ยังไม่เข้าห้อง)
+  showEntryLanding();
+  updateHeaderActionsUI(null);
+});
+headerExitBtn?.addEventListener("click", async () => {
+  if (currentRole === "host") await cancelRoomFlow();
+  else if (currentRole === "player") await leaveRoomFlow();
+});
+
+// Landing -> Player entry
+joinGameBtn?.addEventListener("click", () => {
+  console.log("[ENTRY] Join Game clicked -> playerEntryPage");
+  if (!playerEntryPageEl) {
+    alert("ไม่พบหน้า Player (#playerEntryPage) กรุณาตรวจสอบ id ใน index.html");
+    return;
+  }
+  showPlayerEntryPage();
+});
+
+// Admin PIN overlay bindings
+adminTopBtn?.addEventListener("click", () => {
+  if (currentRole === "host" && currentRoomCode) return;
+  openAdminPwOverlay();
+});
+adminPwCancelBtn?.addEventListener("click", closeAdminPwOverlay);
+adminPwOverlayEl?.addEventListener("click", (e) => {
+  if (e.target === adminPwOverlayEl) closeAdminPwOverlay();
+});
+adminPwInputEl?.addEventListener("input", () => {
+  let v = String(adminPwInputEl.value || "");
+  v = v.replace(/\D/g, "").slice(0, 4);
+  adminPwInputEl.value = v;
+
+  if (adminPwErrorEl) adminPwErrorEl.style.display = "none";
+
+  if (v.length === 4) {
+    if (v === ADMIN_PIN) {
+      closeAdminPwOverlay();
+      showAdminEntryPage();
+    } else {
+      failPin();
+    }
+  }
+});
+adminPwInputEl?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") e.preventDefault();
+});
+
+// ---- DEBUG DOM wiring ----
+(function logEntryDomWiring() {
+  const items = {
+    adminTopBtn,
+    joinGameBtn,
+    entryLandingEl,
+    adminEntryPageEl,
+    playerEntryPageEl,
+    backToLandingBtn1,
+    backToLandingBtn2,
+  };
+
+  console.groupCollapsed("%c[ENTRY DOM] wiring check", "color:#5a4bb0;font-weight:900;");
+  for (const [k, el] of Object.entries(items)) {
+    console.log(k, el ? "✅ found" : "❌ MISSING", el || "");
+  }
+  console.groupEnd();
+})();
+
+// Dice overlay close
+closeDiceOverlayBtn?.addEventListener("click", () => {
+  if (diceOverlayState !== "done") return;
+  setDiceOverlayState("hidden");
+  document.getElementById("gameArea")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+// Close Question Area Button
+closeQuestionAreaBtn?.addEventListener("click", () => {
+  // ปิด overlay
+  if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
+  if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
+
+  // ✅ ถ้าเป็นโหมดค้างเฉลยตอนเกมจบ ให้จำว่า "ผู้ใช้ปิดแล้ว"
+  const rd = lastRoomData;
+  if (rd) {
+    const phase = rd.phase || PHASE.IDLE;
+    const ui = rd.ui || {};
+    const keepOnEnd = phase === PHASE.ENDED && ui.keepQuestionOnEnd === true;
+    if (keepOnEnd) endQuestionDismissed = true;
+  }
+});
+
+/* =========================
+   13) Host Actions (Create room, Start game, Start round, Start question, Reveal)
 ========================= */
 // Host: Step 1 – เปิด panel ตั้งค่าเกม
 createRoomBtn?.addEventListener("click", () => {
   const hostName = normalizeName(hostNameInput?.value);
-  if (!hostName) { alert("กรุณากรอกชื่อของ Host ก่อน"); return; }
+  if (!hostName) {
+    alert("กรุณากรอกชื่อของ Host ก่อน");
+    return;
+  }
   if (hostNameInput) hostNameInput.value = hostName; // sync กลับเข้าช่อง (optional)
 
   if (hostNameInput) hostNameInput.disabled = true;
@@ -885,7 +1088,10 @@ createRoomBtn?.addEventListener("click", () => {
 // Host Step 2: create room
 confirmCreateRoomBtn?.addEventListener("click", async () => {
   const hostName = normalizeName(hostNameInput?.value);
-  if (!hostName) { alert("กรุณากรอกชื่อของ Host ก่อน"); return; }
+  if (!hostName) {
+    alert("กรุณากรอกชื่อของ Host ก่อน");
+    return;
+  }
   if (hostNameInput) hostNameInput.value = hostName; // sync กลับเข้าช่อง (optional)
 
   const questionSetId = questionSetSelect?.value || "general";
@@ -904,7 +1110,10 @@ confirmCreateRoomBtn?.addEventListener("click", async () => {
   for (let i = 0; i < 6; i++) {
     const c = createRoomCode();
     const s = await get(roomRefBase(c));
-    if (!s.exists()) { roomCode = c; break; }
+    if (!s.exists()) {
+      roomCode = c;
+      break;
+    }
   }
   if (!roomCode) {
     alert("สร้างห้องไม่สำเร็จ (รหัสชนกันหลายครั้ง) ลองใหม่อีกครั้ง");
@@ -1050,224 +1259,12 @@ startRoundBtn?.addEventListener("click", async () => {
   if (!result.committed) {
     alert("เริ่มรอบใหม่ไม่ได้ (อาจถึงรอบสูงสุดแล้ว หรืออยู่ในช่วงตอบ/นับถอยหลัง)");
   } else {
+    // ปิด questionAreaOverlay อัตโนมัติเมื่อเริ่มรอบใหม่เพื่อไม่ให้บังลูกเต๋า
+    if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
+    if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
     clearTimer();
   }
 });
-
-/* =========================
-   13) Dice 3D Engine (as-is)
-========================= */
-function waitTransformEnd(el, timeoutMs = 6500) {
-  return new Promise((resolve) => {
-    let done = false;
-
-    const cleanup = () => {
-      if (done) return;
-      done = true;
-      el.removeEventListener("transitionend", onEnd);
-      clearTimeout(t);
-      resolve();
-    };
-
-    const onEnd = (e) => {
-      if (e.target === el && e.propertyName === "transform") cleanup();
-    };
-
-    el.addEventListener("transitionend", onEnd, { once: false });
-    const t = setTimeout(cleanup, timeoutMs);
-  });
-}
-
-const FACE_CLASS_TO_VALUE = {
-  "face-1": 5, // FRONT
-  "face-2": 4, // RIGHT
-  "face-3": 1, // TOP
-  "face-4": 6, // BOTTOM
-  "face-5": 3, // LEFT
-  "face-6": 2, // BACK
-};
-
-function getTopVisibleValue() {
-  const faces = dice3dEl?.querySelectorAll(".face");
-  if (!faces || faces.length === 0) return null;
-
-  let best = { y: Infinity, value: null };
-
-  faces.forEach((el) => {
-    const rect = el.getBoundingClientRect();
-    const cy = rect.top + rect.height / 2;
-    const cls = [...el.classList].find((c) => /^face-\d$/.test(c));
-    const value = FACE_CLASS_TO_VALUE[cls];
-    if (value != null && cy < best.y) best = { y: cy, value };
-  });
-
-  return best.value;
-}
-
-let TOP_VISIBLE_TO_POSES = null;
-
-function genPoseList() {
-  const A = [0, 90, 180, 270];
-  const poses = [];
-  for (const x of A) for (const y of A) for (const z of A) poses.push({ x, y, z, key: `${x}_${y}_${z}` });
-  return poses;
-}
-
-async function buildTopVisiblePoseMap() {
-  if (!dice3dEl) return null;
-
-  const poses = genPoseList();
-  const map = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
-
-  const prevTransition = dice3dEl.style.transition;
-  const prevTransform = dice3dEl.style.transform;
-
-  dice3dEl.style.transition = "none";
-
-  for (const p of poses) {
-    dice3dEl.style.transform = `rotateX(${p.x}deg) rotateY(${p.y}deg) rotateZ(${p.z}deg)`;
-    await raf();
-    const topVal = getTopVisibleValue();
-    if (topVal >= 1 && topVal <= 6) map[topVal].push(p);
-  }
-
-  dice3dEl.style.transform = prevTransform;
-  dice3dEl.style.transition = prevTransition;
-
-  console.log("[DICE] TOP_VISIBLE_TO_POSES built:", Object.fromEntries(
-    Object.entries(map).map(([k, v]) => [k, v.length])
-  ));
-
-  return map;
-}
-
-function prepDiceForAnimate(el) {
-  if (!el) return;
-  try { el.getAnimations().forEach((a) => a.cancel()); } catch {}
-  el.style.transition = "none";
-  el.getBoundingClientRect();
-}
-
-function nearestEquivalentDeg(currentDeg, targetDeg) {
-  const c = Number(currentDeg) || 0;
-  const t = Number(targetDeg) || 0;
-  const n = Math.round((c - t) / 360);
-  return t + 360 * n;
-}
-
-function easeOutPow(t, p = 3.2) {
-  return 1 - Math.pow(1 - t, p);
-}
-
-async function animateRollToPick(el, pick, rollMs) {
-  prepDiceForAnimate(el);
-
-  const s = { x: randInt(-18, 18), y: rand360(), z: randInt(-18, 18) };
-  const kx = randInt(1, 3);
-  const ky = randInt(2, 4);
-  const kz = randInt(1, 3);
-
-  const end = { x: pick.x + 360 * kx, y: pick.y + 360 * ky, z: pick.z + 360 * kz };
-
-  const T = [0, 0.22, 0.48, 0.72, 0.88, 1.0];
-  const frames = T.map((tt) => {
-    const f = easeOutPow(tt, 3.2);
-    const ax = s.x + (end.x - s.x) * f;
-    const ay = s.y + (end.y - s.y) * f;
-    const az = s.z + (end.z - s.z) * f;
-    return { offset: tt, transform: `rotateX(${ax}deg) rotateY(${ay}deg) rotateZ(${az}deg)` };
-  });
-
-  const anim = el.animate(frames, { duration: rollMs, easing: "linear", fill: "forwards" });
-  await anim.finished;
-
-  try { el.getAnimations().forEach((a) => a.cancel()); } catch {}
-  el.style.transition = "none";
-  el.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(${end.z}deg)`;
-
-  return { s, end };
-}
-
-async function settleToPick(el, pick, settleMs, endAbs) {
-  const targetAbs = {
-    x: nearestEquivalentDeg(endAbs?.x ?? pick.x, pick.x),
-    y: nearestEquivalentDeg(endAbs?.y ?? pick.y, pick.y),
-    z: nearestEquivalentDeg(endAbs?.z ?? pick.z, pick.z),
-  };
-
-  const t = Math.max(0, Math.floor(settleMs));
-
-  if (t > 0) {
-    el.style.transition = `transform ${t}ms cubic-bezier(.18,.92,.22,1)`;
-    el.style.transform = `rotateX(${targetAbs.x}deg) rotateY(${targetAbs.y}deg) rotateZ(${targetAbs.z}deg)`;
-    await waitTransformEnd(el, t + 120);
-  }
-
-  el.style.transition = "none";
-  el.style.transform = `rotateX(${pick.x}deg) rotateY(${pick.y}deg) rotateZ(${pick.z}deg)`;
-  await raf();
-}
-
-function logDiceState(stage, finalRoll, endObj) {
-  try {
-    const cam = document.querySelector(".dice-cam");
-    const dice = document.getElementById("dice3d");
-
-    console.log(
-      `%c[DICE LOG] ${stage}`,
-      "color:#5a4bb0;font-weight:900;",
-      {
-        finalRoll,
-        endObj,
-        dice_style_transform: dice?.style?.transform || "",
-        dice_computed_transform: dice ? getComputedStyle(dice).transform : "",
-        cam_style_transform: cam?.style?.transform || "",
-        cam_computed_transform: cam ? getComputedStyle(cam).transform : "",
-        ts: Date.now(),
-      }
-    );
-  } catch (e) {
-    console.warn("[DICE LOG] failed:", e);
-  }
-}
-
-const rollDiceWithOverlay = async (durationMs = 5000) => {
-  const finalRoll = secureRandomInt(1, 6);
-  logDiceState("before-roll", finalRoll, null);
-
-  if (!diceOverlayEl || !dice3dEl) return finalRoll;
-
-  setDiceOverlayState("rolling", null, "ลูกเต๋ากำลังกลิ้ง…");
-  await raf(); await raf();
-
-  prepDiceForAnimate(dice3dEl);
-  await raf();
-
-  if (!TOP_VISIBLE_TO_POSES) {
-    TOP_VISIBLE_TO_POSES = await buildTopVisiblePoseMap();
-  }
-  const candidates = TOP_VISIBLE_TO_POSES?.[finalRoll] || [];
-  const pick = candidates.length ? candidates[randInt(0, candidates.length - 1)] : { x: 0, y: 0, z: 0 };
-
-  const rollMs = Math.max(2000, Math.floor(durationMs * 0.94));
-  const settleMs = Math.max(80, durationMs - rollMs);
-
-  logDiceState("computed-end-before-animate", finalRoll, { pick, rollMs, settleMs });
-
-  const { end } = await animateRollToPick(dice3dEl, pick, rollMs);
-  await settleToPick(dice3dEl, pick, settleMs, end);
-
-  const seenTop = getTopVisibleValue?.();
-  if (seenTop != null && seenTop !== finalRoll) {
-    console.warn("[DICE SNAP MISMATCH]", { finalRoll, seenTop, pick });
-  }
-  logDiceState("after-snap-final", finalRoll, { pick, seenTop });
-
-  return finalRoll;
-};
-
-// debug
-window.__SQ_rollDiceWithOverlay = rollDiceWithOverlay;
 
 /* =========================
    14) Player Actions (Join, Roll, Submit)
@@ -1423,11 +1420,18 @@ rollDiceBtn?.addEventListener("click", async () => {
     // ปล่อยให้ DB sync มาปลด rollPending ใน updateRoleControls
   } catch (e) {
     console.error(e);
-    setDiceOverlayState("hidden");
+  
     rollPending = false;
-    rollDiceBtn.disabled = false;
+  
+    // เปิด overlay ให้ผู้เล่นกดทอยได้ทันที
+    setDiceOverlayState("waiting"); // ไม่ส่ง hint
+  
+    // กันกรณีปุ่มยัง disable ค้าง (เผื่อ state อื่นไปล็อกไว้)
+    if (rollDiceBtn) rollDiceBtn.disabled = false;
+  
+    // ✅ แสดง textbox แบบเดิม
     alert("ทอยเต๋าไม่สำเร็จ (เครือข่าย/ระบบมีปัญหา ลองใหม่)");
-  }
+  }  
 });
 
 async function finalizeRollTransaction(roll) {
@@ -1493,10 +1497,11 @@ async function finalizeRollTransaction(roll) {
     const totalPlayers = Object.keys(players).length;
     const targetWinners = Math.min(maxWinners, totalPlayers);
 
-    const finishedCount = Object.values(players).filter((p) => (p.finished || clampPos(p.position) >= BOARD_SIZE)).length;
+    const finishedCount = Object.values(players).filter((p) => p.finished || clampPos(p.position) >= BOARD_SIZE).length;
     if (room.winners.length >= targetWinners || finishedCount === totalPlayers) {
       room.phase = PHASE.ENDED;
       room.status = STATUS.FINISHED;
+    
       room.endInfo = {
         endedAt: now,
         endReason: "winners",
@@ -1504,7 +1509,17 @@ async function finalizeRollTransaction(roll) {
         maxWinners,
         winnerCount: room.winners.length,
       };
-    }
+    
+      // ✅ NEW: snapshot ผู้เล่นตอนเกมจบ (ทำครั้งเดียว)
+      if (!room.finalPlayers) {
+        const clonePlayers = (obj) => {
+          try { return structuredClone(obj); }
+          catch { return JSON.parse(JSON.stringify(obj)); }
+        };
+        if (!room.finalPlayers) room.finalPlayers = clonePlayers(players || {});
+        if (!room.finalWinners) room.finalWinners = Array.isArray(winners) ? winners.slice() : [];
+      }
+    }    
 
     players[currentPlayerId] = me;
     room.players = players;
@@ -1534,7 +1549,7 @@ async function submitAnswerTx(optionKey) {
 
       if (!Number.isFinite(startAt) || !Number.isFinite(duration)) return;
 
-      const expired = now > (startAt + duration * 1000);
+      const expired = now > startAt + duration * 1000;
 
       if (room.answerDeadlineExpired === true || expired) {
         room.answerDeadlineExpired = true;
@@ -1547,10 +1562,11 @@ async function submitAnswerTx(optionKey) {
 
       const pos = clampPos(me.position);
       if (me.finished || pos >= BOARD_SIZE) return;
-      if (me.answered) return;
 
       me.answer = optionKey;
       me.answered = true;
+      me.answerUpdatedAt = now;
+
       players[currentPlayerId] = me;
       room.players = players;
 
@@ -1587,8 +1603,6 @@ async function submitAnswerTx(optionKey) {
         alert("ส่งคำตอบไม่สำเร็จ (ระบบยังไม่เริ่มจับเวลา)");
         return;
       }
-
-      if (me.answered) return;
 
       alert("ส่งคำตอบไม่สำเร็จ (ลองใหม่)");
       return;
@@ -1790,6 +1804,14 @@ revealAnswerBtn?.addEventListener("click", async () => {
     if (gameEnded) {
       room.phase = PHASE.ENDED;
       room.status = STATUS.FINISHED;
+    
+      // ✅ NEW: บอก UI ให้ค้างหน้าเฉลยข้อสุดท้าย
+      room.ui = room.ui || {};
+      room.ui.keepQuestionOnEnd = true;
+      room.ui.keepQuestionRound = currentRound;   // รอบที่เฉลยแล้วจบ
+      room.ui.keepQuestionIndex = questionIndex;  // index ข้อคำถาม
+      room.ui.keepQuestionSetId = questionSetId;  // ชุดคำถาม
+      
       room.endInfo = {
         endedAt: now,
         endReason,
@@ -1797,9 +1819,19 @@ revealAnswerBtn?.addEventListener("click", async () => {
         maxWinners,
         winnerCount: room.winners.length,
       };
+    
+      // ✅ NEW: snapshot ผู้เล่นตอนเกมจบ (ทำครั้งเดียว)
+      if (!room.finalPlayers) {
+        const clonePlayers = (obj) => {
+          try { return structuredClone(obj); }
+          catch { return JSON.parse(JSON.stringify(obj)); }
+        };
+        if (!room.finalPlayers) room.finalPlayers = clonePlayers(players || {});
+        if (!room.finalWinners) room.finalWinners = Array.isArray(room.winners) ? room.winners.slice() : [];
+      }
     } else {
       room.phase = PHASE.RESULT;
-    }
+    }    
 
     return room;
   });
@@ -1836,7 +1868,6 @@ async function cancelRoomFlow() {
     alert("ยกเลิกห้องไม่สำเร็จ (ดู Console)");
     return;
   }
-  resetToHome("ยกเลิกห้องเรียบร้อย");
   updateHeaderActionsUI(null);
 }
 
@@ -1875,7 +1906,7 @@ function renderPlayerList(roomData, playersObj) {
       finishRound: Number.isFinite(p.finishedRound) ? Number(p.finishedRound) : null,
 
       rollsByRound: Array(roundsToShow).fill(null), // number | "☐" | null
-      ansByRound: Array(roundsToShow).fill(null),   // "✅"/"❌"/"➖" | null
+      ansByRound: Array(roundsToShow).fill(null), // "✅"/"❌"/"➖" | null
     };
   }
 
@@ -1892,11 +1923,11 @@ function renderPlayerList(roomData, playersObj) {
       if (s.finishRound != null && rn > s.finishRound) {
         // ✅ ผลทอย: โชว์ ☐ ทันทีเมื่อเริ่มรอบใหม่
         s.rollsByRound[idx] = "☐";
-      
+
         // ✅ ผลคำตอบ: โชว์ ➖ เฉพาะเมื่อ host "เฉลยคำถาม" แล้ว (มี answers ใน history)
         const hasAnswers = rd.answers && Object.keys(rd.answers).length > 0;
         if (hasAnswers) s.ansByRound[idx] = "➖";
-      
+
         continue;
       }
 
@@ -1907,19 +1938,28 @@ function renderPlayerList(roomData, playersObj) {
       }
 
       // 3) ผลคำตอบ: อ่านจาก answers (ขึ้นหลัง host เฉลย)
+      // 3) ผลคำตอบ: อ่านจาก answers (ขึ้นหลัง host เฉลย)
       const ar = answers[pid];
       if (ar) {
-        // neutralFinishByDice: กรณี record เป็นกลาง ไม่ต้องเติม ✅/❌
+        // ✅ host เฉลยแล้วจริงไหม (มี answers ใน history ของรอบนี้)
+        const hasAnswers = rd.answers && Object.keys(rd.answers).length > 0;
+
+        // neutralFinishByDice: กรณี record เป็นกลาง (เข้าเส้นชัยด้วย dice) ไม่ต้องเติม ✅/❌
         const basePos = ar.basePosition ?? null;
         const finalPos = ar.finalPosition ?? null;
         const neutralFinishByDice =
           ar.correct == null &&
           ar.answered === false &&
-          Number.isFinite(basePos) && Number.isFinite(finalPos) &&
-          basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
+          Number.isFinite(basePos) &&
+          Number.isFinite(finalPos) &&
+          basePos >= BOARD_SIZE &&
+          finalPos >= BOARD_SIZE;
 
-        if (!neutralFinishByDice) {
-          s.ansByRound[idx] = (ar.correct === true) ? "✅" : "❌";
+        if (neutralFinishByDice) {
+          // ✅ กรณีเข้าเส้นชัยด้วย dice "รอบเดียวกัน" → ให้โชว์ ➖ เมื่อ host เฉลยแล้ว
+          if (hasAnswers) s.ansByRound[idx] = "➖";
+        } else {
+          s.ansByRound[idx] = ar.correct === true ? "✅" : "❌";
         }
       }
     }
@@ -1927,29 +1967,29 @@ function renderPlayerList(roomData, playersObj) {
 
   // แปลงเป็นข้อความ
   const rollsToText = (arr) => {
-    const out = arr.map(v => {
-      if (v === "☐") return "☐";
-      if (Number.isFinite(v)) return diceToGlyph(v);
-      return "";
-    }).join("");
+    const out = arr
+      .map((v) => {
+        if (v === "☐") return "☐";
+        if (Number.isFinite(v)) return diceToGlyph(v);
+        return "";
+      })
+      .join("");
     return out || "-";
   };
 
   const ansToText = (arr) => {
-    const out = arr.map(v => (v ? v : "")).join("");
+    const out = arr.map((v) => (v ? v : "")).join("");
     return out || "-";
   };
 
-  const list = Object.values(perPlayer).sort((a, b) =>
-    String(a.name || "").localeCompare(String(b.name || ""))
-  );
+  const list = Object.values(perPlayer).sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 
   let html = `
     <table>
       <thead>
         <tr>
           <th>#</th>
-          <th class="name-col">ผู้เล่น</th>
+          <th class="name-col">รายชื่อผู้เล่น</th>
           <th>ตำแหน่ง</th>
           <th>ทอยแล้ว</th>
           <th>ตอบแล้ว</th>
@@ -1992,7 +2032,15 @@ function updateGameView(roomData, players) {
   const deadlineExpired = roomData.answerDeadlineExpired === true;
 
   const status = roomData.status || STATUS.LOBBY;
-  const showGameArea = (status === STATUS.IN_GAME) || (round > 0) || (phase === PHASE.ENDED);
+  const ended = phase === PHASE.ENDED || status === STATUS.FINISHED;
+
+  // ✅ ใช้ finalPlayers เมื่อเกมจบ (ถ้ามี) เพื่อให้ view คงอยู่แม้ player ออกจากห้อง
+  const viewPlayers =
+    ended && roomData.finalPlayers && typeof roomData.finalPlayers === "object"
+      ? roomData.finalPlayers
+      : (players || {});
+
+  const showGameArea = status === STATUS.IN_GAME || round > 0 || phase === PHASE.ENDED;
 
   if (gameAreaEl) gameAreaEl.style.display = showGameArea ? "block" : "none";
 
@@ -2007,25 +2055,38 @@ function updateGameView(roomData, players) {
 
   let phaseText = "";
   switch (phase) {
-    case PHASE.ROLLING: phaseText = "กำลังทอยลูกเต๋า"; break;
-    case PHASE.QUESTION_COUNTDOWN: phaseText = "เตรียมคำถาม"; break;
-    case PHASE.ANSWERING: phaseText = "กำลังตอบคำถาม"; break;
-    case PHASE.RESULT: phaseText = "สรุปผลคำถามรอบนี้"; break;
-    case PHASE.ENDED: phaseText = "เกมจบแล้ว"; break;
-    default: phaseText = "รอ Host เริ่มรอบใหม่";
+    case PHASE.ROLLING:
+      phaseText = "กำลังทอยลูกเต๋า";
+      break;
+    case PHASE.QUESTION_COUNTDOWN:
+      phaseText = "เตรียมคำถาม";
+      break;
+    case PHASE.ANSWERING:
+      phaseText = "กำลังตอบคำถาม";
+      break;
+    case PHASE.RESULT:
+      phaseText = "สรุปผลคำถามรอบนี้";
+      break;
+    case PHASE.ENDED:
+      phaseText = "เกมจบแล้ว";
+      break;
+    default:
+      phaseText = "รอ Host เริ่มรอบใหม่";
   }
 
+  // ✅ hostSuffix ควรอิง players จริงระหว่างเล่น
+  // แต่ถ้า ended แล้ว จะไม่ต้องโชว์ suffix ก็ได้ (หรือคำนวณจาก viewPlayers ก็ได้)
   let hostSuffix = "";
-  if (currentRole === "host") {
+  if (currentRole === "host" && !ended) {
     const playerList = Object.values(players || {});
-    const activePlayers = playerList.filter(p => !p.finished && (p.position || 1) < BOARD_SIZE);
+    const activePlayers = playerList.filter((p) => !p.finished && (p.position || 1) < BOARD_SIZE);
     const totalActive = activePlayers.length;
 
     if (phase === PHASE.ROLLING) {
-      const rolledActive = activePlayers.filter(p => !!p.hasRolled).length;
+      const rolledActive = activePlayers.filter((p) => !!p.hasRolled).length;
       hostSuffix = ` | ทอยแล้ว ${rolledActive}/${totalActive} คน`;
     } else if (phase === PHASE.ANSWERING) {
-      const answeredActive = activePlayers.filter(p => !!p.answered).length;
+      const answeredActive = activePlayers.filter((p) => !!p.answered).length;
       hostSuffix = ` | ตอบแล้ว ${answeredActive}/${totalActive} คน`;
       if (deadlineExpired) hostSuffix += " | หมดเวลาแล้ว";
     }
@@ -2035,17 +2096,39 @@ function updateGameView(roomData, players) {
     phaseInfoEl.textContent = round > 0 ? `[สถานะรอบ: ${phaseText}${hostSuffix}]` : "";
   }
 
-  renderBoard(roomData, players);
-  updateRoleControls(roomData, players);
-  updateQuestionUI(roomData, players);
+  // ✅ ใช้ viewPlayers ทั้งกระดาน + ปุ่ม/คำถามยังใช้ players จริงได้
+  // แต่เพื่อความสอดคล้อง UI ตอนจบเกม: renderBoard/renderEndGameSummary ใช้ viewPlayers
+  renderBoard(roomData, viewPlayers);
+  updateRoleControls(roomData, players);   // controls ใช้ state จริง
+  updateQuestionUI(roomData, players);     // question UI ใช้ state จริง
 
-  const ended = (phase === PHASE.ENDED) || (status === STATUS.FINISHED);
+  const lobbyEl = document.getElementById("lobby");
+  const hostEl = document.getElementById("lobbyCardHost");
+
+  if (ended) {
+    // ✅ เกมจบ: ซ่อนทั้ง host และ lobby (ไม่ต้องย้ายการ์ดกลับ)
+    if (hostEl) hostEl.style.display = "none";
+    if (lobbyEl) lobbyEl.style.display = "none";
+    document.body.classList.remove("in-game");
+  } else if (showGameArea) {
+    // ✅ กำลังเล่น: โชว์ host และย้ายการ์ดไปอยู่ใต้กระดาน
+    if (hostEl) hostEl.style.display = "block";
+    enterInGameLayout();
+  } else {
+    // ✅ ยังไม่เริ่ม: ซ่อน host (กันค้าง)
+    if (hostEl) hostEl.style.display = "none";
+  }
+
   if (endGameAreaEl) endGameAreaEl.style.display = ended ? "block" : "none";
-  if (ended) renderEndGameSummary(roomData, players);
+  if (ended) renderEndGameSummary(roomData, viewPlayers);
 }
 
 function updateRoleControls(roomData, players) {
   const phase = roomData.phase || PHASE.IDLE;
+  const ended = phase === PHASE.ENDED;
+
+  // ✅ กัน crash ถ้า diceOverlayState ยังไม่ถูกประกาศ (ลดโอกาส subscribeRoom crashed)
+  const overlayState = (typeof diceOverlayState !== "undefined") ? diceOverlayState : "hidden";
 
   if (hostGameControlsEl) {
     hostGameControlsEl.style.display = currentRole === "host" ? "flex" : "none";
@@ -2073,29 +2156,19 @@ function updateRoleControls(roomData, players) {
     const rolledOrPending = rolled || rollPending;
     const canRoll = roomData.phase === PHASE.ROLLING && !rolledOrPending && !finished;
 
-    // แสดง overlay เมื่อ phase เป็น ROLLING และ player ยังไม่ทอยและยังไม่ finished
-    // และ overlay ยังไม่แสดงอยู่ (state ไม่ใช่ waiting, rolling, committing, done)
-    if (roomData.phase === PHASE.ROLLING && !finished && !rolled && diceOverlayState === "hidden") {
+    // แสดง overlay เฉพาะตอน ROLLING และยังไม่ทอย
+    if (roomData.phase === PHASE.ROLLING && !finished && !rolled && overlayState === "hidden") {
       setDiceOverlayState("waiting");
-    } else if (roomData.phase !== PHASE.ROLLING && diceOverlayState !== "hidden" && diceOverlayState !== "done") {
-      // ซ่อน overlay เมื่อ phase ไม่ใช่ ROLLING (ยกเว้น state "done" เพราะ player อาจจะยังไม่ได้ปิด overlay)
-      setDiceOverlayState("hidden");
-    } else if (finished) {
-      // ซ่อน overlay เมื่อ player finished แล้ว
-      if (diceOverlayState !== "hidden") {
-        setDiceOverlayState("hidden");
-      }
+    } else if (roomData.phase !== PHASE.ROLLING || finished) {
+      if (overlayState !== "hidden") setDiceOverlayState("hidden");
     }
 
-    // ควบคุม rollDiceBtn ใน overlay (เฉพาะเมื่อ state เป็น "waiting")
-    if (rollDiceBtn && diceOverlayState === "waiting") {
+    if (rollDiceBtn && overlayState === "waiting") {
       rollDiceBtn.disabled = !canRoll;
     }
   } else {
     // Host: ซ่อน overlay ถ้ายังแสดงอยู่
-    if (diceOverlayState !== "hidden") {
-      setDiceOverlayState("hidden");
-    }
+    if (overlayState !== "hidden") setDiceOverlayState("hidden");
   }
 
   if (currentRole === "host") {
@@ -2104,86 +2177,153 @@ function updateRoleControls(roomData, players) {
     const totalActive = activePlayers.length;
     const rolledActive = activePlayers.filter((p) => p.hasRolled).length;
 
-    if (startRoundBtn) startRoundBtn.disabled = (phase === PHASE.ENDED);
+    // ✅ startRound: "เกมจบแล้วซ่อน" (แทนการ disabled อย่างเดียว)
+    if (startRoundBtn) {
+      startRoundBtn.style.display = ended ? "none" : "inline-flex";
+      startRoundBtn.disabled = ended;
+    }
 
     if (startQuestionBtn) {
-      startQuestionBtn.style.display = (phase === PHASE.ENDED) ? "none" : "inline-block";
+      startQuestionBtn.style.display = ended ? "none" : "inline-block";
       startQuestionBtn.disabled = !(phase === PHASE.ROLLING && (totalActive === 0 || rolledActive === totalActive));
     }
 
     if (revealAnswerBtn) {
-      revealAnswerBtn.style.display = (phase === PHASE.ENDED) ? "none" : "inline-block";
-      revealAnswerBtn.disabled = (phase !== PHASE.ANSWERING);
+      revealAnswerBtn.style.display = ended ? "none" : "inline-block";
+      revealAnswerBtn.disabled = phase !== PHASE.ANSWERING;
     }
   } else {
-    if (startRoundBtn) startRoundBtn.disabled = true;
+    // ✅ ไม่ใช่ host: ซ่อนปุ่ม host ทั้งหมดให้ชัด
+    if (startRoundBtn) startRoundBtn.style.display = "none";
     if (startQuestionBtn) startQuestionBtn.style.display = "none";
     if (revealAnswerBtn) revealAnswerBtn.style.display = "none";
+
+    if (startRoundBtn) startRoundBtn.disabled = true;
   }
 }
 
 function updateQuestionUI(roomData, players) {
   const phase = roomData.phase || PHASE.IDLE;
   const round = roomData.currentRound || 0;
-  const questionIndex = roomData.questionIndex;
-  const question = questionIndex != null ? getQuestionFromRoom(roomData, questionIndex) : null;
 
+  const ui = roomData.ui || {};
+  const keepOnEnd = phase === PHASE.ENDED && ui.keepQuestionOnEnd === true;
+
+  // เลือก "ข้อ" ที่จะโชว์:
+  // - ปกติ: ใช้ roomData.questionIndex
+  // - เกมจบและต้องค้าง: ใช้ ui.keepQuestionIndex (fallback ไป roomData.questionIndex)
+  const questionIndex =
+    keepOnEnd ? (ui.keepQuestionIndex ?? roomData.questionIndex) : roomData.questionIndex;
+
+  const question =
+    questionIndex != null ? getQuestionFromRoom(roomData, questionIndex) : null;
+
+  // ถ้ายังไม่เริ่มเกม
   if (round === 0) {
     if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
     if (countdownDisplayEl) countdownDisplayEl.textContent = "";
+    if (questionCountdownOverlayEl) questionCountdownOverlayEl.style.display = "none";
+    if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
     clearTimer();
     return;
   }
 
+  // =========================
+  // ✅ NEW: เกมจบแต่ต้องการ "ค้างหน้าเฉลย"
+  // + ✅ FIX: ถ้าผู้ใช้กดปิดไปแล้ว จะไม่เปิดเด้งกลับมา
+  // =========================
+  if (keepOnEnd && question) {
+    const showRound = ui.keepQuestionRound ?? round;
+    const showQIndex = ui.keepQuestionIndex ?? roomData.questionIndex;
+
+    // สร้าง key เพื่อรีเซ็ต dismissed เมื่อเป็นคนละรอบ/คนละข้อ/คนละห้อง
+    const nextKey = `${currentRoomCode || "-"}|${showRound}|${showQIndex}`;
+    if (endQuestionKey !== nextKey) {
+      endQuestionKey = nextKey;
+      endQuestionDismissed = false; // เปลี่ยนเฉลยที่ค้าง -> ให้แสดงได้ใหม่
+    }
+
+    // ถ้าผู้ใช้ปิดแล้ว ให้ค้างเป็น "ปิด" ไม่เด้งกลับ
+    if (endQuestionDismissed) {
+      if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
+      if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
+      clearTimer();
+      return;
+    }
+
+    // แสดง overlay ค้างเฉลย
+    if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "flex";
+    if (questionTextEl) questionTextEl.textContent = question.text;
+
+    if (countdownDisplayEl) countdownDisplayEl.textContent = `เฉลยรอบที่ ${showRound}:`;
+
+    // ดึง selectedOption ของตัวเองให้แม่นขึ้นจาก history (เผื่อ player ถูก remove แล้ว players ไม่มี)
+    let selectedOption = null;
+    if (currentPlayerId) {
+      const hk = `round_${showRound}`;
+      const rec = roomData.history?.[hk]?.answers?.[currentPlayerId] || null;
+      selectedOption = rec
+        ? (rec.selectedOption ?? null)
+        : (players?.[currentPlayerId]?.answer ?? null);
+    }
+
+    renderChoicesForPhase(question, selectedOption, question.correctOption, true, true);
+
+    // ให้ปิดได้ (local)
+    if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "inline-flex";
+
+    clearTimer();
+    return;
+  }
+
+  // เดิม: ตอนนับถอยหลัง ใช้ countdown overlay แทน question area
   if (phase === PHASE.QUESTION_COUNTDOWN) {
-    // ไม่แสดง questionArea เมื่อนับถอยหลัง ให้แสดง countdown overlay แทน
     if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
     if (questionTextEl) questionTextEl.textContent = "";
     if (choicesContainerEl) choicesContainerEl.innerHTML = "";
+    if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
     ensureTimer(roomData, PHASE.QUESTION_COUNTDOWN);
     return;
   }
 
+  // เดิม: ช่วงตอบ
   if (phase === PHASE.ANSWERING && question) {
     if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "flex";
     if (questionTextEl) questionTextEl.textContent = question.text;
-  
+
+    // ซ่อนปุ่ม close เมื่อกำลังตอบ
+    if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
+
     const me = players?.[currentPlayerId] || {};
     const selectedOption = me.answer || null;
-  
+
     const startAt = roomData.answerStartAt;
     const duration = roomData.answerTimeSeconds;
-  
-    // ✅ fallback: phase เป็น answering แต่ยังไม่มีเวลาเริ่ม
+
+    // fallback: answering แต่ยังไม่มีเวลาเริ่ม
     if (!Number.isFinite(startAt)) {
       if (countdownDisplayEl) countdownDisplayEl.textContent = "กำลังซิงค์เวลาเริ่ม…";
-      // optional: เผื่อ DB ค้าง countdown จริง ๆ (tx จะไม่ทำอะไรถ้าไม่ใช่ countdown)
       if (currentRoomCode) moveCountdownToAnsweringTx().catch(() => {});
-      // จะให้ตอบไม่ได้จนกว่า startAt มาจริง
       renderChoicesForPhase(question, selectedOption, question.correctOption, false, true);
       clearTimer();
       return;
     }
-  
+
     const now = Date.now();
-    const computedExpired =
-      Number.isFinite(duration)
-        ? now > (startAt + duration * 1000)
-        : false;
-  
+    const computedExpired = Number.isFinite(duration) ? now > startAt + duration * 1000 : false;
+
     const deadlineExpired = roomData.answerDeadlineExpired === true || computedExpired;
     const disableButtons = deadlineExpired || !!me.finished;
-  
+
     renderChoicesForPhase(question, selectedOption, question.correctOption, false, disableButtons);
     ensureTimer(roomData, PHASE.ANSWERING);
     return;
   }
 
+  // เดิม: หลังเฉลย
   if (phase === PHASE.RESULT && question) {
     if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "flex";
-    // questionText ไม่เปลี่ยนแปลง เพื่อให้ card ไม่เปลี่ยนขนาด
     if (questionTextEl) questionTextEl.textContent = question.text;
-    // แสดงข้อความ "เฉลยรอบที่ x:" ใน countdownDisplay
     if (countdownDisplayEl) countdownDisplayEl.textContent = `เฉลยรอบที่ ${round}:`;
 
     let selectedOption = null;
@@ -2193,10 +2333,16 @@ function updateQuestionUI(roomData, players) {
     }
 
     renderChoicesForPhase(question, selectedOption, question.correctOption, true, true);
+
+    // แสดงปุ่ม close เมื่อ RESULT
+    if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "inline-flex";
+
     clearTimer();
     return;
   }
 
+  // fallback: ซ่อนทุกอย่าง
+  if (closeQuestionAreaBtn) closeQuestionAreaBtn.style.display = "none";
   if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "none";
   if (countdownDisplayEl) countdownDisplayEl.textContent = "";
   if (questionCountdownOverlayEl) questionCountdownOverlayEl.style.display = "none";
@@ -2241,7 +2387,7 @@ function ensureTimer(roomData, targetPhase) {
     if (questionCountdownOverlayEl) questionCountdownOverlayEl.style.display = "none";
     return;
   }
-  
+
   // ตรวจสอบว่า timer ยังทำงานอยู่หรือไม่
   // สำหรับ QUESTION_COUNTDOWN: ต้องระวังการเรียกซ้ำจาก Firebase sync
   // ปัญหาคือเมื่อ host กดปุ่ม Firebase sync กลับมาเร็วมาก
@@ -2353,8 +2499,9 @@ function ensureTimer(roomData, targetPhase) {
 
         if (currentRole === "host" && currentRoomCode && roomData.answerDeadlineExpired !== true) {
           const roomRef = ref(db, `rooms/${currentRoomCode}`);
-          update(roomRef, { answerDeadlineExpired: true })
-            .catch((e) => console.error("Error setting answerDeadlineExpired:", e));
+          update(roomRef, { answerDeadlineExpired: true }).catch((e) =>
+            console.error("Error setting answerDeadlineExpired:", e)
+          );
         }
       }
     }, 250);
@@ -2437,12 +2584,14 @@ function renderBoard(roomData, players) {
     return state;
   }
 
-  const sorted = Object.entries(players || {}).sort(([, a], [, b]) => String(a.name || "").localeCompare(String(b.name || "")));
+  const sorted = Object.entries(players || {}).sort(([, a], [, b]) =>
+    String(a.name || "").localeCompare(String(b.name || ""))
+  );
 
   for (const [pid, p] of sorted) {
     const row = document.createElement("div");
     row.className = "player-row";
-    
+
     if (currentRole === "player" && currentPlayerId && pid === currentPlayerId) {
       row.classList.add("is-me");
     }
@@ -2506,10 +2655,7 @@ function renderEndGameSummary(roomData, players) {
 
   let reasonText = "เกมจบแล้ว";
   if (endReason === "winners") {
-    reasonText = `เกมจบเพราะมีผู้เข้าเส้นชัยครบ ${Math.min(
-      Number(maxWinners) || 0,
-      Object.keys(players || {}).length
-    )} คน`;
+    reasonText = `เกมจบเพราะมีผู้เข้าเส้นชัยครบ ${Math.min(Number(maxWinners) || 0, Object.keys(players || {}).length)} คน`;
   } else if (endReason === "rounds") {
     reasonText = `เกมจบเพราะเล่นครบ ${maxRounds} รอบแล้ว`;
   }
@@ -2521,7 +2667,7 @@ function renderEndGameSummary(roomData, players) {
       name: p.name || pid,
       finalPosition: p.position ?? 1,
       finished: !!p.finished || (p.position ?? 1) >= BOARD_SIZE,
-      finishRound: (p.finishedRound ?? null),
+      finishRound: p.finishedRound ?? null,
       finishBy: p.finishedBy ?? null,
       correct: 0,
       wrong: 0,
@@ -2569,8 +2715,10 @@ function renderEndGameSummary(roomData, players) {
       const neutralFinishByDice =
         rec.correct == null &&
         rec.answered === false &&
-        Number.isFinite(basePos) && Number.isFinite(finalPos) &&
-        basePos >= BOARD_SIZE && finalPos >= BOARD_SIZE;
+        Number.isFinite(basePos) &&
+        Number.isFinite(finalPos) &&
+        basePos >= BOARD_SIZE &&
+        finalPos >= BOARD_SIZE;
 
       if (!neutralFinishByDice) {
         if (rec.correct === true) {
@@ -2617,37 +2765,115 @@ function renderEndGameSummary(roomData, players) {
 
   stats.forEach((s, i) => (s.rank = i + 1));
 
-  let html = `<p><strong>สรุปผลเกม</strong></p>`;
-  html += `<p><strong>${escapeHtml(reasonText)}</strong></p>`;
+  /* =========================================================
+     ✅ NEW: สร้าง rollsByRound / ansByRound แบบเดียวกับ renderPlayerList
+     + ✅ FIX: กรณีเข้าเส้นชัยด้วยการทอยในรอบเดียวกัน แล้ว host reveal
+             ให้แสดง "➖" ในรอบนั้นเอง (rn == finishRound) ด้วย
+     ========================================================= */
+  const roundsToShow = Math.max(0, Number(roomData.currentRound || roundKeys.length || 0));
 
-  if (winners.length > 0) {
-    html += `<p><strong>ผู้เข้าเส้นชัย</strong></p><ul>`;
-    winners
-      .slice()
-      .sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999))
-      .forEach((w) => {
-        html += `<li>อันดับเข้าเส้นชัย ${w.rank ?? "-"}: ${escapeHtml(w.playerName)} (รอบ ${w.finishedRound ?? "-"})</li>`;
-      });
-    html += `</ul>`;
+  // map pid -> { rollsByRound[], ansByRound[], finishRound, finishBy }
+  const perPlayerRounds = {};
+  for (const s of stats) {
+    perPlayerRounds[s.id] = {
+      finishRound: Number.isFinite(s.finishRound) ? Number(s.finishRound) : null,
+      finishBy: s.finishBy ?? null,
+      rollsByRound: Array(roundsToShow).fill(null), // number | "☐" | null
+      ansByRound: Array(roundsToShow).fill(null),   // "✅"/"❌"/"➖" | null
+    };
   }
 
-  html += `
-    <h4>ตารางสรุปผลรายผู้เล่น</h4>
+  for (let rn = 1; rn <= roundsToShow; rn++) {
+    const idx = rn - 1;
+    const rd = history[`round_${rn}`] || {};
+    const diceMoves = rd.diceMoves || {};
+    const answers = rd.answers || {};
+
+    const hasAnswers = rd.answers && Object.keys(rd.answers).length > 0;
+
+    for (const [pid, rr] of Object.entries(perPlayerRounds)) {
+      // 1) ถ้าเข้าเส้นชัยแล้ว -> รอบถัดไปทั้งหมดเป็น ☐ และ ➖
+      if (rr.finishRound != null && rn > rr.finishRound) {
+        rr.rollsByRound[idx] = "☐";
+        if (hasAnswers) rr.ansByRound[idx] = "➖";
+        continue;
+      }
+
+      // 2) ผลทอย: อ่านจาก diceMoves
+      const dm = diceMoves[pid];
+      if (dm && dm.diceRoll != null) {
+        rr.rollsByRound[idx] = Number(dm.diceRoll);
+      }
+
+      // 3) ผลคำตอบ: อ่านจาก answers
+      const ar = answers[pid];
+      if (ar) {
+        const basePos = ar.basePosition ?? null;
+        const finalPos = ar.finalPosition ?? null;
+        const neutralFinishByDice =
+          ar.correct == null &&
+          ar.answered === false &&
+          Number.isFinite(basePos) &&
+          Number.isFinite(finalPos) &&
+          basePos >= BOARD_SIZE &&
+          finalPos >= BOARD_SIZE;
+
+        if (!neutralFinishByDice) {
+          rr.ansByRound[idx] = (ar.correct === true) ? "✅" : "❌";
+        }
+      }
+
+      // ✅ FIX: เข้าเส้นชัยด้วย "ทอยถึง" ในรอบเดียวกัน + มีการเฉลย (answers เกิดแล้ว)
+      // ให้ใส่ "➖" ในรอบนั้น (rn == finishRound) ด้วย
+      if (
+        hasAnswers &&
+        rr.finishRound != null &&
+        rn === rr.finishRound &&
+        rr.finishBy === "dice" &&
+        rr.ansByRound[idx] == null
+      ) {
+        rr.ansByRound[idx] = "➖";
+      }
+    }
+  }
+
+  const rollsToText = (arr) => {
+    const out = arr.map((v) => {
+      if (v === "☐") return "☐";
+      if (Number.isFinite(v)) return diceToGlyph(v);
+      return "";
+    }).join("");
+    return out || "-";
+  };
+
+  const ansToText = (arr) => {
+    const out = arr.map((v) => (v ? v : "")).join("");
+    return out || "-";
+  };
+
+  /* =========================
+     HTML
+  ========================= */
+  const endGameTitleEl = document.getElementById("endGameTitle");
+  if (endGameTitleEl) {
+    endGameTitleEl.innerHTML =
+      `สรุปผลเกม <span class="muted" style="font-weight:700;">• ${escapeHtml(reasonText)}</span>`;
+  }
+
+  let 
+  html = `
+    <h4 style="margin:15px 0 6px 0; padding:0; line-height:1.2;">ตารางอันดับผู้เล่น</h4>
     <table>
       <thead>
         <tr>
-          <th>อันดับ</th>
-          <th class="name-col">ผู้เล่น</th>
-          <th>ตำแหน่งสุดท้าย</th>
-          <th>ถึงเส้นชัย?</th>
-          <th>รอบที่ถึง</th>
-          <th>วิธีถึง</th>
-          <th>ถูก</th>
-          <th>ผิด</th>
-          <th>ไม่ทัน</th>
-          <th>% ถูก</th>
-          <th>ทอยลูกเต๋า</th>
-          <th>ผลคำถาม</th>
+          <th>#</th>
+          <th class="name-col">รายชื่อผู้เล่น</th>
+          <th>ตำแหน่ง</th>
+          <th>เข้าเส้นชัย?</th>
+          <th>รอบที่เข้า</th>
+          <th>วิธีเข้า</th>
+          <th>ผลทอย</th>
+          <th>ผลคำตอบ</th>
         </tr>
       </thead>
       <tbody>
@@ -2656,26 +2882,16 @@ function renderEndGameSummary(roomData, players) {
   for (const s of stats) {
     const totalQ = s.correct + s.wrong + s.timeout;
     const pctText = totalQ > 0 ? `${Math.round(s.pctCorrect)}%` : "-";
-    const totalRoundsPlayed = roundKeys.length;
 
-    // ผลทอย (ใช้ glyph) + เติม ☐ หลังเข้าเส้นชัย
-    let rollsText = rollTextToGlyphs(s.rolls);
-    if (s.finishRound != null && totalRoundsPlayed > s.finishRound) {
-      rollsText += "☐".repeat(totalRoundsPlayed - s.finishRound);
-    }
-    if (!rollsText) rollsText = "-";
-    
-    // ผลคำตอบ + เติม ➖ หลังเข้าเส้นชัย
-    let ansText = s.answerSymbols.length ? s.answerSymbols.join("") : "";
-    if (s.finishRound != null && totalRoundsPlayed > s.finishRound) {
-      ansText += "➖".repeat(totalRoundsPlayed - s.finishRound);
-    }
-    if (!ansText) ansText = "-";
+    // ✅ ใช้ชุดข้อมูลแบบ renderPlayerList
+    const rr = perPlayerRounds[s.id] || { rollsByRound: [], ansByRound: [] };
+    const rollsText = rollsToText(rr.rollsByRound);
+    const ansText = ansToText(rr.ansByRound);
 
-    const finishFlag = s.finished ? "✅" : "-";
+    const finishFlag = s.finished ? "🏆" : "-";
     const finishRoundText = s.finishRound != null ? s.finishRound : "-";
     const finishByText = s.finished
-      ? (s.finishBy === "dice" ? "ทอยถึง" : s.finishBy === "answer" ? "ตอบถึง" : "-")
+      ? (s.finishBy === "dice" ? "🎲" : s.finishBy === "answer" ? "📝" : "✖️")
       : "-";
 
     html += `
@@ -2686,10 +2902,6 @@ function renderEndGameSummary(roomData, players) {
         <td>${finishFlag}</td>
         <td>${finishRoundText}</td>
         <td>${finishByText}</td>
-        <td>${s.correct}</td>
-        <td>${s.wrong}</td>
-        <td>${s.timeout}</td>
-        <td>${pctText}</td>
         <td class="rolls-col"><span class="rolls-text">${escapeHtml(rollsText)}</span></td>
         <td>${ansText}</td>
       </tr>
@@ -2707,7 +2919,9 @@ function resetToHome(message) {
   clearTimer();
 
   if (roomUnsub) {
-    try { roomUnsub(); } catch {}
+    try {
+      roomUnsub();
+    } catch {}
     roomUnsub = null;
   }
 

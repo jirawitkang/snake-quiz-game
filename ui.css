@@ -576,7 +576,7 @@ body.in-game #startGameBtn{
 }
 
 /* name cell weight (ตาม PATCH เดิม) */
-#playerList td.name-col{
+#playerList td.name-col, #endGameSummary td.name-col{
   font-weight: 800;
 }
 
@@ -586,7 +586,7 @@ body.in-game #startGameBtn{
 
 /* 1) # */
 #playerList th:nth-child(1),
-#playerList td:nth-child(1){ width: 4ch; }
+#playerList td:nth-child(1){ width: 3ch; }
 
 /* 3) ตำแหน่ง */
 #playerList th:nth-child(3),
@@ -620,42 +620,30 @@ body.in-game #startGameBtn{
 
 /* 1) อันดับ */
 #endGameSummary th:nth-child(1),
-#endGameSummary td:nth-child(1){ width: 5ch; }
+#endGameSummary td:nth-child(1){ width: 3ch; }
 
-/* 3) ตำแหน่งสุดท้าย */
+/* 3) ตำแหน่ง */
 #endGameSummary th:nth-child(3),
-#endGameSummary td:nth-child(3){ width: 10ch; }
+#endGameSummary td:nth-child(3){ width: 5ch; }
 
-/* 4) ถึงเส้นชัย? */
+/* 4) เข้าเส้นชัย? */
 #endGameSummary th:nth-child(4),
-#endGameSummary td:nth-child(4){ width: 10ch; }
+#endGameSummary td:nth-child(4){ width: 7ch; }
 
-/* 5) รอบที่ถึง */
+/* 5) รอบที่เข้า */
 #endGameSummary th:nth-child(5),
-#endGameSummary td:nth-child(5){ width: 8ch; }
+#endGameSummary td:nth-child(5){ width: 5ch; }
 
-/* 6) วิธีถึง */
+/* 6) วิธีเข้า */
 #endGameSummary th:nth-child(6),
-#endGameSummary td:nth-child(6){ width: 10ch; }
+#endGameSummary td:nth-child(6){ width: 5ch; }
 
-/* 7-9) ถูก/ผิด/ไม่ทัน */
+/* 7-8) ทอยลูกเต๋า + ผลคำถาม */
 #endGameSummary th:nth-child(7),
 #endGameSummary td:nth-child(7),
 #endGameSummary th:nth-child(8),
-#endGameSummary td:nth-child(8),
-#endGameSummary th:nth-child(9),
-#endGameSummary td:nth-child(9){ width: 6ch; }
-
-/* 10) % ถูก */
-#endGameSummary th:nth-child(10),
-#endGameSummary td:nth-child(10){ width: 7ch; }
-
-/* 11-12) ทอยลูกเต๋า + ผลคำถาม */
-#endGameSummary th:nth-child(11),
-#endGameSummary td:nth-child(11),
-#endGameSummary th:nth-child(12),
-#endGameSummary td:nth-child(12){
-  width: 18ch;
+#endGameSummary td:nth-child(8){
+  width: 15ch;
 }
 
 /* =========================
@@ -697,17 +685,38 @@ body.in-game #startGameBtn{
 /* Question Area Overlay */
 #questionAreaOverlay.overlay{
   z-index: 9998;
-  pointer-events: none; /* ให้ overlay ไม่บล็อกการคลิก */
-  flex-direction: column; /* เปลี่ยนเป็น column เพื่อให้ปุ่มอยู่ใต้ card */
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* สำคัญ: ให้ปุ่มที่ absolute อ้างอิงตำแหน่งได้ */
+  position: fixed;
+
+  /* เผื่อพื้นที่ด้านล่างสำหรับปุ่ม (ประมาณ 14px + ความสูงปุ่ม) */
+  padding-bottom: 72px;
+
+  /* ไม่ต้องใช้ column แล้ว */
+  flex-direction: row;
 }
 
+/* ให้ card อยู่กลางจอจริง ๆ */
 #questionAreaOverlay.overlay #questionArea{
-  pointer-events: auto; /* ให้ card ภายในสามารถคลิกได้ */
+  pointer-events: auto;
+  margin: 0;
 }
 
+/* วางปุ่มไว้ใต้ card โดยไม่ไปดึงจุดกึ่งกลางของ card */
 #questionAreaOverlay.overlay #closeQuestionAreaBtn{
-  pointer-events: auto; /* ให้ปุ่มสามารถคลิกได้ */
-  margin-top: 14px; /* ห่างจาก card 14px */
+  pointer-events: auto;
+
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+
+  /* ระยะใต้ card */
+  top: calc(50% + (min(36vh, 288px) / 2) + 14px);
+
   background: var(--p-550) !important;
   border-color: var(--p-550) !important;
   color: #fff;
