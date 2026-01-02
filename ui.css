@@ -700,6 +700,20 @@ body.in-game #startGameBtn{
   flex-direction: row;
 }
 
+/* ให้ 3 ปุ่มนี้ลอยเหนือ overlay */
+#startQuestionBtn,
+#revealAnswerBtn,
+#toggleQuestionOverlayBtn{
+  position: relative;
+  z-index: 10050; /* มากกว่า #questionAreaOverlay (9998) */
+}
+
+/* ส่วน startRoundBtn ไม่ต้องตั้ง z-index → จะโดน overlay ตามปกติ */
+#startRoundBtn{
+  position: relative; /* จะมีหรือไม่มีก็ได้ */
+  z-index: auto;
+}
+
 /* ให้ card อยู่กลางจอจริง ๆ */
 #questionAreaOverlay.overlay #questionArea{
   pointer-events: auto;

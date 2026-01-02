@@ -118,6 +118,8 @@ const playerGameControlsEl = document.getElementById("playerGameControls");
 
 const startRoundBtn = document.getElementById("startRoundBtn");
 const startQuestionBtn = document.getElementById("startQuestionBtn");
+const toggleQuestionOverlayBtn = document.getElementById("toggleQuestionOverlayBtn");
+let hostQuestionOverlayHidden = false; // local only
 const revealAnswerBtn = document.getElementById("revealAnswerBtn");
 
 const gameAreaEl = document.getElementById("gameArea");
@@ -336,7 +338,7 @@ function renderLobbyBadges(roomData) {
   const items = [
     `Room: ${code}`,
     `Host: ${hostName}`,
-    `ชุดคำถาม: ${questionSetId}`,
+    `ชุดคำถาม: ${getQuestionSetName(questionSetId || "general")}`,
     `รอบสูงสุด: ${maxRounds}`,
     `เข้าเส้นชัย: ${maxWinners} คน`,
     `ถูก: ${rewardText}`,
@@ -1466,6 +1468,11 @@ async function finalizeRollTransaction(roll) {
       me.finishedBy = "dice";
     }
 
+    // ✅ เขียน me กลับเข้าห้อง "ก่อน" ตรวจจบเกม
+    players[currentPlayerId] = me;
+    room.players = players;
+
+    // history diceMoves
     const r = room.currentRound || 0;
     room.history = room.history || {};
     const roundKey = `round_${r}`;
@@ -1481,6 +1488,7 @@ async function finalizeRollTransaction(roll) {
       timestamp: now,
     };
 
+    // winners
     room.winners = Array.isArray(room.winners) ? room.winners : [];
     const winnerIds = new Set(room.winners.map((w) => w.playerId));
     if (newPos >= BOARD_SIZE && !winnerIds.has(currentPlayerId)) {
@@ -1492,16 +1500,20 @@ async function finalizeRollTransaction(roll) {
       });
     }
 
+    // ✅ ตรวจจบเกม
     const gs = room.gameSettings || {};
     const maxWinners = Math.max(1, gs.maxWinners ?? 5);
     const totalPlayers = Object.keys(players).length;
     const targetWinners = Math.min(maxWinners, totalPlayers);
 
-    const finishedCount = Object.values(players).filter((p) => p.finished || clampPos(p.position) >= BOARD_SIZE).length;
+    const finishedCount = Object.values(players).filter(
+      (p) => p.finished || clampPos(p.position) >= BOARD_SIZE
+    ).length;
+
     if (room.winners.length >= targetWinners || finishedCount === totalPlayers) {
       room.phase = PHASE.ENDED;
       room.status = STATUS.FINISHED;
-    
+
       room.endInfo = {
         endedAt: now,
         endReason: "winners",
@@ -1509,21 +1521,19 @@ async function finalizeRollTransaction(roll) {
         maxWinners,
         winnerCount: room.winners.length,
       };
-    
-      // ✅ NEW: snapshot ผู้เล่นตอนเกมจบ (ทำครั้งเดียว)
+
+      // ✅ snapshot ตอนจบเกม (ครั้งเดียว) จาก room.players ที่อัปเดตแล้ว
       if (!room.finalPlayers) {
         const clonePlayers = (obj) => {
           try { return structuredClone(obj); }
           catch { return JSON.parse(JSON.stringify(obj)); }
         };
 
-        room.finalPlayers = clonePlayers(players || {});
+        room.finalPlayers = clonePlayers(room.players || {});
         room.finalWinners = Array.isArray(room.winners) ? room.winners.slice() : [];
       }
-    }    
+    }
 
-    players[currentPlayerId] = me;
-    room.players = players;
     return room;
   });
 
@@ -1690,6 +1700,22 @@ async function moveCountdownToAnsweringTx() {
     return room;
   });
 }
+
+toggleQuestionOverlayBtn?.addEventListener("click", () => {
+  if (currentRole !== "host") return;
+
+  hostQuestionOverlayHidden = !hostQuestionOverlayHidden;
+
+  // ซ่อน/โชว์ overlay (เฉพาะ local)
+  if (questionAreaOverlayEl) {
+    questionAreaOverlayEl.style.display = hostQuestionOverlayHidden ? "none" : "flex";
+  }
+
+  // เปลี่ยนข้อความปุ่ม
+  if (toggleQuestionOverlayBtn) {
+    toggleQuestionOverlayBtn.textContent = hostQuestionOverlayHidden ? "แสดงคำถาม" : "ซ่อนคำถาม";
+  }
+});
 
 revealAnswerBtn?.addEventListener("click", async () => {
   if (currentRole !== "host" || !currentRoomCode) return;
@@ -2177,18 +2203,43 @@ function updateRoleControls(roomData, players) {
     const activePlayers = list.filter((p) => !p.finished && clampPos(p.position) < BOARD_SIZE);
     const totalActive = activePlayers.length;
     const rolledActive = activePlayers.filter((p) => p.hasRolled).length;
-
-    // ✅ startRound: "เกมจบแล้วซ่อน" (แทนการ disabled อย่างเดียว)
+  
+    // 1) startRound
     if (startRoundBtn) {
       startRoundBtn.style.display = ended ? "none" : "inline-flex";
       startRoundBtn.disabled = ended;
     }
-
+  
+    // 2) ปุ่มกลาง: สลับทันที ไม่มีช่วงหาย
+    const inCountdown = phase === PHASE.QUESTION_COUNTDOWN;
+    const inAnswering = phase === PHASE.ANSWERING;
+  
+    const showToggle = !ended && (inCountdown || inAnswering);
+    const showStartQuestion = !ended && !showToggle; // = ROLLING หรือ RESULT
+  
     if (startQuestionBtn) {
-      startQuestionBtn.style.display = ended ? "none" : "inline-block";
-      startQuestionBtn.disabled = !(phase === PHASE.ROLLING && (totalActive === 0 || rolledActive === totalActive));
+      startQuestionBtn.style.display = showStartQuestion ? "inline-block" : "none";
+  
+      const canStartQuestion =
+        (phase === PHASE.ROLLING) && (totalActive === 0 || rolledActive === totalActive);
+  
+      startQuestionBtn.disabled = !canStartQuestion;
     }
-
+  
+    if (toggleQuestionOverlayBtn) {
+      toggleQuestionOverlayBtn.style.display = showToggle ? "inline-block" : "none";
+  
+      // ✅ NEW: ตอน QUESTION_COUNTDOWN ให้เห็นปุ่มแต่กดไม่ได้
+      toggleQuestionOverlayBtn.disabled = inCountdown;
+  
+      // reset สถานะเมื่อหลุดจากโหมดที่โชว์ toggle (กันค้าง)
+      if (!showToggle) hostQuestionOverlayHidden = false;
+  
+      toggleQuestionOverlayBtn.textContent =
+        hostQuestionOverlayHidden ? "แสดงคำถาม" : "ซ่อนคำถาม";
+    }
+  
+    // 3) reveal
     if (revealAnswerBtn) {
       revealAnswerBtn.style.display = ended ? "none" : "inline-block";
       revealAnswerBtn.disabled = phase !== PHASE.ANSWERING;
@@ -2289,7 +2340,8 @@ function updateQuestionUI(roomData, players) {
 
   // เดิม: ช่วงตอบ
   if (phase === PHASE.ANSWERING && question) {
-    if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = "flex";
+    const shouldShow = !(currentRole === "host" && hostQuestionOverlayHidden);
+    if (questionAreaOverlayEl) questionAreaOverlayEl.style.display = shouldShow ? "flex" : "none";
     if (questionTextEl) questionTextEl.textContent = question.text;
 
     // ซ่อนปุ่ม close เมื่อกำลังตอบ
@@ -2858,12 +2910,19 @@ function renderEndGameSummary(roomData, players) {
   const endGameTitleEl = document.getElementById("endGameTitle");
   if (endGameTitleEl) {
     endGameTitleEl.innerHTML =
-      `สรุปผลเกม <span class="muted" style="font-weight:700;">• ${escapeHtml(reasonText)}</span>`;
+      `สรุปผลเกม <span class="muted" style="font-weight:700; color: var(--text);">• ${escapeHtml(reasonText)}</span>`;
   }
 
   let 
   html = `
-    <h4 style="margin:15px 0 6px 0; padding:0; line-height:1.2;">ตารางอันดับผู้เล่น</h4>
+    <h4 style="
+      margin:15px 0 6px 0;
+      padding:0;
+      line-height:1.2;
+      color: var(--p-800);
+    ">
+      ตารางอันดับผู้เล่น
+    </h4>
     <table>
       <thead>
         <tr>
